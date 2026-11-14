@@ -1,0 +1,212 @@
+import { randomBytes, randomInt } from "node:crypto";
+import { LIFELINE_COUNT } from "../src/animation/run.ts";
+import { FALL_DURATION_MS } from "../src/game/fallTiming.ts";
+import { generatePuzzle } from "../src/game/randomize.ts";
+import { isScrewAccessible, planBonusBox, planScrewRemoval } from "../src/game/rules.ts";
+import type { GameState, PartId } from "../src/game/types.ts";
+import type { RoomCommand, RoomGame, RoomNotice, RoomSnapshot } from "../src/multiplayer/protocol.ts";
+
+export const RECONNECT_MS = 30_000;
+export const FALL_LEAD_MS = 250;
+const PING_COOLDOWN_MS = 600;
+const newSeed = () => randomInt(0, 2 ** 32);
+const secret = () => randomBytes(18).toString("base64url");
+
+type Peer = { send: (notice: RoomNotice) => void; close: () => void };
+type Seat = { id: string; token: string; peer: Peer | null; ready: boolean; reconnectBy: number | null; lastPing: number };
+type Room = {
+  id: string; seats: Seat[]; soloAllowed: boolean; round: number; seed: number; game: GameState;
+  startedAt: number | null; lifelines: number; fallStarts: Map<PartId, number>;
+  elapsedMs: number; clockSince: number | null;
+};
+
+function wireGame({ screws, ...game }: GameState): RoomGame {
+  return { ...game, colors: screws.map((screw) => screw.color),
+    removed: screws.filter((screw) => screw.removed).map((screw) => screw.id) };
+}
+function canStart(room: Room) {
+  return room.startedAt === null && (room.soloAllowed || room.seats.length === 2) &&
+    room.seats.every((seat) => seat.peer && seat.ready);
+}
+function paused(room: Room) {
+  return room.seats.some((seat) => !seat.peer);
+}
+function stopClock(room: Room, now: number) {
+  if (room.clockSince === null) return;
+  room.elapsedMs += now - room.clockSince;
+  room.clockSince = null;
+}
+function snapshot(room: Room, now: number): RoomSnapshot {
+  return {
+    id: room.id, leader: room.seats[0].id, round: room.round, seed: room.seed,
+    players: room.seats.map((seat) => ({ id: seat.id, ready: seat.ready, connected: Boolean(seat.peer) })),
+    started: room.startedAt !== null, canStart: canStart(room), paused: paused(room), lifelines: room.lifelines,
+    game: wireGame(room.game),
+    fallStarts: Object.fromEntries([...room.fallStarts].filter(([, at]) => now < at + FALL_DURATION_MS)),
+    elapsedMs: room.elapsedMs + (room.clockSince === null ? 0 : now - room.clockSince),
+    clockRunning: room.clockSince !== null, serverTime: now,
+  };
+}
+
+export function createRoomServer(now = Date.now) {
+  const rooms = new Map<string, Room>();
+  const memberships = new Map<Peer, { room: Room; seat: Seat }>();
+  function publish(room: Room, matched = false) {
+    const state = snapshot(room, now());
+    for (const seat of room.seats) seat.peer?.send({ type: "state", snapshot: state, matched });
+  }
+  function reject(peer: Peer, reason: string, screw?: string) {
+    peer.send({ type: "rejected", reason, screw });
+  }
+  function addSeat(room: Room) {
+    const seat: Seat = { id: secret(), token: secret(), peer: null, ready: false, reconnectBy: null, lastPing: -Infinity };
+    room.seats.push(seat);
+    return seat;
+  }
+  function resumeClock(room: Room) {
+    if (!paused(room) && room.game.status === "playing" && room.clockSince === null && room.game.screws.some((screw) => screw.removed)) {
+      room.clockSince = now();
+    }
+  }
+  function attach(peer: Peer, room: Room, seat: Seat) {
+    const previous = seat.peer;
+    if (previous) memberships.delete(previous);
+    seat.peer = peer;
+    seat.reconnectBy = null;
+    memberships.set(peer, { room, seat });
+    previous?.close();
+    resumeClock(room);
+    peer.send({ type: "joined", player: seat.id, token: seat.token, snapshot: snapshot(room, now()) });
+    publish(room);
+  }
+  function removeSeat(room: Room, seat: Seat) {
+    if (seat.peer) memberships.delete(seat.peer);
+    room.seats = room.seats.filter((entry) => entry !== seat);
+    room.soloAllowed = true;
+    if (!room.seats.length) rooms.delete(room.id);
+    else {
+      resumeClock(room);
+      publish(room);
+    }
+  }
+  function disconnect(peer: Peer) {
+    const membership = memberships.get(peer);
+    if (!membership) return;
+    const { room, seat } = membership;
+    memberships.delete(peer);
+    seat.peer = null;
+    seat.reconnectBy = now() + RECONNECT_MS;
+    stopClock(room, now());
+    publish(room);
+  }
+  function expireSeats() {
+    const time = now();
+    for (const room of rooms.values()) {
+      for (const seat of room.seats) if (seat.reconnectBy !== null && seat.reconnectBy <= time) removeSeat(room, seat);
+    }
+  }
+  function receive(peer: Peer, command: RoomCommand) {
+    const time = now();
+    if (command.type === "clock") {
+      peer.send({ type: "clock", sentAt: command.sentAt, serverTime: time });
+      return;
+    }
+    const membership = memberships.get(peer);
+    if (command.type === "create" || command.type === "join") {
+      if (membership) return;
+      expireSeats();
+      if (command.type === "create") {
+        const seed = newSeed();
+        const room: Room = { id: secret(), seats: [], soloAllowed: false, round: 0, seed,
+          game: generatePuzzle(seed).state, startedAt: null, lifelines: LIFELINE_COUNT, fallStarts: new Map(),
+          elapsedMs: 0, clockSince: null };
+        rooms.set(room.id, room);
+        attach(peer, room, addSeat(room));
+        return;
+      }
+      const room = rooms.get(command.room);
+      if (!room) return reject(peer, "This room has closed.");
+      const seat = room.seats.find((entry) => entry.token === command.token);
+      if (command.token && !seat) return reject(peer, "Your seat expired. Open the invitation again to join as a guest.");
+      if (!seat && room.seats.length === 2) return reject(peer, "This room already has two players.");
+      attach(peer, room, seat ?? addSeat(room));
+      return;
+    }
+    if (!membership) return reject(peer, "Join a room first.");
+    const { room, seat } = membership;
+    if (command.type === "leave") {
+      removeSeat(room, seat);
+      return;
+    }
+    if (command.round !== room.round) return;
+    if (command.type === "ready") {
+      if (!seat.ready) {
+        seat.ready = true;
+        publish(room);
+      }
+      return;
+    }
+    if (command.type === "start" || command.type === "reset" || command.type === "boost") {
+      if (seat !== room.seats[0]) return reject(peer, "Only the room leader can do that.");
+    }
+    if (command.type === "reset") {
+      if (room.startedAt === null) return;
+      room.seed = newSeed();
+      room.game = generatePuzzle(room.seed).state;
+      room.round += 1;
+      room.startedAt = null;
+      room.lifelines = LIFELINE_COUNT;
+      room.fallStarts.clear();
+      room.elapsedMs = 0;
+      room.clockSince = null;
+      for (const member of room.seats) member.ready = false;
+      publish(room);
+      return;
+    }
+    if (command.type === "start") {
+      if (!canStart(room)) return reject(peer, "Wait for both players to be ready.");
+      room.startedAt = time;
+      publish(room);
+      return;
+    }
+    if (room.startedAt === null || !seat.ready ||
+        paused(room) || room.game.status !== "playing") return;
+    if (command.type === "ping") {
+      if (time - seat.lastPing < PING_COOLDOWN_MS ||
+          !room.game.screws.some((screw) => screw.id === command.screw && !screw.removed)) return;
+      seat.lastPing = time;
+      for (const member of room.seats) {
+        if (member !== seat) member.peer?.send({ type: "ping", round: room.round, screw: command.screw, player: seat.id });
+      }
+      return;
+    }
+    if (command.type === "boost") {
+      if (room.lifelines === 0) return;
+      const { finalState, events } = planBonusBox(room.game);
+      if (!events.length) return;
+      room.lifelines -= 1;
+      commit(room, finalState);
+      return;
+    }
+    if (command.type !== "select") return;
+
+    const screw = room.game.screws.find((entry) => entry.id === command.screw);
+    if (!screw || screw.removed) return;
+    const removedParts = room.game.removedParts.filter((part) => time >= (room.fallStarts.get(part) ?? -Infinity) + FALL_DURATION_MS);
+    if (!isScrewAccessible({ ...room.game, removedParts }, screw)) return reject(peer, "That screw is blocked.", screw.id);
+    const { finalState, events } = planScrewRemoval(room.game, screw.id);
+    if (finalState === room.game) return;
+    room.clockSince ??= time;
+    for (const event of events) {
+      if (event.kind === "detach") room.fallStarts.set(event.part, time + FALL_LEAD_MS);
+    }
+    commit(room, finalState);
+  }
+  function commit(room: Room, game: GameState) {
+    const matched = game.clearedCount > room.game.clearedCount;
+    room.game = game;
+    if (game.status !== "playing") stopClock(room, now());
+    publish(room, matched);
+  }
+  return { receive, disconnect, expireSeats };
+}

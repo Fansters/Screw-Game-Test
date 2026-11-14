@@ -1,0 +1,4 @@
+Treasure chest by JSlyin (https://sketchfab.com/popovich.stanislav.01)
+Source: https://sketchfab.com/3d-models/treasure-chest-8bdf3dee4f344e36839c4c1c7e1dcd2b
+License: Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/)
+Changes for Screw Cottage: split the mesh at the lid seam into body, lid and lock; normalized size and axes; added individual part origins and resized textures.
