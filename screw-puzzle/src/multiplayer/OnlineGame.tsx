@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import AudioButton from "../components/AudioButton";
+import GameControls from "../components/GameControls";
 import DesktopCursor from "../components/DesktopCursor";
 import GameOverlay from "../components/GameOverlay";
 import GameScene from "../components/GameScene";
 import GameTimer from "../components/GameTimer";
 import GameUI from "../components/GameUI";
 import ResetDialog from "../components/ResetDialog";
-import { createGameAudio } from "../game/audio";
+import { useGameAudio } from "../components/useGameAudio";
 import { DEMO_LEVEL } from "../game/levels";
 import { canOpenBonusBox } from "../game/rules";
 import type { PartId } from "../game/types";
@@ -29,9 +29,8 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   const [pingMode, setPingMode] = useState(false);
   const [expiredPing, setExpiredPing] = useState(0);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "manual">("idle");
-  const [muted, setMuted] = useState(false);
   const [finished, setFinished] = useState<{ scene: string; parts: PartId[] }>();
-  const audio = useRef<ReturnType<typeof createGameAudio> | null>(null);
+  const { play, muted, enable, toggle } = useGameAudio(started);
   const lastSound = useRef({ scene, count: 0, matched: 0 });
   const lastReady = useRef("");
   const project = useRef<(id: string) => [number, number]>(() => [0, 0]);
@@ -52,7 +51,6 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   const playable = orbitable && connected && !snapshot?.paused;
   const removed = snapshot?.game.removed.length ?? 0;
   const matched = room.matched;
-  const blocked = useCallback(() => audio.current?.play("blocked"), []);
   const cameraArrived = useCallback((view: CameraView, round: number) => setArrival({ view, round }), []);
   const sceneReady = useCallback((round: number) => {
     lastReady.current = `${id}:${round}`;
@@ -67,16 +65,11 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   }, [id, connected, scene, round, send]);
   useEffect(() => {
     const previous = lastSound.current;
-    if (scene === previous.scene && removed > previous.count) audio.current?.play("remove");
-    if (matched > previous.matched) audio.current?.play("match");
+    if (scene === previous.scene && removed > previous.count) play("remove");
+    if (matched > previous.matched) play("match");
     lastSound.current = { scene, count: removed, matched };
-  }, [scene, removed, matched]);
-  useEffect(() => { if (room.blocked) blocked(); }, [room.blocked, blocked]);
-  useEffect(() => { audio.current?.setPlaying(started); }, [started]);
-  useEffect(() => () => {
-    audio.current?.close();
-    audio.current = null;
-  }, []);
+  }, [play, scene, removed, matched]);
+  useEffect(() => { if (room.blocked) play("blocked"); }, [room.blocked, play]);
   useEffect(() => {
     if (!room.ping) return;
     const sequence = room.ping.sequence;
@@ -84,28 +77,12 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
     return () => window.clearTimeout(timer);
   }, [room.ping]);
 
-  function enableAudio() {
-    try {
-      audio.current ??= createGameAudio();
-      audio.current.unlock();
-    } catch {
-      // A browser can deny audio while the room remains playable.
-    }
-  }
-  function toggleAudio() {
-    if (muted && started) {
-      enableAudio();
-      audio.current?.setPlaying(true);
-    }
-    audio.current?.setMuted(!muted);
-    setMuted(!muted);
-  }
   function open() {
-    if (!muted) enableAudio();
+    enable();
     room.open();
   }
   function start() {
-    if (!muted) enableAudio();
+    enable();
     send({ type: "start", round });
   }
   function leave() {
@@ -114,10 +91,7 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   }
   function select(screw: string) {
     if (!playable) return;
-    if (!muted) {
-      enableAudio();
-      audio.current?.setPlaying(true);
-    }
+    enable();
     send({ type: "select", round, screw });
   }
   function reset() {
@@ -137,10 +111,11 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
     ? game?.screws.find((screw) => screw.id === room.ping?.screw && !screw.removed) : undefined;
   const result = game?.status === "lost" ? "lost" : game?.status === "won" && !fallingParts.length ? "won" : null;
   const sampledAt = (snapshot?.serverTime ?? 0) - clockOffset;
+  const completedLifeline = room.completedLifeline?.round === round ? room.completedLifeline.box : undefined;
   return <div className="game-layout" onContextMenu={(event) => event.preventDefault()}>
     {game && <GameScene key={id} logical={game} fallingParts={fallingParts} fallStarts={fallStarts} round={round}
       view={view} playable={playable} orbitable={orbitable} onCameraArrive={cameraArrived} onReady={sceneReady}
-      onFallFinished={finishFall} onScrewSelect={select} onBlockedScrew={blocked} projectorRef={project}
+      onFallFinished={finishFall} onScrewSelect={select} onBlockedScrew={() => play("blocked")} projectorRef={project}
       pingMode={pingMode} pingScrew={pingScrew} rejectedScrew={room.blocked}
       onScrewPing={(screw) => { send({ type: "ping", round, screw }); setPingMode(false); }} />}
     {!started && <section className="room-lobby" aria-label="Two-player room">
@@ -156,29 +131,24 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
         {room.connecting ? "Connecting…" : room.invite ? "Join game" : "Create game"}
       </button>}
       {room.error && <p role="status">{room.error}</p>}
-      <button className="room-button secondary" onClick={leave}>{snapshot ? "Leave room" : "Back to solo"}</button>
+      {!snapshot && <button className="room-button secondary" onClick={leave}>Back to solo</button>}
     </section>}
     {started && snapshot && game && <>
-      {cameraReady && <GameUI game={game} totalScrews={game.screws.length} removed={removed} frame={null}
-        lifelines={snapshot.lifelines} canBoost={playable && leader && snapshot.lifelines > 0 && canOpenBonusBox(game)}
-        onBoost={() => send({ type: "boost", round })} />}
+      {cameraReady && <GameUI game={game} frame={null}
+        lifelines={snapshot.lifelines} completedLifeline={completedLifeline}
+        canBoost={playable && leader && !completedLifeline && snapshot.lifelines > 0 && canOpenBonusBox(game)}
+        onBoost={() => send({ type: "boost", round })}
+        role={!connected ? room.error || "Reconnecting…" : snapshot.paused ? "Partner reconnecting…" : leader ? "Room leader" : "Guest"}
+        ping={snapshot.players.length === 2 && <button className="room-button" aria-pressed={pingMode} disabled={!playable}
+          onClick={() => setPingMode(!pingMode)}>{pingMode ? "Tap a screw" : "Ping screw"}</button>} />}
       <GameTimer key={scene} clock={wallClock} startedAt={sampledAt - snapshot.elapsedMs}
-        stoppedAt={snapshot.clockRunning ? room.disconnectedAt : sampledAt} />
-      {leader && <button className="reset-button" disabled={!connected} onClick={() => setConfirmReset(true)} aria-label="Reset level and return to title" title="Reset / Quit">
-        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 10a10 10 0 1 1-2 10M8 4v7H2" /></svg>
-      </button>}
+        stoppedAt={snapshot.clockRunning ? room.disconnectedAt : sampledAt} removed={removed} total={game.screws.length} />
       <GameOverlay mode={result} onStart={start} onRestart={leader && connected ? () => setConfirmReset(true) : undefined} />
-      <div className="room-tools">
-        <button className="room-button" onClick={leave}>Leave</button>
-        {snapshot.players.length === 2 && <button className="room-button" aria-pressed={pingMode} disabled={!playable}
-          onClick={() => setPingMode(!pingMode)}>{pingMode ? "Tap a screw" : "Ping screw"}</button>}
-        <span className="room-status" role="status">{!connected ? room.error || "Reconnecting…" : snapshot.paused ? "Partner reconnecting…" :
-          leader ? "Leader" : "Guest"}</span>
-      </div>
     </>}
     {pingScrew && <span className="room-ping" role="status">Your partner pinged a {pingScrew.color} screw</span>}
     {confirmReset && leader && <ResetDialog onCancel={() => setConfirmReset(false)} onConfirm={reset} />}
-    <AudioButton muted={muted} onToggle={toggleAudio} started={started} leader={leader} />
+    <GameControls muted={muted} toggle={toggle} onReset={started && leader ? () => setConfirmReset(true) : undefined}
+      resetDisabled={!connected} onLeave={snapshot ? leave : undefined} />
     <DesktopCursor />
   </div>;
 }

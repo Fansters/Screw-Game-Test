@@ -5,10 +5,11 @@ import { FALL_DURATION_MS } from "../src/game/fallTiming.ts";
 import { DEMO_LEVEL } from "../src/game/levels.ts";
 import { generatePuzzle } from "../src/game/randomize.ts";
 import type { RoomCommand, RoomNotice } from "../src/multiplayer/protocol.ts";
+import { ROOM_LEVEL_VERSION, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
 
-function fixture() {
+function fixture(seed?: number) {
   let time = 20_000;
-  const server = createRoomServer(() => time);
+  const server = createRoomServer(() => time, seed === undefined ? undefined : () => seed);
   function makePeer() {
     const notices: RoomNotice[] = [];
     const peer = { send: (notice: RoomNotice) => notices.push(notice), close: () => server.disconnect(peer) };
@@ -22,9 +23,9 @@ function fixture() {
   }
   const leader = makePeer();
   const guest = makePeer();
-  leader.send({ type: "create" });
+  leader.send({ type: "create", levelVersion: ROOM_LEVEL_VERSION });
   const room = leader.state().id;
-  guest.send({ type: "join", room });
+  guest.send({ type: "join", room, levelVersion: ROOM_LEVEL_VERSION });
   leader.send({ type: "ready", round: 0 });
   leader.send({ type: "start", round: 0 });
   assert.equal(guest.state().started, false);
@@ -37,7 +38,7 @@ function fixture() {
 test("both players use one puzzle, while only its leader can spend a lifeline or reset", () => {
   const { leader, guest, room, makePeer } = fixture();
   const extra = makePeer();
-  extra.send({ type: "join", room });
+  extra.send({ type: "join", room, levelVersion: ROOM_LEVEL_VERSION });
   assert.equal(extra.notices.at(-1)?.type, "rejected");
   const state = leader.state();
   const screws = DEMO_LEVEL.filter((screw) => !screw.obstructedBy?.length).slice(0, 2);
@@ -92,7 +93,7 @@ test("refresh restores the seat and puzzle, then an expired leader hands off the
   assert.equal(guest.state().game.removed.length, 1);
   advance(2000);
   const refreshed = makePeer();
-  refreshed.send({ type: "join", room, token: leader.seat().token });
+  refreshed.send({ type: "join", room, token: leader.seat().token, levelVersion: ROOM_LEVEL_VERSION });
   assert.equal(refreshed.seat().player, leader.seat().player);
   assert.equal(refreshed.state().paused, false);
   assert.equal(refreshed.state().elapsedMs, 500);
@@ -119,4 +120,29 @@ test("both seats can finish the same seeded cottage", () => {
   assert.equal(leader.state().game.removed.length, DEMO_LEVEL.length);
   assert.equal(guest.state().clockRunning, false);
   assert.deepEqual(guest.state(), leader.state());
+});
+
+test("a browser with an older cottage layout receives a version error", () => {
+  const { makePeer, room } = fixture();
+  const stale = makePeer();
+  stale.send({ type: "join", room });
+  assert.equal(stale.notices.at(-1)?.type, "rejected");
+  assert.equal(stale.notices.findLast((notice) => notice.type === "rejected")?.reason, ROOM_VERSION_MESSAGE);
+});
+
+test("both browsers receive the filled lifeline for animation when opening completes it", () => {
+  const { leader, guest } = fixture(1);
+  const opening = leader.state().game.colors;
+  const cyan = DEMO_LEVEL.filter((screw, index) => opening[index] === "cyan" && !screw.obstructedBy?.length).slice(0, 3);
+  assert.equal(cyan.length, 3);
+  assert.ok(leader.state().game.boxes.every((box) => box?.color !== "cyan"));
+  for (const screw of cyan) guest.send({ type: "select", round: 0, screw: screw.id });
+  leader.send({ type: "boost", round: 0 });
+  for (const peer of [leader, guest]) {
+    const notice = peer.notices.findLast((notice) => notice.type === "state")!;
+    assert.equal(notice.completedLifeline?.color, "cyan");
+    assert.equal(notice.completedLifeline?.screws.length, 3);
+    assert.equal(notice.snapshot.game.boxes.length, 2);
+    assert.equal(notice.snapshot.game.tray.length, 0);
+  }
 });

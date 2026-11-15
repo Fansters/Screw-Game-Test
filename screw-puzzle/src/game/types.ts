@@ -14,6 +14,12 @@ export const PARTITION_IDS = ["partition-upper-left", "partition-upper-right", "
   "partition-lower-left", "partition-lower-right", "partition-lower-cross-left"] as const;
 export const CHEST_PART_IDS = ["chest", "chest-lid", "chest-lock"] as const;
 export type ChestPartId = typeof CHEST_PART_IDS[number];
+export const FRAME_POSTS = (["nw", "ne", "sw", "se"] as const).flatMap((corner) =>
+  (["lower", "upper"] as const).map((story) => ({
+    id: `post-${corner}-${story}` as const, story,
+    x: corner.endsWith("w") ? -2.37 : 2.37, z: corner.startsWith("n") ? -1.91 : 1.91,
+  })));
+export const FLOOR_BEAMS = ["beam-front", "beam-back"] as const;
 export const HOUSE_PART_IDS = ["chimney", "window-upper-left", "window-upper-right", "window-lower-left", "window-lower-right", "door", "steps", "planter-left", "planter-right", "bed", "wardrobe", "desk", ...CHEST_PART_IDS, "stairs", "floor-left", "floor-right", "sofa", "kitchen", "table", ...ROOF_IDS, ...WALL_IDS, ...CEILING_IDS, ...PARTITION_IDS] as const;
 export const GROUND_IDS = ["ground-nw", "ground-ne", "ground-sw", "ground-se"] as const;
 export const PLINTH_IDS = ["plinth-nw", "plinth-ne", "plinth-sw", "plinth-se"] as const;
@@ -27,7 +33,7 @@ export const DECOR_IDS = [...SNOW_ROOFS.map((part) => part.id), ...GARLANDS.map(
   "wreath-upper-left", "wreath-upper-right", "wreath-lower-left", "wreath-lower-right", "door-bow",
   "christmas-tree", "tree-star", "gift-left", "santa", "gift-right", "candy-left", "candy-right", "porch-snow", "chimney-snow",
   "roof-lights-left", "roof-lights-right", "present-bed", "present-desk", "present-sofa", "present-table"] as const;
-export const PART_IDS = [...HOUSE_PART_IDS, "frame", ...GROUND_IDS, ...PLINTH_IDS, ...TILE_IDS, ...DECOR_IDS] as const;
+export const PART_IDS = [...HOUSE_PART_IDS, ...FRAME_POSTS.map((post) => post.id), ...FLOOR_BEAMS, ...GROUND_IDS, ...PLINTH_IDS, ...TILE_IDS, ...DECOR_IDS] as const;
 export type PartId = typeof PART_IDS[number];
 export const PART_LABELS = Object.fromEntries(PART_IDS.map((id) => [id,
   id.split("-").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ")])) as Record<PartId, string>;

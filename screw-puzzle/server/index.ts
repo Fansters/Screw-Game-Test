@@ -7,14 +7,17 @@ import type { RoomCommand, RoomNotice } from "../src/multiplayer/protocol.ts";
 function parseCommand(data: string): RoomCommand | null {
   const value: unknown = JSON.parse(data);
   if (!value || typeof value !== "object" || !("type" in value)) return null;
+  const levelVersion = "levelVersion" in value && typeof value.levelVersion === "number" ? value.levelVersion : undefined;
   switch (value.type) {
     case "create":
+      return { type: "create", levelVersion };
     case "leave":
       return { type: value.type };
     case "join":
       if ("room" in value && typeof value.room === "string" && /^[\w-]{24}$/.test(value.room) &&
           (!("token" in value) || (typeof value.token === "string" && /^[\w-]{24}$/.test(value.token)))) {
-        return { type: "join", room: value.room, token: "token" in value ? value.token as string : undefined };
+        return { type: "join", room: value.room, token: "token" in value ? value.token as string : undefined,
+          levelVersion };
       }
       break;
     case "clock":

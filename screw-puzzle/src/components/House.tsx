@@ -42,8 +42,8 @@ export default function House({ removedParts, fallingParts, fallStarts, onFallFi
   return <group userData={{ pickBlocker: true }} onClick={(event) => event.stopPropagation()}>
     {PART_IDS.map((part) => <FallingPart key={part} id={part} hidden={removedParts.includes(part)} active={fallingParts.includes(part)} startAt={fallStarts?.[part]}
       onFallFinished={onFallFinished}>
-      {isChestPart(part) ? <group position={CHEST_ORIGIN}><primitive object={chest[part]} /></group> : MODEL_BATCHES.filter((batch) => batch.part === part).map((batch) => <mesh key={batch.color} geometry={batch.geometry}>
-        <meshStandardMaterial color={batch.color} roughness={0.8} flatShading />
+      {isChestPart(part) ? <group position={CHEST_ORIGIN}><primitive object={chest[part]} /></group> : MODEL_BATCHES.filter((batch) => batch.part === part).map((batch) => <mesh key={`${batch.color}:${batch.smooth}`} geometry={batch.geometry}>
+        <meshStandardMaterial color={batch.color} roughness={0.8} flatShading={!batch.smooth} />
       </mesh>)}
     </FallingPart>)}
   </group>;

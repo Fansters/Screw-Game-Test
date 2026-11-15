@@ -1,11 +1,11 @@
-import { CHEST_PART_IDS, GROUND_IDS, PLINTH_IDS, ROOF_SECTIONS, TILE_IDS, WALL_SECTIONS } from "../game/types.ts";
+import { CHEST_PART_IDS, FLOOR_BEAMS, FRAME_POSTS, GROUND_IDS, PLINTH_IDS, ROOF_SECTIONS, TILE_IDS, WALL_SECTIONS } from "../game/types.ts";
 import type { ChestPartId, PartId } from "../game/types.ts";
 import { addChristmasDetails } from "./christmas.ts";
 import { addInteriors } from "./interiors.ts";
 import { CHEST_ORIGIN, CHEST_SURFACES, chestPosition } from "./chestModel.ts";
 export type Vector = [number, number, number];
 export type Piece = { position: Vector; size: Vector; color: string; rotation?: Vector } & (
-  { kind: "box" | "cylinder" | "ico" | "gable" | "cone" | "star"; part: PartId } |
+  { kind: "box" | "cylinder" | "ico" | "gable" | "cone" | "star" | "snow-slab" | "snow-drift"; part: PartId } |
   { kind: "chest-surface"; part: ChestPartId }
 );
 export const HOUSE = { halfWidth: 2.4, halfDepth: 1.9, ground: -1.6, upper: 0.25, eave: 2, ridge: 3.5, roofRun: 2.7, roofRise: 1.5 };
@@ -18,7 +18,6 @@ export const PART_PIVOTS = {
   bed: [-1.45, 0.65, 0.65], wardrobe: [-1.55, 1.1, -1.25], desk: [1.4, 0.8, -1.15],
   stairs: [0, -0.6, 0], "floor-left": [-1.375, 0.25, 0], "floor-right": [1.375, 0.25, 0],
   sofa: [-1.45, -1.15, 0.65], kitchen: [-1.45, -1.1, -1.25], table: [1.35, -0.9, 0.6],
-  frame: [0, 0.2, 0],
   "ground-nw": [-1.1625, -1.65, -0.9125], "ground-ne": [1.1625, -1.65, -0.9125], "ground-sw": [-1.1625, -1.65, 0.9125], "ground-se": [1.1625, -1.65, 0.9125],
   "plinth-nw": [-1.2625, -1.82, -1.0125], "plinth-ne": [1.2625, -1.82, -1.0125], "plinth-sw": [-1.2625, -1.82, 1.0125], "plinth-se": [1.2625, -1.82, 1.0125],
   "tile-nw": [-2.8, -2.01, -2.8], "tile-n": [0, -2.01, -2.8], "tile-ne": [2.8, -2.01, -2.8],
@@ -88,16 +87,24 @@ for (const section of WALL_SECTIONS) {
     } else box([broad ? x : x + Math.sign(x) * 0.064, y + dy, broad ? z + Math.sign(z) * 0.064 : z], broad ? [1.58, 0.025, 0.012] : [0.012, 0.025, 1.23], "#d6b894", section.id);
   }
 }
-// The skeleton is the final house layer before the ground-floor panels.
-for (const x of [-2.37, 2.37]) for (const z of [-1.91, 1.91]) box([x, 0.2, z], [0.13, 3.75, 0.13], "#987056", "frame");
-for (const z of [-1.84, 1.84]) box([0, 0.24, z], [4.7, 0.16, 0.14], "#a07859", "frame");
+// Separate timbers at each floor joint with visible end caps and joinery.
+for (const { id, story, x, z } of FRAME_POSTS) {
+  const upper = story === "upper";
+  PART_PIVOTS[id] = [x, upper ? 1.17 : -0.70, z];
+  box(PART_PIVOTS[id], [0.15, upper ? 1.77 : 1.82, 0.15], "#987056", id);
+  box([x, upper ? 0.32 : -1.55, z], [0.18, 0.1, 0.18], "#855f48", id);
+}
+for (const [id, z] of [[FLOOR_BEAMS[0], 1.84], [FLOOR_BEAMS[1], -1.84]] as const) {
+  PART_PIVOTS[id] = [0, 0.24, z];
+  box(PART_PIVOTS[id], [4.7, 0.16, 0.14], "#a07859", id);
+}
 for (const section of ROOF_SECTIONS) {
   const side = section.side === "left" ? -1 : 1;
   const [x, y, z] = PART_PIVOTS[section.id];
   box([x, y, z], [Math.hypot(1.35, 0.75) - 0.012, 0.16, 1.38], side === 1 ? "#d7776d" : "#ea9580", section.id, [0, 0, -side * ROOF_PITCH]);
   for (const dz of [-0.68, 0.68]) box([x, y, z + dz], [1.54, 0.18, 0.04], "#a95f58", section.id, [0, 0, -side * ROOF_PITCH]);
+  if (section.band === "ridge") box([side * 0.044, 3.54, z], [0.09, 0.16, 1.38], "#aa6058", section.id);
 }
-box([0, 3.54, 0], [0.16, 0.16, 4.4], "#aa6058", "frame");
 box([-0.8, 3.55, 0.6], [0.5, 1.0, 0.5], "#cba38d", "chimney");
 box([-0.8, 4.11, 0.6], [0.66, 0.14, 0.66], "#77707e", "chimney");
 for (const y of [3.25, 3.55, 3.85]) box([-0.8, y, 0.86], [0.5, 0.035, 0.025], "#b38d7a", "chimney");

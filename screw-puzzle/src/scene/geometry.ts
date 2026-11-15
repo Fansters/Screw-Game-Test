@@ -1,4 +1,5 @@
-import { BoxGeometry, BufferGeometry, ConeGeometry, CylinderGeometry, ExtrudeGeometry, Float32BufferAttribute, IcosahedronGeometry, Shape } from "three";
+import { BoxGeometry, BufferGeometry, ConeGeometry, CylinderGeometry, ExtrudeGeometry, Float32BufferAttribute, IcosahedronGeometry, Shape, SphereGeometry } from "three";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { HOUSE } from "./houseModel.ts";
 import type { Piece } from "./houseModel.ts";
 import { CHEST_PART_IDS } from "../game/types.ts";
@@ -22,6 +23,8 @@ export const PIECE_GEOMETRIES = {
   cylinder: new CylinderGeometry(1, 0.9, 1, 16),
   ico: new IcosahedronGeometry(1, 1),
   cone: new ConeGeometry(1, 1, 12),
+  "snow-slab": new RoundedBoxGeometry(1, 1, 1, 2, 0.12),
+  "snow-drift": new SphereGeometry(1, 20, 10),
   star: new ExtrudeGeometry(star, { depth: 0.14, bevelEnabled: false }).translate(0, 0, -0.07),
   gable: new ExtrudeGeometry(shape, { depth: 0.12, bevelEnabled: false }).translate(0, 0, -0.06),
 };

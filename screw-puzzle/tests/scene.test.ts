@@ -8,7 +8,7 @@ import { MODEL_BATCHES } from "../src/scene/modelBatches.ts";
 import { headGeometry } from "../src/components/screwGeometry.ts";
 import { DEMO_LEVEL, SCREW_SCALE } from "../src/game/levels.ts";
 import { createInitialState, isScrewAccessible } from "../src/game/rules.ts";
-import { CHEST_PART_IDS, DECOR_IDS, PARTITION_IDS, ROOF_IDS, TILE_IDS, WALL_IDS } from "../src/game/types.ts";
+import { CHEST_PART_IDS, DECOR_IDS, FLOOR_BEAMS, FRAME_POSTS, GROUND_IDS, PARTITION_IDS, ROOF_IDS, TILE_IDS, WALL_IDS } from "../src/game/types.ts";
 import type { Screw } from "../src/game/types.ts";
 import { pickNearbyHead, pickNearbyScrew } from "../src/scene/picking.ts";
 import { findScrewObstructions } from "../src/scene/obstructions.ts";
@@ -165,8 +165,25 @@ test("the enlarged square platform consists of nine independently fastened tiles
   assert.equal(width, depth);
   assert.ok(width > 8);
   for (const tile of TILE_IDS) {
-    assert.equal(DEMO_LEVEL.filter((screw) => screw.attachedTo === tile).length, 5);
+    assert.equal(DEMO_LEVEL.filter((screw) => screw.attachedTo === tile).length,
+      tile === "tile-center" || tile === "tile-s" ? 5 : 4);
     assert.deepEqual(tiles.find((piece) => piece.part === tile)!.position, PART_PIVOTS[tile]);
+  }
+});
+
+test("the timber joints have separate fixings and floor-edge heads are covered by walls", () => {
+  for (const part of [...FRAME_POSTS.map((post) => post.id), ...FLOOR_BEAMS]) {
+    const screws = DEMO_LEVEL.filter((screw) => screw.attachedTo === part);
+    assert.equal(screws.length, 1);
+    assert.ok(screws[0].obstructedBy?.some((cover) => cover.startsWith("wall-") || cover.startsWith("floor-")));
+  }
+  for (const floor of GROUND_IDS) {
+    const edge = DEMO_LEVEL.filter((screw) => screw.attachedTo === floor && screw.normal[1] === 0);
+    assert.equal(edge.length, 2);
+    assert.ok(edge.every((screw) => screw.obstructedBy?.some((cover) => cover.startsWith("wall-"))));
+  }
+  for (const roof of ROOF_IDS.filter((part) => part.endsWith("ridge"))) {
+    assert.ok(PIECES.some((piece) => piece.part === roof && piece.position[1] === 3.54));
   }
 });
 

@@ -1,6 +1,6 @@
 # Screw Cottage
 
-A mobile-first 3D screw puzzle built with React, Three.js, React Three Fiber and Vite. The original Christmas cottage has **264 screws, 12 colors, and 125 removable assemblies**. Every visible model piece belongs to a fastened assembly.
+A mobile-first 3D screw puzzle built with React, Three.js, React Three Fiber and Vite. The original Christmas cottage has **264 screws, 12 colors, and 134 removable assemblies**. Every visible model piece belongs to a fastened assembly.
 
 ## Run and validate
 
@@ -18,19 +18,19 @@ Use Vite's printed local URL. Tests and the room server use Node's native TypeSc
 
 After the scene loads, green **Start** flies the camera from the floating title to the house in 1.25 seconds. All screws, including concealed ones, are resident before Start; shaders are warmed and a complete frame rendered first. Screws become visible as geometry falls away, without spawning.
 
-Drag to orbit on desktop and touchscreens. Scroll over a spot to zoom toward it, or pinch around it on a touchscreen. Right-drag or move two fingers together to pan. Zooming back out to the overview recenters on the house. Rotation stops on release. Screws use scale 0.34375 and a 44 CSS-pixel assisted touch target with front-face and occlusion checks. Portrait and landscape layouts account for safe areas and dynamic viewport height.
+Drag to orbit on desktop and touchscreens. Scroll over a spot to zoom toward it, or pinch around it on a touchscreen. Right-drag or move two fingers together to pan. Zooming back out to the overview recenters on the house. Rotation stops on release. Screws are 15% larger and a 44 CSS-pixel assisted touch target with front-face and occlusion checks. Portrait and landscape layouts account for safe areas and dynamic viewport height.
 
 The HUD retains two matching boxes, five waiting circles, the removal count, a stopwatch, and a 48px **Reset / Quit** arrow. The stopwatch appears after Start, begins only on the first accepted removal, and stops at logical win/loss. Invalid clicks, blocked attempts, camera gestures and cosmetic animation backlogs do not add solve time.
 
-The lightning button adds a third matching box. There are three lifelines per round and one can be active at a time. The bonus favors a color already waiting and transfers matching screws into the box. It stays open until the third match.
+The lightning button at bottom center slides in a third matching box while the five waiting slots keep their positions. There are three lifelines per round and one can be active at a time. The bonus favors a color already waiting and transfers matching screws into the box. It stays open until the third match.
 
-Start enables a quiet, original instrumental loop. A soft click, knock and chime mark removal, obstruction and completion respectively. The speaker mutes the music and effects together. Both are synthesized locally in `src/game/audio.ts`.
+Start enables a quiet, original instrumental loop. A soft click, knock and chime mark removal, obstruction and completion respectively. The music note and speaker toggle music and effects separately. Both are synthesized locally in `src/game/audio.ts`.
 
 Active colors go directly to their boxes. Other colors use waiting slots. Completing a triple replaces that box with the next eligible queued color and automatically transfers matching waiting screws. Resolve cascades before checking loss at five occupied waiting slots. Win when all 264 screws and 88 triples are cleared.
 
 Each part starts falling as soon as its last screw is accepted. Falls can overlap while screw transfers and box changes play in order. Players can keep selecting screws and orbiting throughout. Visible heads with blocked extraction wiggle, and a head becomes selectable once its moving covers clear the extraction path. Text selection and the long-press menu are disabled inside the game.
 
-**Reset / Quit** asks for confirmation before discarding progress, timing and pending jobs. Confirming restores the house with fresh randomized colors and flies back to the title. **Again** after a solo win or loss uses the same reset. On phones the screw count sits above the boxes, with sound and reset at the bottom.
+**Reset / Quit** asks for confirmation before discarding progress, timing and pending jobs. Confirming restores the house with fresh randomized colors and flies back to the title. **Again** after a solo win or loss uses the same reset. The screw count sits above the stopwatch. Music, effects, reset and multiplayer exit are grouped at the top right.
 
 Desktop fine-pointer layouts use a purple/gold screwdriver cursor. Its grip and blade twist 360 degrees around the shaft on primary press, while the pointing direction and tip stay fixed. Phone/coarse/touch input hides it.
 
@@ -40,12 +40,12 @@ The added red roof/facade barriers and yard perimeter assembly have been removed
 
 The level has **264** screws. Counts follow object size:
 
-- 41 small assemblies have one screw, including windows, wreaths, presents, tree star, garlands and planters.
+- 51 assemblies have one screw, including individual timber posts and floor beams.
 - 59 assemblies have two screws, including roof/wall panels, room partitions and most furniture.
-- 10 larger assemblies have three screws, including stairs, the timber frame, tree and some ceiling panels.
-- 15 large floor panels/platform tiles have five screws each. No other assembly exceeds three.
+- 9 larger assemblies have three screws, including stairs, the tree and some ceiling panels.
+- 7 outdoor tiles have four screws each. The other 8 large floor panels and tiles have five.
 
-All 24 outer wall panels have inward-facing heads on solid interior jambs/corners. The 12 roof panels each have a surface fixing and a forward-facing edge fixing; neighboring roof courses naturally obscure some of those edges. Furniture fixings vary between upper corners and side faces. Positions are fixed between rounds; colors change.
+Wall heads are mounted on interior jambs, corners, and edges hidden by adjacent panels. Eight ground-floor fixings face sideways behind lower walls. Ridge timbers detach with their corresponding roof panels. The 12 roof panels each have a surface fixing and a forward-facing edge fixing; neighboring roof courses naturally obscure some of those edges. Furniture fixings vary between upper corners and side faces. Positions are fixed between rounds; colors change.
 
 Seven removable interior partitions separate upstairs bedrooms/study/storage from the stair hall and downstairs kitchen/living/dining areas. Corridor walls have actual doorways, baseboards and lintels. Cross walls block sightlines between rooms. Three removable attic ceiling panels sit beneath the roof. Rooms, floors, walls and existing furniture provide real occlusion, without wrapping the exterior in new barriers.
 
@@ -63,7 +63,7 @@ Whole-triple quotas are 24 screws per color. All 88 targets, including the disti
 
 The house and decorations are authored in TypeScript with Three.js primitives and rendered with React Three Fiber. Boxes form wall/roof/ceiling panels, partition lintels, furniture and ribbons. Cylinders form trunks/candy canes, cones form tree tiers/icicles/Santa's hat, and low-poly icosahedrons form foliage/snow/ornaments. Stars and gables use extruded outlines. The treasure chest is the first imported model. No runtime texture service, external font or physics engine is required.
 
-Each piece has a shape, transform, color and removable owner. The owner's last screw triggers a scripted fall. The full model has **922 primitive pieces**, merged into **284 meshes by owner/color**, plus the three imported chest parts. Convex originals and the exported chest surfaces are available for collision and live-fall checks. Screws use three instanced meshes with independent head IDs and animation transforms. DPR is capped at 1.25 on phones/coarse pointers and 1.5 elsewhere; there are no real-time shadows or post-processing.
+Each piece has a shape, transform, color and removable owner. The owner's last screw triggers a scripted fall. The full model has **970 pieces including chest geometry**, with the procedural parts batched into **315 meshes**, plus the three imported chest parts. Convex originals and the exported chest surfaces are available for collision and live-fall checks. Screws use three instanced meshes with independent head IDs and animation transforms. DPR is capped at 1.25 on phones/coarse pointers and 1.5 elsewhere; there are no real-time shadows or post-processing.
 
 ## Imported treasure chest
 
@@ -107,7 +107,7 @@ Run `npm install` once. Then open two terminals in the project directory.
 
 Open the Vite URL and choose **Two-player game → Create game**. Copy the invite link and paste it into a second tab or browser. Choose **Join game** there. Once both browsers are ready, click **Start together** in the leader’s tab. To test with a phone on the same Wi-Fi, run `npm run dev -- --host` and open the Network URL Vite prints before creating the room.
 
-Both players can orbit and remove screws at the same time. The leader confirms resets and spends the shared lifelines. Choose **Ping screw**, then tap a visible screw to briefly mark it on the other player’s screen. A lost connection pauses moves and the timer for up to 30 seconds. A refresh in the same tab restores the seat and the current puzzle. An explicit departure hands control over immediately. If a seat expires, the remaining player can continue the round.
+Both players can orbit and remove screws at the same time. Shared falls are scheduled 62.5 ms ahead. The browser and the server check that they are using the same cottage layout. The leader confirms resets and spends the shared lifelines. Choose **Ping screw**, then tap a visible screw to briefly mark it on the other player’s screen. A lost connection pauses moves and the timer for up to 30 seconds. A refresh in the same tab restores the seat and the current puzzle. An explicit departure hands control over immediately. If a seat expires, the remaining player can continue the round.
 
 ### Share a room over the internet
 

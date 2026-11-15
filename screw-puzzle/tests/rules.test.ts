@@ -102,16 +102,16 @@ function snowRevealRun() {
   return { run, target };
 }
 
-test("all 264 screws release 125 objects, with twelve whole-triple color quotas", () => {
+test("all 264 screws release 134 objects, with twelve whole-triple color quotas", () => {
   assert.equal(DEMO_LEVEL.length, 264);
   assert.equal(new Set(DEMO_LEVEL.map((screw) => screw.id)).size, 264);
   assert.equal(DEMO_LEVEL.filter((screw) => screw.attachedTo).length, 264);
-  assert.equal(PART_IDS.length, 125);
+  assert.equal(PART_IDS.length, 134);
   assert.equal(SCREW_COLOR_ORDER.length, 12);
   const counts = SCREW_COLOR_ORDER.map((color) => DEMO_LEVEL.filter((screw) => screw.color === color).length);
   assert.equal(counts.filter((count) => count === 24).length, 4);
   assert.equal(counts.filter((count) => count === 21).length, 8);
-  assert.equal(SCREW_SCALE, 0.275 * 1.25);
+  assert.equal(SCREW_SCALE, 0.275 * 1.25 * 1.15);
   assert.ok(PIECES.every((piece) => PART_IDS.includes(piece.part)));
   assert.ok(DEMO_LEVEL.every((screw) => Math.abs(Math.hypot(...screw.normal) - 1) < 1e-10));
   for (const part of PART_IDS) assert.ok(DEMO_LEVEL.some((screw) => screw.attachedTo === part));
@@ -150,7 +150,7 @@ test("one hundred random seeds all have balanced colors, mixed fasteners, and a 
     }
     assert.equal(state.status, "won");
     assert.equal(state.clearedCount, 264);
-    assert.equal(state.removedParts.length, 125);
+    assert.equal(state.removedParts.length, PART_IDS.length);
   }
   assert.ok(starts.size >= 8);
 });
@@ -449,7 +449,7 @@ test("a full generated house also wins through the concurrent presentation contr
   run = finishFalls(drain(run));
   assert.deepEqual(run.display, run.logical);
   assert.equal(run.display.clearedCount, 264);
-  assert.equal(run.display.removedParts.length, 125);
+  assert.equal(run.display.removedParts.length, PART_IDS.length);
 });
 
 test("every screw in a generated solution has a clear view through the actual hollow house geometry", () => {

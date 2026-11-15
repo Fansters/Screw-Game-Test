@@ -5,17 +5,21 @@ import type { Piece, Vector } from "./houseModel.ts";
 // Original procedural props. Every detail belongs to a removable assembly.
 export function addChristmasDetails(pieces: Piece[], pivots: Record<PartId, Vector>, pitch: number) {
   const box = (position: Vector, size: Vector, color: string, part: PartId, rotation?: Vector) => pieces.push({ kind: "box", position, size, color, part, rotation });
-  const round = (kind: "ico" | "cylinder" | "cone" | "star", position: Vector, size: Vector, color: string, part: PartId, rotation?: Vector) => pieces.push({ kind, position, size, color, part, rotation });
+  const round = (kind: "ico" | "cylinder" | "cone" | "star" | "snow-slab" | "snow-drift", position: Vector, size: Vector, color: string, part: PartId, rotation?: Vector) => pieces.push({ kind, position, size, color, part, rotation });
   const snow = "#f1f6ff", red = "#cf4f61", green = "#397d65", gold = "#efc86c";
+  const shadedSnow = "#e2edf7";
+  const ice = "#d5e8f3";
   for (const strip of SNOW_ROOFS) {
     const side = strip.side === "left" ? -1 : 1;
     const x = side * (1.35 + Math.sin(pitch) * 0.2), y = 2.75 + Math.cos(pitch) * 0.2;
     pivots[strip.id] = [x, y, strip.z];
-    box([x, y, strip.z], [3.11, 0.23, 1.38], snow, strip.id, [0, 0, -side * pitch]);
-    box([side * 2.83, 1.95, strip.z], [0.18, 0.44, 1.38], snow, strip.id);
-    for (const dz of [-0.45, 0, 0.45]) {
-      round("ico", [side * 2.82, 2.13, strip.z + dz], [0.15, 0.16, 0.24], snow, strip.id);
-      round("cone", [side * 2.88, 1.62, strip.z + dz], [0.065, 0.3, 0.065], "#d5e8f3", strip.id, [Math.PI, 0, 0]);
+    const tilt: Vector = [0, 0, -side * pitch];
+    round("snow-slab", [x, y, strip.z], [3.11, 0.24, 1.38], snow, strip.id, tilt);
+    round("snow-slab", [side * 2.83, 1.95, strip.z], [0.20, 0.44, 1.38], shadedSnow, strip.id);
+    for (const [index, dz] of [-0.48, -0.16, 0.21, 0.50].entries()) {
+      const drip = 0.16 + ((index + Math.round(strip.z + 2)) % 3) * 0.048;
+      round("snow-drift", [side * 2.84, 2.09, strip.z + dz], [0.14, 0.15 + drip * 0.2, 0.20], snow, strip.id);
+      round("cone", [side * 2.88, 1.76 - drip / 2, strip.z + dz + 0.08], [0.05, drip, 0.052], ice, strip.id, [Math.PI, 0, 0]);
     }
   }
   for (const [part, side] of [["roof-lights-left", -1], ["roof-lights-right", 1]] as const) {
@@ -42,15 +46,23 @@ export function addChristmasDetails(pieces: Piece[], pivots: Record<PartId, Vect
   }
   for (const [part, sign] of [["icicles-front", 1], ["icicles-back", -1]] as const) {
     pivots[part] = [0, 1.88, sign * 2.42];
-    box(pivots[part], [5.02, 0.45, 0.48], snow, part);
+    round("snow-slab", pivots[part], [5.02, 0.45, 0.48], snow, part);
     for (let index = 0; index < 12; index += 1) round("cone", [(index - 5.5) * 0.41, 1.54 - (index % 3) * 0.035, sign * 2.36], [0.08, 0.36, 0.08], "#d9ebf7", part, [Math.PI, 0, 0]);
   }
   for (const [part, axis, sign] of [["snowbank-front", "z", 1], ["snowbank-back", "z", -1], ["snowbank-left", "x", -1], ["snowbank-right", "x", 1]] as const) {
     const broad = axis === "z";
     pivots[part] = broad ? [0, -1.65, sign * 3.35] : [sign * 3.35, -1.65, 0];
-    // Corner overlaps form a sealed snowy rim; no free screws hide behind fake locks.
-    box(pivots[part], broad ? [8.7, 1, 2] : [2, 1, 4.68], snow, part);
-    for (let index = 0; index < 7; index += 1) round("ico", broad ? [(index - 3) * 1.12, -1.16, sign * 3.5] : [sign * 3.5, -1.16, (index - 3) * 0.68], broad ? [0.75, 0.15, 0.75] : [0.75, 0.15, 0.5], snow, part);
+    round("snow-slab", pivots[part], broad ? [8.7, 1, 2] : [2, 1, 4.68], snow, part);
+    for (const [index, drift] of [0.15, 0.19, 0.12, 0.23, 0.16, 0.21, 0.13].entries()) {
+      const along = (index - 3) * (broad ? 1.16 : 0.65);
+      const edge = sign * (3.55 + (index % 3 - 1) * 0.22);
+      round("snow-drift", broad ? [along, -1.20, edge] : [edge, -1.20, along],
+        broad ? [0.84, drift, 0.70] : [0.70, drift, 0.55], snow, part);
+      if (index % 2 === 0) {
+        round("snow-drift", broad ? [along + 0.32, -1.32, sign * 3.06] : [sign * 3.06, -1.32, along + 0.12],
+          broad ? [0.63, drift, 0.62] : [0.62, drift, 0.43], shadedSnow, part);
+      }
+    }
   }
   for (const [part, x, y] of [["wreath-upper-left", -1.5, 1.15], ["wreath-upper-right", 1.5, 1.15], ["wreath-lower-left", -1.5, -0.65], ["wreath-lower-right", 1.5, -0.65]] as const) {
     pivots[part] = [x, y, 2.29];

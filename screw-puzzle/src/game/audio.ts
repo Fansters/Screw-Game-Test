@@ -1,6 +1,8 @@
-type Cue = "remove" | "blocked" | "match";
+export type Cue = "remove" | "blocked" | "match";
+export type AudioChannel = "music" | "effects";
 
-const MASTER_GAIN = 1.2;
+const MASTER_GAIN = 1.8;
+const MUSIC_GAIN = 0.09;
 const hz = (note: number) => 440 * 2 ** ((note - 69) / 12);
 
 function tone(context: BaseAudioContext, output: AudioNode, at: number, frequency: number,
@@ -63,26 +65,35 @@ export function createGameAudio() {
   const context = new AudioContext();
   const output = context.createGain();
   const musicGain = context.createGain();
+  const effectsGain = context.createGain();
   output.connect(context.destination);
   musicGain.connect(output);
-  musicGain.gain.value = 0.09;
+  effectsGain.connect(output);
+  output.gain.value = 0;
+  musicGain.gain.value = MUSIC_GAIN;
   let music: AudioBufferSourceNode | null = null;
   let playing = false;
-  let muted = false;
+  const muted = { music: false, effects: false };
   const lastCue = { remove: -Infinity, blocked: -Infinity };
   const track = renderMusic().catch(() => null);
 
   function updateVolume() {
-    output.gain.setTargetAtTime(playing && !muted && !document.hidden ? MASTER_GAIN : 0, context.currentTime, 0.035);
+    output.gain.setTargetAtTime(playing && !document.hidden ? MASTER_GAIN : 0, context.currentTime, 0.035);
   }
   document.addEventListener("visibilitychange", updateVolume);
   updateVolume();
 
   return {
+    isRunning() { return context.state === "running"; },
     // Called directly from a Start or unmute gesture.
     unlock() { void context.resume().catch(() => {}); },
-    setMuted(value: boolean) { muted = value; updateVolume(); },
+    setMuted(channel: AudioChannel, value: boolean) {
+      muted[channel] = value;
+      const gain = channel === "music" ? musicGain : effectsGain;
+      gain.gain.setTargetAtTime(value ? 0 : channel === "music" ? MUSIC_GAIN : 1, context.currentTime, 0.035);
+    },
     setPlaying(value: boolean) {
+      if (playing === value) return;
       playing = value;
       updateVolume();
       if (!value) {
@@ -100,20 +111,20 @@ export function createGameAudio() {
       });
     },
     play(cue: Cue) {
-      if (!playing || muted || document.hidden || context.state !== "running") return;
+      if (!playing || muted.effects || document.hidden || context.state !== "running") return;
       const at = context.currentTime;
       if (cue !== "match") {
         if (at - lastCue[cue] < 0.09) return;
         lastCue[cue] = at;
       }
       if (cue === "remove") {
-        tone(context, output, at, 570, 0.085, 0.047, "triangle", 370);
-        tone(context, output, at + 0.025, 760, 0.09, 0.021, "sine", 940);
+        tone(context, effectsGain, at, 570, 0.085, 0.047, "triangle", 370);
+        tone(context, effectsGain, at + 0.025, 760, 0.09, 0.021, "sine", 940);
       } else if (cue === "blocked") {
-        tone(context, output, at, 186, 0.10, 0.065, "triangle", 102);
+        tone(context, effectsGain, at, 186, 0.10, 0.065, "triangle", 102);
       } else {
         for (const [index, note] of [72, 76, 79].entries()) {
-          tone(context, output, at + index * 0.065, hz(note), 0.28, 0.052);
+          tone(context, effectsGain, at + index * 0.065, hz(note), 0.28, 0.052);
         }
       }
     },

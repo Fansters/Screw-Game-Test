@@ -1,24 +1,24 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { SCREW_COLORS } from "../game/colors";
 import { BONUS_SLOT, MATCH_SIZE, TRAY_CAPACITY } from "../game/rules";
-import type { GameState } from "../game/types";
+import type { GameState, MatchBox } from "../game/types";
 import type { PlaybackFrame } from "../animation/sequence";
-export default function GameUI({ game, removed, totalScrews, frame, lifelines, canBoost, onBoost }: {
-  game: GameState; removed: number; totalScrews: number; frame: PlaybackFrame | null;
-  lifelines: number; canBoost: boolean; onBoost: () => void;
+export default function GameUI({ game, frame, lifelines, canBoost, onBoost, role, ping, completedLifeline }: {
+  game: GameState; frame: PlaybackFrame | null;
+  lifelines: number; canBoost: boolean; onBoost: () => void; role?: string; ping?: ReactNode; completedLifeline?: MatchBox;
 }) {
-  const boosted = Boolean(game.boxes[BONUS_SLOT]);
+  const boxes = completedLifeline && !game.boxes[BONUS_SLOT] ? [...game.boxes, completedLifeline] : game.boxes;
+  const boosted = Boolean(boxes[BONUS_SLOT]);
   return <>
-    <div className="removed-counter" aria-label={`Screws removed: ${removed} of ${totalScrews}`}>{removed}<span> / {totalScrews}</span></div>
     <aside className={`game-ui${boosted ? " boosted" : ""}`} aria-label="Screw collection">
       <div className="match-boxes" aria-label="Active matching boxes">
-        {game.boxes.map((box, slot) => {
+        {boxes.map((box, slot) => {
           if (!box) return <div className="box-space" key={`empty-${slot}`} />;
           const appearance = SCREW_COLORS[box.color];
           const bonus = slot === BONUS_SLOT;
-          const effect = frame?.slot === slot ? frame.kind === "complete" ? " completing" :
+          const effect = box === completedLifeline ? " completed-on-open" : frame?.slot === slot ? frame.kind === "complete" ? " completing" :
             frame.kind === "replace" || frame.kind === "bonus-open" ? " arriving" : "" : "";
-          return <section key={box.id} className={`match-box${effect}`}
+          return <section key={box.id} className={`match-box${bonus ? " lifeline-box" : ""}${effect}`}
             style={{ "--screw-color": appearance.color, "--recess-color": appearance.recess } as CSSProperties}
             aria-label={`${appearance.label} ${bonus ? "lifeline" : "matching"} box: ${box.screws.length} of ${MATCH_SIZE}`}>
             <div className="match-sockets" aria-hidden="true">{Array.from({ length: MATCH_SIZE }, (_, index) => {
@@ -41,13 +41,15 @@ export default function GameUI({ game, removed, totalScrews, frame, lifelines, c
           </span>
         </li>;
       })}</ol>
-      <div className="lifeline-controls">
-        <button className="lifeline-button icon-button" onClick={onBoost} disabled={!canBoost}
-          aria-label={`Open a lifeline box, ${lifelines} remaining`} title="Add a matching box">
-          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="m17 4-9 14h7l-1 10 10-15h-8z" /></svg>
-          <span>{lifelines}</span>
-        </button>
-      </div>
     </aside>
+    <div className="game-dock">
+      <button className="lifeline-button icon-button" onClick={onBoost} disabled={!canBoost}
+        aria-label={`Open a lifeline box, ${lifelines} remaining`} title="Add a matching box">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="m17 4-9 14h7l-1 10 10-15h-8z" /></svg>
+        <span>{lifelines}</span>
+      </button>
+      {ping && <div className="dock-ping">{ping}</div>}
+      {role && <span className="room-status" role="status">{role}</span>}
+    </div>
   </>;
 }

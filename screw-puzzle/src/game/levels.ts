@@ -1,4 +1,4 @@
-import { CEILING_IDS, CHEST_PART_IDS, GARLANDS, GROUND_IDS, HOUSE_PART_IDS, PARTITION_IDS, PLINTH_IDS, ROOF_IDS, ROOF_SECTIONS, SCREW_COLOR_ORDER, SNOW_ROOFS, TILE_IDS, WALL_SECTIONS } from "./types.ts";
+import { CEILING_IDS, CHEST_PART_IDS, FLOOR_BEAMS, FRAME_POSTS, GARLANDS, GROUND_IDS, PARTITION_IDS, PLINTH_IDS, ROOF_IDS, ROOF_SECTIONS, SCREW_COLOR_ORDER, SNOW_ROOFS, TILE_IDS, WALL_SECTIONS } from "./types.ts";
 import type { PartId, Screw } from "./types.ts";
 import { HOUSE, PART_PIVOTS, ROOF_PITCH } from "../scene/houseModel.ts";
 import { findScrewObstructions } from "../scene/obstructions.ts";
@@ -6,7 +6,7 @@ import { chestPosition } from "../scene/chestModel.ts";
 export { ROOF_PITCH } from "../scene/houseModel.ts";
 export const ROOF_RUN = HOUSE.roofRun;
 export const ROOF_RISE = HOUSE.roofRise;
-export const SCREW_SCALE = 0.275 * 1.25;
+export const SCREW_SCALE = 0.275 * 1.25 * 1.15;
 
 type Vector = [number, number, number];
 type Placement = { position: Vector; normal: Vector; attachedTo: PartId; solutionAfter?: readonly PartId[] };
@@ -78,7 +78,11 @@ for (const section of WALL_SECTIONS) {
       [[-0.74, upper ? 1.65 : -0.25], [0.74, upper ? 0.55 : -1.3]];
     for (const [along, y] of fixings) place([along, y, 1.82], [0, 0, -1], section.id, after);
   } else if (section.face === "back") {
-    place([x - 0.4, upper ? 1.62 : -0.25, -1.82], [0, 0, 1], section.id, after);
+    if (section.column === 2) place([x - 0.4, upper ? 1.62 : -0.25, -1.82], [0, 0, 1], section.id, after);
+    else {
+      const inward = -Math.sign(x);
+      place([x + inward * 0.796, upper ? 1.62 : -0.25, -1.9], [inward, 0, 0], section.id, after);
+    }
     place([x + 0.31, upper ? 0.6 : -1.22, -1.82], [0, 0, 1], section.id, after);
   } else {
     const side = section.face === "left" ? -1 : 1;
@@ -109,19 +113,29 @@ for (const part of PARTITION_IDS) {
 for (const part of GROUND_IDS) {
   const [x, , z] = PART_PIVOTS[part];
   for (const [dx, dz] of [[-0.75, -0.55], [0.75, -0.55], [-0.75, 0.55], [0.75, 0.55], [0, 0]]) {
-    // Center these inside-edge fixings under the partitions instead of clipping their trim.
-    const along = x * dx < 0 && dz === 0.55 ? Math.sign(x) * 0.55 : x + dx;
-    place([along, -1.585, z + dz], [0, 1, 0], part, ["frame", ...floors, "stairs", "sofa", "kitchen", "table"]);
+    const after: PartId[] = [...floors, "stairs", "sofa", "kitchen", "table"];
+    // The floor faces the walls along these two outside edges of each room.
+    if (x * dx > 0) place([Math.sign(x) * 2.32, -1.62, z + dz], [Math.sign(x), 0, 0], part, after);
+    else {
+      const along = x * dx < 0 && dz === 0.55 ? Math.sign(x) * 0.55 : x + dx;
+      place([along, -1.585, z + dz], [0, 1, 0], part, after);
+    }
   }
 }
 for (const [index, part] of PLINTH_IDS.entries()) {
   const [x, , z] = PART_PIVOTS[part];
   for (const [dx, dz] of [[-0.75, -0.55], [0.75, 0.55]]) place([x + dx, -1.705, z + dz], [0, 1, 0], part, [GROUND_IDS[index]]);
-  place([Math.sign(x) * 2.53, -1.78, z], [Math.sign(x), 0, 0], part, [GROUND_IDS[index]]);
+  place([Math.sign(x) * 2.53, -1.765, z], [Math.sign(x), 0, 0], part, [GROUND_IDS[index]]);
 }
-for (const [x, y, z] of [[-2.37, 1.75, -1.91], [2.37, 0.55, -1.91], [-2.37, -1.25, 1.91]]) {
-  const normal: Vector = [-Math.sign(x) / Math.SQRT2, 0, -Math.sign(z) / Math.SQRT2];
-  place([x + normal[0] * 0.095, y, z + normal[2] * 0.095], normal, "frame", HOUSE_PART_IDS);
+for (const { id, x, z, story } of FRAME_POSTS) {
+  const [a, b] = [-Math.sign(x), -Math.sign(z)];
+  const depth = 0.078;
+  place([x + a * depth, story === "upper" ? 1.74 : -0.94, z + b * 0.048], [a, 0, 0], id);
+}
+for (const part of FLOOR_BEAMS) {
+  const [, y, z] = PART_PIVOTS[part];
+  const sign = Math.sign(z);
+  place([0.92, y, z - sign * 0.075], [0, 0, -sign], part);
 }
 
 // Original Christmas props remain; small decorations use a single fixing.
@@ -155,6 +169,7 @@ for (const part of ["present-bed", "present-desk", "present-sofa", "present-tabl
   }
   place([x, y + 0.28, z + 0.18], [0, 1, 0], part, part === "present-bed" || part === "present-desk" ? upperRoom : lowerRoom);
 }
+const lighterTiles = new Set<PartId>(["tile-nw", "tile-n", "tile-ne", "tile-w", "tile-e", "tile-sw", "tile-se"]);
 for (const part of TILE_IDS) {
   const [x, , z] = PART_PIVOTS[part];
   const after: PartId[] = PLINTH_IDS.filter((plinth) => {
@@ -163,7 +178,10 @@ for (const part of TILE_IDS) {
   if (z > 0 && x === 0) after.push("steps");
   if (z >= 0 && x < 0) after.push("planter-left");
   if (z >= 0 && x > 0) after.push("planter-right");
-  for (const dx of [-1, 1]) for (const dz of [-1, 1]) place([x + dx, -1.855, z + dz], [0, 1, 0], part, after);
+  for (const dx of [-1, 1]) for (const dz of [-1, 1]) {
+    if (lighterTiles.has(part) && dx === (Math.sign(x) || 1) && dz === (Math.sign(z) || 1)) continue;
+    place([x + dx, -1.855, z + dz], [0, 1, 0], part, after);
+  }
   if (z !== 0) place([x + 0.7, -2.01, z + Math.sign(z) * 1.395], [0, 0, Math.sign(z)], part, after);
   else if (x !== 0) place([x + Math.sign(x) * 1.395, -2.01, 0.7], [Math.sign(x), 0, 0], part, after);
   else place([0, -1.855, 0], [0, 1, 0], part, after);

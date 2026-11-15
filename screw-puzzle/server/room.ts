@@ -2,12 +2,13 @@ import { randomBytes, randomInt } from "node:crypto";
 import { LIFELINE_COUNT } from "../src/animation/run.ts";
 import { FALL_DURATION_MS } from "../src/game/fallTiming.ts";
 import { generatePuzzle } from "../src/game/randomize.ts";
-import { isScrewAccessible, planBonusBox, planScrewRemoval } from "../src/game/rules.ts";
-import type { GameState, PartId } from "../src/game/types.ts";
+import { BONUS_SLOT, isScrewAccessible, planBonusBox, planScrewRemoval } from "../src/game/rules.ts";
+import type { GameState, MatchBox, PartId } from "../src/game/types.ts";
 import type { RoomCommand, RoomGame, RoomNotice, RoomSnapshot } from "../src/multiplayer/protocol.ts";
+import { ROOM_LEVEL_VERSION, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
 
 export const RECONNECT_MS = 30_000;
-export const FALL_LEAD_MS = 250;
+export const FALL_LEAD_MS = 62.5;
 const PING_COOLDOWN_MS = 600;
 const newSeed = () => randomInt(0, 2 ** 32);
 const secret = () => randomBytes(18).toString("base64url");
@@ -38,6 +39,7 @@ function stopClock(room: Room, now: number) {
 }
 function snapshot(room: Room, now: number): RoomSnapshot {
   return {
+    levelVersion: ROOM_LEVEL_VERSION,
     id: room.id, leader: room.seats[0].id, round: room.round, seed: room.seed,
     players: room.seats.map((seat) => ({ id: seat.id, ready: seat.ready, connected: Boolean(seat.peer) })),
     started: room.startedAt !== null, canStart: canStart(room), paused: paused(room), lifelines: room.lifelines,
@@ -48,12 +50,12 @@ function snapshot(room: Room, now: number): RoomSnapshot {
   };
 }
 
-export function createRoomServer(now = Date.now) {
+export function createRoomServer(now = Date.now, nextSeed = newSeed) {
   const rooms = new Map<string, Room>();
   const memberships = new Map<Peer, { room: Room; seat: Seat }>();
-  function publish(room: Room, matched = false) {
+  function publish(room: Room, matched = false, completedLifeline?: MatchBox) {
     const state = snapshot(room, now());
-    for (const seat of room.seats) seat.peer?.send({ type: "state", snapshot: state, matched });
+    for (const seat of room.seats) seat.peer?.send({ type: "state", snapshot: state, matched, completedLifeline });
   }
   function reject(peer: Peer, reason: string, screw?: string) {
     peer.send({ type: "rejected", reason, screw });
@@ -114,9 +116,10 @@ export function createRoomServer(now = Date.now) {
     const membership = memberships.get(peer);
     if (command.type === "create" || command.type === "join") {
       if (membership) return;
+      if (command.levelVersion !== ROOM_LEVEL_VERSION) return reject(peer, ROOM_VERSION_MESSAGE);
       expireSeats();
       if (command.type === "create") {
-        const seed = newSeed();
+        const seed = nextSeed();
         const room: Room = { id: secret(), seats: [], soloAllowed: false, round: 0, seed,
           game: generatePuzzle(seed).state, startedAt: null, lifelines: LIFELINE_COUNT, fallStarts: new Map(),
           elapsedMs: 0, clockSince: null };
@@ -151,7 +154,7 @@ export function createRoomServer(now = Date.now) {
     }
     if (command.type === "reset") {
       if (room.startedAt === null) return;
-      room.seed = newSeed();
+      room.seed = nextSeed();
       room.game = generatePuzzle(room.seed).state;
       room.round += 1;
       room.startedAt = null;
@@ -185,7 +188,8 @@ export function createRoomServer(now = Date.now) {
       const { finalState, events } = planBonusBox(room.game);
       if (!events.length) return;
       room.lifelines -= 1;
-      commit(room, finalState);
+      const completed = events.find((event) => event.kind === "complete" && event.slot === BONUS_SLOT);
+      commit(room, finalState, completed?.before.boxes[BONUS_SLOT] ?? undefined);
       return;
     }
     if (command.type !== "select") return;
@@ -202,11 +206,11 @@ export function createRoomServer(now = Date.now) {
     }
     commit(room, finalState);
   }
-  function commit(room: Room, game: GameState) {
+  function commit(room: Room, game: GameState, completedLifeline?: MatchBox) {
     const matched = game.clearedCount > room.game.clearedCount;
     room.game = game;
     if (game.status !== "playing") stopClock(room, now());
-    publish(room, matched);
+    publish(room, matched, completedLifeline);
   }
   return { receive, disconnect, expireSeats };
 }
