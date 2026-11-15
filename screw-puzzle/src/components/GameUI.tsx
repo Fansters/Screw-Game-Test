@@ -18,7 +18,7 @@ export default function GameUI({ game, removed, totalScrews, frame, lifelines, c
           const bonus = slot === BONUS_SLOT;
           const effect = frame?.slot === slot ? frame.kind === "complete" ? " completing" :
             frame.kind === "replace" || frame.kind === "bonus-open" ? " arriving" : "" : "";
-          return <section key={box.id} className={`match-box${bonus ? " bonus-box" : ""}${effect}`}
+          return <section key={box.id} className={`match-box${effect}`}
             style={{ "--screw-color": appearance.color, "--recess-color": appearance.recess } as CSSProperties}
             aria-label={`${appearance.label} ${bonus ? "lifeline" : "matching"} box: ${box.screws.length} of ${MATCH_SIZE}`}>
             <div className="match-sockets" aria-hidden="true">{Array.from({ length: MATCH_SIZE }, (_, index) => {

@@ -1,4 +1,4 @@
-export const SCREW_COLOR_ORDER = ["red", "blue", "yellow", "green", "orange", "purple", "brown", "pink", "grey", "cyan", "black"] as const;
+export const SCREW_COLOR_ORDER = ["red", "blue", "yellow", "green", "orange", "purple", "brown", "pink", "grey", "cyan", "black", "lime"] as const;
 export type ScrewColor = typeof SCREW_COLOR_ORDER[number];
 export type GameStatus = "playing" | "won" | "lost";
 export const ROOF_SECTIONS = (["left", "right"] as const).flatMap((side) =>

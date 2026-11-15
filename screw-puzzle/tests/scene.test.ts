@@ -19,7 +19,7 @@ import { CAMERA_POSES, recenterZoomOut } from "../src/scene/camera.ts";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const material = new MeshBasicMaterial();
-test("similar palette pairs and the new blue/cyan and black/grey pairs have distinct luminance", () => {
+test("similar palette pairs have distinct luminance", () => {
   const luminance = (hex: string) => {
     const channels = hex.slice(1).match(/../g)!.map((channel) => {
       const value = parseInt(channel, 16) / 255;
@@ -31,6 +31,8 @@ test("similar palette pairs and the new blue/cyan and black/grey pairs have dist
     assert.ok((luminance(SCREW_COLORS[bright].color) + 0.05) / (luminance(SCREW_COLORS[dark].color) + 0.05) >= 3);
   }
   assert.ok(luminance(SCREW_COLORS.brown.color) > luminance(SCREW_COLORS.black.color) * 5);
+  assert.ok(luminance(SCREW_COLORS.yellow.color) - luminance(SCREW_COLORS.orange.color) > 0.35);
+  assert.ok(luminance(SCREW_COLORS.lime.color) - luminance(SCREW_COLORS.green.color) > 0.35);
 });
 
 test("zooming out eases an offset orbit target back to the house at overview distance", () => {

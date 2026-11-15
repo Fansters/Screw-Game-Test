@@ -102,15 +102,15 @@ function snowRevealRun() {
   return { run, target };
 }
 
-test("all 264 screws release 125 objects, with eleven whole-triple color quotas", () => {
+test("all 264 screws release 125 objects, with twelve whole-triple color quotas", () => {
   assert.equal(DEMO_LEVEL.length, 264);
   assert.equal(new Set(DEMO_LEVEL.map((screw) => screw.id)).size, 264);
   assert.equal(DEMO_LEVEL.filter((screw) => screw.attachedTo).length, 264);
   assert.equal(PART_IDS.length, 125);
-  assert.equal(SCREW_COLOR_ORDER.length, 11);
+  assert.equal(SCREW_COLOR_ORDER.length, 12);
   const counts = SCREW_COLOR_ORDER.map((color) => DEMO_LEVEL.filter((screw) => screw.color === color).length);
-  assert.ok(counts.every((count) => count > 0 && count % 3 === 0));
-  assert.ok(counts.every((count) => count === 24));
+  assert.equal(counts.filter((count) => count === 24).length, 4);
+  assert.equal(counts.filter((count) => count === 21).length, 8);
   assert.equal(SCREW_SCALE, 0.275 * 1.25);
   assert.ok(PIECES.every((piece) => PART_IDS.includes(piece.part)));
   assert.ok(DEMO_LEVEL.every((screw) => Math.abs(Math.hypot(...screw.normal) - 1) < 1e-10));
@@ -163,6 +163,18 @@ test("matching colors bypass free slots and inactive colors wait without auto-cl
   assert.equal(state.tray.length, 3);
   assert.equal(state.clearedCount, 0);
   inventory(state);
+});
+
+test("green and lime match independently and lime transfers only to its own box", () => {
+  let game = createInitialState(fixture({ green: 3, blue: 3, lime: 3 }), ["green", "blue", "lime"]);
+  game = take(take(game, "green"), "lime", 2);
+  assert.deepEqual(game.boxes[0]?.screws.map((entry) => entry.color), ["green"]);
+  assert.deepEqual(game.tray.map((entry) => entry.color), ["lime", "lime"]);
+  game = take(game, "green", 2);
+  assert.equal(game.boxes[0]?.color, "lime");
+  assert.equal(game.boxes[0]?.screws.length, 2);
+  assert.equal(game.tray.length, 0);
+  inventory(game);
 });
 
 test("brown boxes collect directly and pink waiting screws transfer when their box appears", () => {

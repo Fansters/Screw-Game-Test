@@ -37,7 +37,6 @@
 .socket-screw.in-flight { opacity: 0; animation: none; }
 .match-box.completing { animation: box-complete 400ms ease-in both; }
 .match-box.arriving { animation: box-arrive 240ms cubic-bezier(.2,.7,.3,1.3) both; }
-.bonus-box { border-color: #ffe18a; outline: 1px solid #98773288; }
 .lifeline-controls { display: flex; justify-content: center; margin-top: 8px; }
 .lifeline-button { display: flex; gap: 2px; padding-inline: 5px 9px; pointer-events: auto; background: #ffe18a; color: #65476d; font-size: 16px; font-weight: 900; }
 .lifeline-button:disabled { opacity: .58; }

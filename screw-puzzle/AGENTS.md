@@ -16,7 +16,7 @@ We are prototyping the *gameplay concept*, not reproducing any specific advertis
 - Shows an original low-poly 3D cottage.
 - Shows a floating, geometric 3D "Screw Cottage" title and a colorful game HUD.
 - Mobile-first portrait/landscape layout, with mouse orbit/wheel and touch orbit/pinch.
-- Shows 264 fixed screw positions in eleven randomized colors, including light grey, cyan and black, with near-equal whole-triple quotas.
+- Shows 264 fixed screw positions in twelve randomized colors, including distinct green and lime, with near-equal whole-triple quotas.
 - Clicking a screw removes it and updates the game state.
 - Has progress counters, two standard three-slot boxes, a lifeline box, and five waiting slots.
 - Three screws complete an active matching box; waiting screws transfer automatically when their box appears.
@@ -70,7 +70,7 @@ When asked for code changes: briefly state the plan, make the smallest useful ch
 
 The owner's latest request supersedes earlier milestone examples and UI conventions.
 
-- The hollow, two-story Christmas cottage has **264 screw positions** and eleven colors: red, blue, yellow, green, orange, purple, brown, pink, grey (light grey), cyan, black. Whole-triple quotas are 24 per color. Screw scale is **0.34375**, increased 25% from 0.275. Positions, IDs, normals and ownership stay fixed across restarts. Future levels may use different counts, with whole triples per color. Preserve at least 3:1 shared-palette luminance contrast for brown/orange, purple/pink, royal blue/cyan, and black/light grey.
+- The hollow, two-story Christmas cottage has **264 screw positions** and twelve colors, including separate green and lime. Four colors have 24 screws each and eight have 21. Screw scale is **0.34375**, increased 25% from 0.275. Positions, IDs, normals and ownership stay fixed across restarts. Future levels may use different counts, with whole triples per color. Preserve at least 3:1 shared-palette luminance contrast for brown/orange, purple/pink, royal blue/cyan, and black/light grey.
 - `generatePuzzle(seed)` creates shuffled colors and 88 triple targets derived from level quotas. The template supplies quota units, not the interactive arrangement. Initial active colors are random and distinct. Multi-screw assemblies mix at least two fastener colors; small single-screw objects have one. Each starting color has only one or two initially exposed matches, requiring a reveal before either first triple. Follow complete assemblies/newly revealed branches when constructing a proof. Enforce the opening color cap during assignment and mix the first two owner fixings early to avoid generation failures near the endgame.
 - Generate a valid accessible peel order, assign colors through a simulation of the two active boxes, then replay the complete solution through the actual rules. Never blindly shuffle into potentially unsolvable layouts. A new round uses a fresh crypto-generated seed; seeded generation remains reproducible and pure.
 - Start with the centered, green block-letter **Start** control. No screw selection before Start. On loss, show centered red **You Lost** lettering, immediately reject further selections, and provide **Again** to generate a fresh round and return to Start. Victory may show a minimal end screen too.

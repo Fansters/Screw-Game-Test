@@ -1,6 +1,6 @@
 # Screw Cottage
 
-A mobile-first 3D screw puzzle built with React, Three.js, React Three Fiber and Vite. The original Christmas cottage has **264 screws, 11 colors, and 125 removable assemblies**. Every visible model piece belongs to a fastened assembly.
+A mobile-first 3D screw puzzle built with React, Three.js, React Three Fiber and Vite. The original Christmas cottage has **264 screws, 12 colors, and 125 removable assemblies**. Every visible model piece belongs to a fastened assembly.
 
 ## Run and validate
 
@@ -53,7 +53,7 @@ The 80-view orbit audit finds **24 initially exposed removable screws / 264 (9.1
 
 ## Colors and verified randomization
 
-The 11 colors are red, blue, yellow, green, orange, purple, brown, pink, **light grey, cyan and black**. Blue is now royal blue to separate it from cyan. The shared screw/box/tray palette has at least 3:1 luminance contrast for brown/orange, purple/pink, blue/cyan and black/light grey. Recesses and shafts use the corresponding screw color, with darker recess shading.
+The 12 colors are red, blue, lemon yellow, green, orange, purple, brown, pink, light grey, cyan, black and lime. The 88 triples are split across the palette, with seven or eight triples per color. The shared screw/box/tray palette has at least 3:1 luminance contrast for brown/orange, purple/pink, blue/cyan and black/light grey. Recesses and shafts use the corresponding screw color, with darker recess shading.
 
 Whole-triple quotas are 24 screws per color. All 88 targets, including the distinct initial pair, are shuffled. `generatePuzzle(seed)` constructs an accessible peel order, assigns colors while simulating two active boxes, and replays the entire winning sequence through the actual rules. Multi-screw assemblies mix at least two colors; single-screw objects naturally have one. Early assignment limits the opening pair to two exposed matches each instead of relying on blind reshuffling. A crypto-generated seed starts each new round; seeded generation is reproducible.
 
