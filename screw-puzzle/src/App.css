@@ -58,7 +58,7 @@
 @keyframes box-complete { 0% { filter: brightness(1); transform: scale(1); } 35% { filter: brightness(1.3); transform: scale(1.1) rotate(-3deg); } 65% { opacity: 1; transform: scale(1.05) rotate(3deg); } 100% { opacity: 0; transform: translateY(-28px) scale(.65); } }
 @keyframes box-arrive { from { opacity: 0; transform: translateY(22px) scale(.7) rotate(7deg); } to { opacity: 1; transform: translateY(0) scale(1) rotate(0); } }
 @keyframes lifeline-arrive { from { opacity: 0; transform: translateX(14px) translateY(9px) scale(.88); } to { opacity: 1; transform: translate(0) scale(1); } }
-@keyframes center-boosted-boxes { from { transform: translateX(calc((var(--box-width) + var(--box-gap)) / 2)); } }
+@keyframes center-boosted-boxes { from { transform: translateX(calc((var(--box-width) + var(--box-gap)) / 2 + var(--boost-shift, 0px))); } }
 @media (max-width: 650px) and (orientation: portrait) and (prefers-reduced-motion: no-preference) {
   .boosted .match-boxes { animation: center-boosted-boxes 240ms cubic-bezier(.22,.75,.25,1); }
 }
@@ -122,5 +122,15 @@
 .room-lobby h2 { font-size: 22px; }
 .room-lobby p { font-weight: 700; }
 .room-lobby input { width: 100%; min-height: 40px; padding: 7px; border: 1px solid #7651a8; border-radius: 9px; user-select: text; -webkit-user-select: text; -webkit-touch-callout: default; }
-.room-status { color: #59417c; opacity: .8; font-size: 13px; font-weight: 700; text-align: center; white-space: nowrap; }
-.room-ping { position: absolute; z-index: 9; left: 50%; bottom: calc(max(13px, env(safe-area-inset-bottom)) + 77px); translate: -50% 0; padding: 4px 8px; border-radius: 8px; color: #fff8df; background: #59417ce6; font-size: 13px; font-weight: 800; white-space: nowrap; pointer-events: none; }
+.room-status { position: absolute; z-index: 8; top: calc(env(safe-area-inset-top) + 6px); left: 50%; translate: -50% 0; color: #59417c; opacity: .8; font-size: 13px; line-height: 1.15; font-weight: 700; text-align: center; white-space: nowrap; pointer-events: none; }
+.room-ping { position: absolute; z-index: 9; left: 50%; bottom: calc(max(13px, env(safe-area-inset-bottom)) + 77px); translate: -50% 0; padding: 4px 8px; border-radius: 8px; color: #fff8df; background: #ac213b; font-size: 13px; font-weight: 800; white-space: nowrap; pointer-events: none; }
+@media (max-width: 650px), (pointer: coarse), (max-width: 1024px) and (orientation: portrait) {
+  .game-controls { flex-direction: column; }
+}
+@media (max-width: 400px) and (orientation: portrait) {
+  .game-ui { --box-width: clamp(64px, 21vw, 83px); --box-gap: 8px; --boost-shift: 14px; }
+  .boosted .match-boxes { left: calc(50% - var(--boost-shift)); }
+}
+@media (min-width: 1000px) {
+  .room-status { top: max(24px, env(safe-area-inset-top)); }
+}

@@ -1,10 +1,12 @@
-import type { GameState, MatchBox, PartId, ScrewColor } from "../game/types.ts";
+import type { CollectionState, GameState, MatchBox, MoveEvent, PartId, ScrewColor } from "../game/types.ts";
 
 // Both peers use the same ordered screw IDs and part geometry.
 export const ROOM_LEVEL_VERSION = 2;
 export const ROOM_VERSION_MESSAGE = "The room and game versions differ. Refresh the game, or wait for the server update to finish.";
 export const COMPLETED_LIFELINE_MS = 640;
+export const PING_COOLDOWN_MS = 600;
 
+export type CollectionMove = Exclude<MoveEvent<CollectionState>, { kind: "detach" }>;
 export type RoomGame = Pick<GameState, "boxes" | "boxQueue" | "tray" | "clearedCount" | "status" | "removedParts"> & {
   colors: ScrewColor[];
   removed: string[];
@@ -35,7 +37,7 @@ export type RoomCommand =
   | { type: "select" | "ping"; round: number; screw: string };
 export type RoomNotice =
   | { type: "joined"; player: string; token: string; snapshot: RoomSnapshot }
-  | { type: "state"; snapshot: RoomSnapshot; matched?: boolean; completedLifeline?: MatchBox }
+  | { type: "state"; snapshot: RoomSnapshot; moves?: CollectionMove[]; matched?: boolean; completedLifeline?: MatchBox }
   | { type: "clock"; sentAt: number; serverTime: number }
   | { type: "ping"; round: number; screw: string; player: string }
   | { type: "rejected"; reason: string; screw?: string };

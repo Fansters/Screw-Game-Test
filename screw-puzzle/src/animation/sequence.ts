@@ -1,8 +1,8 @@
-import type { CollectedScrew, GameState, MoveEvent, Socket } from "../game/types.ts";
+import type { CollectedScrew, CollectionState, GameState, MoveEvent, Socket } from "../game/types.ts";
 
-export type PlaybackFrame = {
+export type PlaybackFrame<State extends CollectionState = GameState> = {
   kind: "unscrew" | "fly" | "land" | "complete" | "replace" | "pause" | "bonus-open";
-  game: GameState;
+  game: State;
   duration: number;
   message: string;
   screw?: CollectedScrew;
@@ -11,8 +11,8 @@ export type PlaybackFrame = {
   slot?: number;
 };
 
-export function buildSequence(events: MoveEvent[]): PlaybackFrame[] {
-  const frames: PlaybackFrame[] = [];
+export function buildSequence<State extends CollectionState>(events: MoveEvent<State>[]): PlaybackFrame<State>[] {
+  const frames: PlaybackFrame<State>[] = [];
   for (const event of events) {
     if (event.kind === "collect" || event.kind === "transfer") {
       const label = `${event.screw.color[0].toUpperCase()}${event.screw.color.slice(1)}`;

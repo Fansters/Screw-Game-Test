@@ -1,9 +1,10 @@
 import { Suspense, useEffect, useEffectEvent, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { MutableRefObject } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { ThreeEvent } from "@react-three/fiber";
 import { Billboard, PerspectiveCamera } from "@react-three/drei";
 import { Vector3 } from "three";
+import type { Group } from "three";
 import type { GameState, PartId, Screw } from "../game/types";
 import { SCREW_SCALE } from "../game/levels";
 import { pickNearbyHead } from "../scene/picking";
@@ -21,7 +22,7 @@ import type { CameraView } from "../scene/camera";
 type GameSceneProps = { logical: GameState; fallingParts: PartId[]; round: number; playable: boolean;
   orbitable?: boolean;
   fallStarts?: Partial<Record<PartId, number>>;
-  pingMode?: boolean; pingScrew?: Screw; onScrewPing?: (id: string) => void;
+  pingMode?: boolean; pingScrew?: Screw; pingSequence?: number; onScrewPing?: (id: string) => void;
   rejectedScrew?: { screw: string; sequence: number } | null;
   view: CameraView; onCameraArrive: (view: CameraView, round: number) => void;
   onReady: (round: number) => void;
@@ -29,7 +30,31 @@ type GameSceneProps = { logical: GameState; fallingParts: PartId[]; round: numbe
   onScrewSelect: (id: string, clearedParts?: readonly PartId[]) => void;
   onBlockedScrew: () => void;
   projectorRef: MutableRefObject<(id: string) => [number, number]> };
-function SceneContents({ logical, fallingParts, fallStarts, round, playable, orbitable, pingMode, pingScrew, onScrewPing, rejectedScrew,
+function PingMarker({ screw }: { screw: Screw }) {
+  const ring = useRef<Group>(null);
+  const elapsed = useRef(0);
+  useFrame((_, delta) => {
+    if (!ring.current || reducedMotion.matches) return;
+    elapsed.current += delta;
+    ring.current.scale.setScalar(1 + 0.17 * Math.sin(elapsed.current * 2 * Math.PI / 0.9));
+  });
+  const center = new Vector3(...screw.position).addScaledVector(new Vector3(...screw.normal), SCREW_SCALE * 0.144);
+  return <Billboard position={center}>
+    <group ref={ring}>
+      <mesh renderOrder={20} raycast={() => {}}>
+        <ringGeometry args={[0.165, 0.305, 40]} />
+        <meshBasicMaterial color="#fff7f3" toneMapped={false} depthTest={false} depthWrite={false} />
+      </mesh>
+      <mesh renderOrder={21} raycast={() => {}}>
+        <ringGeometry args={[0.19, 0.28, 40]} />
+        <meshBasicMaterial color="#f01836" toneMapped={false} depthTest={false} depthWrite={false} />
+      </mesh>
+    </group>
+  </Billboard>;
+}
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+function SceneContents({ logical, fallingParts, fallStarts, round, playable, orbitable, pingMode, pingScrew, pingSequence, onScrewPing, rejectedScrew,
   view, onCameraArrive, onReady, onFallFinished, onScrewSelect, onBlockedScrew, projectorRef }: GameSceneProps) {
   const { camera, gl, scene, size } = useThree();
   const [gestures] = useState(createScrewGestures);
@@ -95,8 +120,11 @@ function SceneContents({ logical, fallingParts, fallStarts, round, playable, orb
     const rect = gl.domElement.getBoundingClientRect();
     const { clientX: x, clientY: y } = event;
     if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return;
-    const target = pickNearbyHead(scene, camera, rect, [x, y], visible);
+    const target = pickNearbyHead(scene, camera, rect, [x, y], visible, 22, pingMode);
     if (target) attempt(target.id);
+  });
+  const startGesture = useEffectEvent((event: PointerEvent) => {
+    gestures.start(event, playable && event.target === gl.domElement, pingMode);
   });
   useEffect(() => {
     const canvas = gl.domElement;
@@ -104,14 +132,15 @@ function SceneContents({ logical, fallingParts, fallStarts, round, playable, orb
     const listeners = new AbortController();
     const options = { capture: true, signal: listeners.signal };
     // Watch the whole document so a second finger landing outside the canvas cancels a tap.
-    doc.addEventListener("pointerdown", (event) => gestures.start(event, playable && event.target === canvas), options);
+    doc.addEventListener("pointerdown", (event) => startGesture(event), options);
     doc.addEventListener("pointermove", gestures.move, options);
     doc.addEventListener("pointerup", (event) => {
-      // Touch pointerleave can arrive before a synthesized click. Resolve on lift.
+      // Touch and ping mode use assisted picking on lift, before any browser click.
       if (gestures.release(event, event.target === canvas)) pickTap(event);
     }, options);
     doc.addEventListener("pointercancel", (event) => gestures.cancel(event.pointerId), options);
-    doc.defaultView?.addEventListener("blur", gestures.reset, options);
+    // Moving focus from a HUD button onto the canvas is part of the tap.
+    doc.defaultView?.addEventListener("blur", gestures.reset, { signal: listeners.signal });
     return () => {
       listeners.abort();
       gestures.reset();
@@ -128,12 +157,7 @@ function SceneContents({ logical, fallingParts, fallStarts, round, playable, orb
     <House key={`house-${round}`} removedParts={visible.removedParts} fallingParts={fallingParts} fallStarts={fallStarts}
       onFallFinished={(part) => onFallFinished(part, round)} />
     <ScrewField key={`screws-${round}`} game={visible} playable={playable} onPick={pick} wiggleRef={wiggle} />
-    {pingScrew && <Billboard position={pingScrew.position}>
-      <mesh renderOrder={20} raycast={() => {}}>
-        <ringGeometry args={[0.15, 0.19, 24]} />
-        <meshBasicMaterial color="#ffdc56" transparent opacity={0.92} depthTest={false} depthWrite={false} />
-      </mesh>
-    </Billboard>}
+    {pingScrew && <PingMarker key={pingSequence} screw={pingScrew} />}
     <CameraRig view={view} round={round} playable={orbitable ?? playable} onArrive={onCameraArrive} />
   </>;
 }

@@ -55,3 +55,15 @@ test("desktop picking still uses a single primary click after release", () => {
   gestures.release(mouse, true);
   assert.equal(gestures.consumeClick(0), false);
 });
+
+test("the first desktop ping resolves on release while a drag never pings", () => {
+  const gestures = createScrewGestures();
+  const mouse = { ...finger, pointerType: "mouse" };
+  gestures.start(mouse, true, true);
+  assert.equal(gestures.release({ ...mouse, clientX: 44 }, true), true);
+  assert.equal(gestures.consumeClick(0), false);
+  gestures.start(mouse, true, true);
+  gestures.move({ ...mouse, clientX: 46 });
+  assert.equal(gestures.release(mouse, true), false);
+  assert.equal(gestures.consumeClick(0), false);
+});

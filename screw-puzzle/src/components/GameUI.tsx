@@ -1,11 +1,11 @@
 import type { CSSProperties, ReactNode } from "react";
 import { SCREW_COLORS } from "../game/colors";
 import { BONUS_SLOT, MATCH_SIZE, TRAY_CAPACITY } from "../game/rules";
-import type { GameState, MatchBox } from "../game/types";
+import type { CollectionState, MatchBox } from "../game/types";
 import type { PlaybackFrame } from "../animation/sequence";
-export default function GameUI({ game, frame, lifelines, canBoost, onBoost, role, ping, completedLifeline }: {
-  game: GameState; frame: PlaybackFrame | null;
-  lifelines: number; canBoost: boolean; onBoost: () => void; role?: string; ping?: ReactNode; completedLifeline?: MatchBox;
+export default function GameUI({ game, frame, lifelines, canBoost, onBoost, ping, completedLifeline }: {
+  game: CollectionState; frame: PlaybackFrame<CollectionState> | null;
+  lifelines: number; canBoost: boolean; onBoost: () => void; ping?: ReactNode; completedLifeline?: MatchBox;
 }) {
   const boxes = completedLifeline && !game.boxes[BONUS_SLOT] ? [...game.boxes, completedLifeline] : game.boxes;
   const boosted = Boolean(boxes[BONUS_SLOT]);
@@ -49,7 +49,6 @@ export default function GameUI({ game, frame, lifelines, canBoost, onBoost, role
         <span>{lifelines}</span>
       </button>
       {ping && <div className="dock-ping">{ping}</div>}
-      {role && <span className="room-status" role="status">{role}</span>}
     </div>
   </>;
 }

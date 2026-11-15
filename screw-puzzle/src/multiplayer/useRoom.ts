@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { RoomCommand, RoomNotice, RoomSnapshot } from "./protocol";
 import type { MatchBox } from "../game/types";
-import { COMPLETED_LIFELINE_MS, ROOM_LEVEL_VERSION, ROOM_VERSION_MESSAGE } from "./protocol";
+import { BONUS_SLOT } from "../game/rules";
+import { COMPLETED_LIFELINE_MS, PING_COOLDOWN_MS, ROOM_LEVEL_VERSION, ROOM_VERSION_MESSAGE } from "./protocol";
+import { collectionPlayback, emptyPlayback, frameDelay } from "./collectionPlayback";
 
 const roomKey = (id: string) => `screw-cottage-room-${id}`;
 const endpoint = () => import.meta.env.VITE_ROOM_SERVER ||
@@ -28,12 +30,25 @@ export function useRoom() {
   const [disconnectedAt, setDisconnectedAt] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [matched, setMatched] = useState(0);
+  const [playback, dispatchPlayback] = useReducer(collectionPlayback, emptyPlayback);
   const [completedLifeline, setCompletedLifeline] = useState<{ round: number; box: MatchBox } | null>(null);
-  const [ping, setPing] = useState<{ round: number; screw: string; sequence: number } | null>(null);
+  const [ping, setPing] = useState<{ round: number; screw: string; sequence: number; own: boolean } | null>(null);
   const [blocked, setBlocked] = useState<{ screw: string; sequence: number } | null>(null);
   const [clockOffset, setClockOffset] = useState(0);
   const socket = useRef<WebSocket | null>(null);
   const activeRoom = useRef<string | null>(null);
+  const lastPingAt = useRef(-Infinity);
+  const entry = playback.queue[0];
+  const bonusAnimating = playback.queue.some(({ frame }) => frame.slot === BONUS_SLOT);
+  const showPing = useCallback((round: number, screw: string, own: boolean) => {
+    setPing((previous) => ({ round, screw, own, sequence: (previous?.sequence ?? 0) + 1 }));
+  }, []);
+
+  useEffect(() => {
+    if (!entry) return;
+    const timer = window.setTimeout(() => dispatchPlayback({ type: "advance", entry }), frameDelay(entry, performance.now()));
+    return () => window.clearTimeout(timer);
+  }, [entry]);
 
   useEffect(() => {
     if (!request) return;
@@ -93,6 +108,7 @@ export function useRoom() {
           attempts = 0;
           if (!sampledClock) setClockOffset(notice.snapshot.serverTime - Date.now());
           setPlayer(notice.player);
+          dispatchPlayback({ type: "reset", scene: `${id}:${notice.snapshot.round}` });
           setSnapshot(notice.snapshot);
           setConnected(true);
           setDisconnectedAt(null);
@@ -100,14 +116,16 @@ export function useRoom() {
         } else if (notice.type === "state") {
           if (notice.snapshot.levelVersion !== ROOM_LEVEL_VERSION) return;
           setSnapshot(notice.snapshot);
-          if (notice.matched) setMatched((count) => count + 1);
-          if (notice.completedLifeline) {
+          dispatchPlayback({ type: "receive", scene: `${notice.snapshot.id}:${notice.snapshot.round}`,
+            moves: notice.moves, receivedAt: performance.now() });
+          if (!notice.moves && notice.matched) setMatched((count) => count + 1);
+          if (!notice.moves && notice.completedLifeline) {
             setCompletedLifeline({ round: notice.snapshot.round, box: notice.completedLifeline });
             window.clearTimeout(lifelineAnimation);
             lifelineAnimation = window.setTimeout(() => setCompletedLifeline(null), COMPLETED_LIFELINE_MS);
           }
         } else if (notice.type === "ping") {
-          setPing((previous) => ({ round: notice.round, screw: notice.screw, sequence: (previous?.sequence ?? 0) + 1 }));
+          showPing(notice.round, notice.screw, false);
         } else if (notice.screw) {
           setBlocked((previous) => ({ screw: notice.screw!, sequence: (previous?.sequence ?? 0) + 1 }));
         } else {
@@ -150,13 +168,22 @@ export function useRoom() {
       if (socket.current === connection) socket.current = null;
       connection?.close();
     };
-  }, [request]);
+  }, [request, showPing]);
 
   const send = useCallback((command: RoomCommand) => {
     const ws = socket.current;
-    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(command));
+    if (ws?.readyState !== WebSocket.OPEN) return false;
+    ws.send(JSON.stringify(command));
+    return true;
   }, []);
 
+  function pingScrew(round: number, screw: string) {
+    const now = performance.now();
+    if (now - lastPingAt.current < PING_COOLDOWN_MS || !send({ type: "ping", round, screw })) return false;
+    lastPingAt.current = now;
+    showPing(round, screw, true);
+    return true;
+  }
   function open() {
     setError("");
     setRequest(invite ? { type: "join", room: invite, levelVersion: ROOM_LEVEL_VERSION } :
@@ -175,8 +202,10 @@ export function useRoom() {
     setError("");
     setPing(null);
     setCompletedLifeline(null);
+    dispatchPlayback({ type: "reset", scene: "" });
     setBlocked(null);
   }
-  return { invite, snapshot, player, connected, disconnectedAt, error, matched, completedLifeline, ping, blocked, clockOffset, send, open, leave,
+  return { invite, snapshot, player, connected, disconnectedAt, error, matched, completedLifeline, ping, pingScrew,
+    frame: entry?.frame ?? null, bonusAnimating, blocked, clockOffset, send, open, leave,
     connecting: Boolean(request && !connected && !snapshot) };
 }

@@ -4,6 +4,7 @@ import { createRoomServer, FALL_LEAD_MS, RECONNECT_MS } from "../server/room.ts"
 import { FALL_DURATION_MS } from "../src/game/fallTiming.ts";
 import { DEMO_LEVEL } from "../src/game/levels.ts";
 import { generatePuzzle } from "../src/game/randomize.ts";
+import { collectionPlayback, emptyPlayback, frameDelay } from "../src/multiplayer/collectionPlayback.ts";
 import type { RoomCommand, RoomNotice } from "../src/multiplayer/protocol.ts";
 import { ROOM_LEVEL_VERSION, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
 
@@ -122,6 +123,42 @@ test("both seats can finish the same seeded cottage", () => {
   assert.deepEqual(guest.state(), leader.state());
 });
 
+test("rapid moves from both seats replay the third screw before completing and replacing its box", () => {
+  const { leader, guest, advance } = fixture(1);
+  const { solution } = generatePuzzle(1);
+  const start = leader.notices.length;
+  const scene = `${leader.state().id}:0`;
+  let playback = collectionPlayback(emptyPlayback, { type: "reset", scene });
+  let cleared = 0;
+  for (const [index, screw] of solution.entries()) {
+    (index % 2 ? guest : leader).send({ type: "select", round: 0, screw });
+    advance(FALL_LEAD_MS + FALL_DURATION_MS);
+    const notice = leader.notices.at(-1)!;
+    assert.deepEqual(notice, guest.notices.at(-1));
+    assert.equal(notice.type, "state");
+    assert.ok(notice.moves?.length);
+    const first = playback.queue[0];
+    playback = collectionPlayback(playback, { type: "receive", scene, moves: notice.moves, receivedAt: 100 + index });
+    if (first) assert.equal(playback.queue[0], first);
+    cleared = notice.snapshot.game.clearedCount;
+    if (cleared) break;
+  }
+  assert.ok(cleared > 0 && leader.notices.length > start + 1);
+  const [first] = playback.queue;
+  assert.equal(frameDelay(first, 100), 700);
+  assert.equal(frameDelay(first, 850), 0);
+  const frames = playback.queue.map(({ frame }) => frame);
+  const complete = frames.findIndex((frame) => frame.kind === "complete");
+  assert.equal(frames[complete - 1].kind, "land");
+  assert.equal(frames[complete].game.boxes[frames[complete].slot!]?.screws.length, 3);
+  assert.equal(frames[complete + 1].kind, "pause");
+  assert.equal(frames[complete + 2].kind, "replace");
+  const reconnect = collectionPlayback(playback, { type: "reset", scene });
+  assert.equal(reconnect.queue.length, 0);
+  assert.equal(collectionPlayback(reconnect, { type: "advance", entry: first }), reconnect);
+  assert.equal(collectionPlayback(playback, { type: "receive", scene: "new-round", receivedAt: 900 }).queue.length, 0);
+});
+
 test("a browser with an older cottage layout receives a version error", () => {
   const { makePeer, room } = fixture();
   const stale = makePeer();
@@ -142,6 +179,7 @@ test("both browsers receive the filled lifeline for animation when opening compl
     const notice = peer.notices.findLast((notice) => notice.type === "state")!;
     assert.equal(notice.completedLifeline?.color, "cyan");
     assert.equal(notice.completedLifeline?.screws.length, 3);
+    assert.deepEqual(notice.moves?.map(({ kind }) => kind), ["bonus-open", "transfer", "transfer", "transfer", "complete"]);
     assert.equal(notice.snapshot.game.boxes.length, 2);
     assert.equal(notice.snapshot.game.tray.length, 0);
   }

@@ -3,13 +3,12 @@ import { LIFELINE_COUNT } from "../src/animation/run.ts";
 import { FALL_DURATION_MS } from "../src/game/fallTiming.ts";
 import { generatePuzzle } from "../src/game/randomize.ts";
 import { BONUS_SLOT, isScrewAccessible, planBonusBox, planScrewRemoval } from "../src/game/rules.ts";
-import type { GameState, MatchBox, PartId } from "../src/game/types.ts";
-import type { RoomCommand, RoomGame, RoomNotice, RoomSnapshot } from "../src/multiplayer/protocol.ts";
-import { ROOM_LEVEL_VERSION, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
+import type { CollectionState, GameState, MatchBox, MoveEvent, PartId } from "../src/game/types.ts";
+import type { CollectionMove, RoomCommand, RoomGame, RoomNotice, RoomSnapshot } from "../src/multiplayer/protocol.ts";
+import { PING_COOLDOWN_MS, ROOM_LEVEL_VERSION, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
 
 export const RECONNECT_MS = 30_000;
 export const FALL_LEAD_MS = 62.5;
-const PING_COOLDOWN_MS = 600;
 const newSeed = () => randomInt(0, 2 ** 32);
 const secret = () => randomBytes(18).toString("base64url");
 
@@ -24,6 +23,9 @@ type Room = {
 function wireGame({ screws, ...game }: GameState): RoomGame {
   return { ...game, colors: screws.map((screw) => screw.color),
     removed: screws.filter((screw) => screw.removed).map((screw) => screw.id) };
+}
+function collection({ boxes, tray }: GameState): CollectionState {
+  return { boxes, tray };
 }
 function canStart(room: Room) {
   return room.startedAt === null && (room.soloAllowed || room.seats.length === 2) &&
@@ -53,9 +55,9 @@ function snapshot(room: Room, now: number): RoomSnapshot {
 export function createRoomServer(now = Date.now, nextSeed = newSeed) {
   const rooms = new Map<string, Room>();
   const memberships = new Map<Peer, { room: Room; seat: Seat }>();
-  function publish(room: Room, matched = false, completedLifeline?: MatchBox) {
+  function publish(room: Room, moves?: CollectionMove[], matched = false, completedLifeline?: MatchBox) {
     const state = snapshot(room, now());
-    for (const seat of room.seats) seat.peer?.send({ type: "state", snapshot: state, matched, completedLifeline });
+    for (const seat of room.seats) seat.peer?.send({ type: "state", snapshot: state, moves, matched, completedLifeline });
   }
   function reject(peer: Peer, reason: string, screw?: string) {
     peer.send({ type: "rejected", reason, screw });
@@ -189,7 +191,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
       if (!events.length) return;
       room.lifelines -= 1;
       const completed = events.find((event) => event.kind === "complete" && event.slot === BONUS_SLOT);
-      commit(room, finalState, completed?.before.boxes[BONUS_SLOT] ?? undefined);
+      commit(room, finalState, events, completed?.before.boxes[BONUS_SLOT] ?? undefined);
       return;
     }
     if (command.type !== "select") return;
@@ -204,13 +206,15 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     for (const event of events) {
       if (event.kind === "detach") room.fallStarts.set(event.part, time + FALL_LEAD_MS);
     }
-    commit(room, finalState);
+    commit(room, finalState, events);
   }
-  function commit(room: Room, game: GameState, completedLifeline?: MatchBox) {
+  function commit(room: Room, game: GameState, events: MoveEvent[], completedLifeline?: MatchBox) {
     const matched = game.clearedCount > room.game.clearedCount;
+    const moves = events.flatMap((event) => event.kind === "detach" ? [] :
+      [{ ...event, before: collection(event.before), after: collection(event.after) }]);
     room.game = game;
     if (game.status !== "playing") stopClock(room, now());
-    publish(room, matched, completedLifeline);
+    publish(room, moves, matched, completedLifeline);
   }
   return { receive, disconnect, expireSeats };
 }

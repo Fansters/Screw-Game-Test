@@ -65,9 +65,10 @@ export type GameState = {
   removedParts: PartId[];
 };
 
+export type CollectionState = Pick<GameState, "boxes" | "tray">;
 export type Socket = { kind: "box"; slot: number; index: number } | { kind: "tray"; index: number };
-type EventStates = { before: GameState; after: GameState };
-export type MoveEvent = EventStates & (
+type EventStates<State> = { before: State; after: State };
+export type MoveEvent<State extends CollectionState = GameState> = EventStates<State> & (
   { kind: "collect"; screw: CollectedScrew; to: Socket } |
   { kind: "transfer"; screw: CollectedScrew; from: number; to: Socket } |
   { kind: "complete" | "replace"; slot: number; color: ScrewColor } |

@@ -4,6 +4,7 @@ type Gesture = {
   x: number;
   y: number;
   direct: boolean;
+  pickOnRelease: boolean;
   released: boolean;
 };
 
@@ -18,15 +19,17 @@ export function createScrewGestures() {
   }
 
   return {
-    start(event: Contact, onCanvas: boolean) {
+    start(event: Contact, onCanvas: boolean, assisted = false) {
       if (event.pointerType === "touch") touches.add(event.pointerId);
       gesture = null;
       if (!onCanvas || !event.isPrimary || event.button !== 0 || touches.size > 1) return;
+      const direct = event.pointerType === "touch" || event.pointerType === "pen";
       gesture = {
         pointerId: event.pointerId,
         x: event.clientX,
         y: event.clientY,
-        direct: event.pointerType === "touch" || event.pointerType === "pen",
+        direct,
+        pickOnRelease: direct || assisted,
         released: false,
       };
     },
@@ -35,11 +38,11 @@ export function createScrewGestures() {
       touches.delete(event.pointerId);
       move(event);
       if (gesture?.pointerId !== event.pointerId) return false;
-      if (onCanvas && event.button === 0 && !gesture.direct) {
+      if (onCanvas && event.button === 0 && !gesture.pickOnRelease) {
         gesture.released = true;
         return false;
       }
-      const tapped = onCanvas && event.button === 0 && gesture.direct;
+      const tapped = onCanvas && event.button === 0 && gesture.pickOnRelease;
       gesture = null;
       return tapped;
     },

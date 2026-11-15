@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { DoubleSide, Group, InstancedMesh, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Raycaster, Vector3 } from "three";
+import { BoxGeometry, DoubleSide, Group, InstancedMesh, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Raycaster, Vector3 } from "three";
 import { FRONT_OPENINGS, PART_PIVOTS, PIECES } from "../src/scene/houseModel.ts";
 import { geometryFor } from "../src/scene/geometry.ts";
 import { MODEL_BATCHES } from "../src/scene/modelBatches.ts";
@@ -204,6 +204,16 @@ test("touch assistance finds a nearby instanced head but rejects covered, locked
   let game = createInitialState([screw]);
   assert.equal(pickNearbyScrew(scene, camera, rect, [211, 195], game), screw.id);
   assert.equal(pickNearbyScrew(scene, camera, rect, [220, 195], game), null, "Touches outside 44px target do not snap");
+  const rimCover = new Mesh(new BoxGeometry(0.18, 0.28, 0.02), material);
+  rimCover.position.set(-1.58, 1.49, 2.24);
+  rimCover.userData.pickBlocker = true;
+  scene.add(rimCover);
+  scene.updateMatrixWorld(true);
+  assert.equal(pickNearbyHead(scene, camera, rect, [199, 195], game), null, "The centre ray is obscured");
+  assert.equal(pickNearbyHead(scene, camera, rect, [199, 195], game, 22, true)?.id, screw.id, "A direct hit can ping the exposed rim");
+  assert.equal(pickNearbyHead(scene, camera, rect, [195, 195], game, 22, true), null, "A hidden head cannot be pinged");
+  scene.remove(rimCover);
+  rimCover.geometry.dispose();
   game = { ...game, screws: [{ ...screw, obstructedBy: ["roof-left-front-ridge"] }] };
   assert.equal(pickNearbyScrew(scene, camera, rect, [195, 195], game), null);
   assert.deepEqual(pickNearbyHead(scene, camera, rect, [195, 195], game), { id: screw.id, blocked: true }, "A visible but blocked head can receive wiggle feedback");

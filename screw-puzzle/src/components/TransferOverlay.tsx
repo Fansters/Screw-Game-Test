@@ -2,8 +2,11 @@ import { useLayoutEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { SCREW_COLORS } from "../game/colors";
 import type { PlaybackFrame } from "../animation/sequence";
+import type { CollectionState } from "../game/types";
 
-export default function TransferOverlay({ frame, getOrigin }: { frame: PlaybackFrame | null; getOrigin: (id: string) => [number, number] }) {
+export default function TransferOverlay({ frame, getOrigin }: {
+  frame: PlaybackFrame<CollectionState> | null; getOrigin: (id: string) => [number, number];
+}) {
   const token = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
     if (!frame || frame.kind !== "fly" || !frame.to || !token.current) return;

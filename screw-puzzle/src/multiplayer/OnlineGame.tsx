@@ -6,6 +6,7 @@ import GameScene from "../components/GameScene";
 import GameTimer from "../components/GameTimer";
 import GameUI from "../components/GameUI";
 import ResetDialog from "../components/ResetDialog";
+import TransferOverlay from "../components/TransferOverlay";
 import { useGameAudio } from "../components/useGameAudio";
 import { DEMO_LEVEL } from "../game/levels";
 import { canOpenBonusBox } from "../game/rules";
@@ -17,7 +18,7 @@ const wallClock = { now: Date.now };
 
 export default function OnlineGame({ onBack }: { onBack: () => void }) {
   const room = useRoom();
-  const { snapshot, player, connected, send, clockOffset } = room;
+  const { snapshot, player, connected, send, clockOffset, frame } = room;
   const id = snapshot?.id;
   const round = snapshot?.round ?? 0;
   const started = snapshot?.started ?? false;
@@ -26,14 +27,16 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   const scene = `${id}:${round}`;
   const [arrival, setArrival] = useState<{ view: CameraView; round: number }>();
   const [confirmReset, setConfirmReset] = useState(false);
-  const [pingMode, setPingMode] = useState(false);
+  const [pingScene, setPingScene] = useState<string | null>(null);
   const [expiredPing, setExpiredPing] = useState(0);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "manual">("idle");
   const [finished, setFinished] = useState<{ scene: string; parts: PartId[] }>();
   const { play, muted, enable, toggle } = useGameAudio(started);
   const lastSound = useRef({ scene, count: 0, matched: 0 });
+  const lastMatch = useRef<typeof frame>(null);
   const lastReady = useRef("");
   const project = useRef<(id: string) => [number, number]>(() => [0, 0]);
+  const getOrigin = useCallback((id: string) => project.current(id), []);
   const cameraReady = arrival?.view === view && arrival.round === round;
   const game = useMemo(() => {
     if (!snapshot) return null;
@@ -49,6 +52,8 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
     .filter((part) => finished?.scene !== scene || !finished.parts.includes(part));
   const orbitable = started && cameraReady && game?.status === "playing" && !confirmReset;
   const playable = orbitable && connected && !snapshot?.paused;
+  const canPing = playable && snapshot?.players.length === 2;
+  const pingMode = canPing && pingScene === scene;
   const removed = snapshot?.game.removed.length ?? 0;
   const matched = room.matched;
   const cameraArrived = useCallback((view: CameraView, round: number) => setArrival({ view, round }), []);
@@ -69,6 +74,11 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
     if (matched > previous.matched) play("match");
     lastSound.current = { scene, count: removed, matched };
   }, [play, scene, removed, matched]);
+  useEffect(() => {
+    if (frame?.kind !== "complete" || lastMatch.current === frame) return;
+    lastMatch.current = frame;
+    play("match");
+  }, [frame, play]);
   useEffect(() => { if (room.blocked) play("blocked"); }, [room.blocked, play]);
   useEffect(() => {
     if (!room.ping) return;
@@ -96,7 +106,7 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   }
   function reset() {
     setConfirmReset(false);
-    setPingMode(false);
+    setPingScene(null);
     send({ type: "reset", round });
   }
   async function copyInvite() {
@@ -109,15 +119,15 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   }
   const pingScrew = room.ping && room.ping.round === round && room.ping.sequence !== expiredPing
     ? game?.screws.find((screw) => screw.id === room.ping?.screw && !screw.removed) : undefined;
-  const result = game?.status === "lost" ? "lost" : game?.status === "won" && !fallingParts.length ? "won" : null;
+  const result = game?.status === "lost" ? "lost" : game?.status === "won" && !frame && !fallingParts.length ? "won" : null;
   const sampledAt = (snapshot?.serverTime ?? 0) - clockOffset;
   const completedLifeline = room.completedLifeline?.round === round ? room.completedLifeline.box : undefined;
   return <div className="game-layout" onContextMenu={(event) => event.preventDefault()}>
     {game && <GameScene key={id} logical={game} fallingParts={fallingParts} fallStarts={fallStarts} round={round}
       view={view} playable={playable} orbitable={orbitable} onCameraArrive={cameraArrived} onReady={sceneReady}
       onFallFinished={finishFall} onScrewSelect={select} onBlockedScrew={() => play("blocked")} projectorRef={project}
-      pingMode={pingMode} pingScrew={pingScrew} rejectedScrew={room.blocked}
-      onScrewPing={(screw) => { send({ type: "ping", round, screw }); setPingMode(false); }} />}
+      pingMode={pingMode} pingScrew={pingScrew} pingSequence={room.ping?.sequence} rejectedScrew={room.blocked}
+      onScrewPing={(screw) => { if (room.pingScrew(round, screw)) setPingScene(null); }} />}
     {!started && <section className="room-lobby" aria-label="Two-player room">
       <h2>Two-player room</h2>
       {snapshot ? <>
@@ -134,18 +144,23 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
       {!snapshot && <button className="room-button secondary" onClick={leave}>Back to solo</button>}
     </section>}
     {started && snapshot && game && <>
-      {cameraReady && <GameUI game={game} frame={null}
-        lifelines={snapshot.lifelines} completedLifeline={completedLifeline}
-        canBoost={playable && leader && !completedLifeline && snapshot.lifelines > 0 && canOpenBonusBox(game)}
-        onBoost={() => send({ type: "boost", round })}
-        role={!connected ? room.error || "Reconnecting…" : snapshot.paused ? "Partner reconnecting…" : leader ? "Room leader" : "Guest"}
-        ping={snapshot.players.length === 2 && <button className="room-button" aria-pressed={pingMode} disabled={!playable}
-          onClick={() => setPingMode(!pingMode)}>{pingMode ? "Tap a screw" : "Ping screw"}</button>} />}
+      <span className="room-status" role="status">
+        {!connected ? room.error || "Reconnecting…" : snapshot.paused ? "Partner reconnecting…" : leader ? "Game Leader" : "Guest"}
+      </span>
+      {cameraReady && <>
+        <GameUI game={frame?.game ?? game} frame={frame}
+          lifelines={snapshot.lifelines} completedLifeline={completedLifeline}
+          canBoost={playable && leader && !completedLifeline && !room.bonusAnimating && snapshot.lifelines > 0 && canOpenBonusBox(game)}
+          onBoost={() => send({ type: "boost", round })}
+          ping={snapshot.players.length === 2 && <button className="room-button" aria-pressed={pingMode} disabled={!canPing}
+            onClick={() => setPingScene(pingMode ? null : scene)}>{pingMode ? "Tap a screw" : "Ping screw"}</button>} />
+        <TransferOverlay frame={frame} getOrigin={getOrigin} />
+      </>}
       <GameTimer key={scene} clock={wallClock} startedAt={sampledAt - snapshot.elapsedMs}
         stoppedAt={snapshot.clockRunning ? room.disconnectedAt : sampledAt} removed={removed} total={game.screws.length} />
       <GameOverlay mode={result} onStart={start} onRestart={leader && connected ? () => setConfirmReset(true) : undefined} />
     </>}
-    {pingScrew && <span className="room-ping" role="status">Your partner pinged a {pingScrew.color} screw</span>}
+    {pingScrew && <span className="room-ping" role="status">{room.ping?.own ? "You" : "Your partner"} pinged a {pingScrew.color} screw</span>}
     {confirmReset && leader && <ResetDialog onCancel={() => setConfirmReset(false)} onConfirm={reset} />}
     <GameControls muted={muted} toggle={toggle} onReset={started && leader ? () => setConfirmReset(true) : undefined}
       resetDisabled={!connected} onLeave={snapshot ? leave : undefined} />
