@@ -36,7 +36,7 @@ Desktop fine-pointer layouts use a purple/gold screwdriver cursor. Its grip and 
 
 ## Natural difficulty and screw placement
 
-The added red roof/facade barriers and yard perimeter assembly have been removed. The original Christmas snow, lights, wreaths, candy canes, tree, gifts and Santa remain. No artificial cover assemblies are used to conceal screws.
+The cottage has Christmas snow, lights, wreaths, candy canes, a tree, gifts, and a candle lantern trimmed with holly and ribbon. All released parts fall and can settle on attached surfaces or stack on other debris. Tap any loose part to clear it in a puff of smoke and let pieces above it drop again.
 
 The level has **264** screws. Counts follow object size:
 

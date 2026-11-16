@@ -1,6 +1,6 @@
 import { CEILING_IDS, CHEST_PART_IDS, DINING_CHAIRS, FLOOR_BEAMS, FRAME_POSTS, GARLANDS, GROUND_IDS, PARTITION_IDS, PLINTH_IDS, ROOF_IDS, ROOF_SECTIONS, SCREW_COLOR_ORDER, SNOW_ROOFS, TILE_IDS, WALL_SECTIONS } from "./types.ts";
 import type { PartId, Screw } from "./types.ts";
-import { HOUSE, PART_PIVOTS, ROOF_PITCH } from "../scene/houseModel.ts";
+import { HOUSE, PART_PIVOTS, ROOF_PITCH, resizeFurniturePoint } from "../scene/houseModel.ts";
 import { findScrewObstructions } from "../scene/obstructions.ts";
 import { chestPosition } from "../scene/chestModel.ts";
 export { ROOF_PITCH } from "../scene/houseModel.ts";
@@ -12,7 +12,7 @@ type Vector = [number, number, number];
 type Placement = { position: Vector; normal: Vector; attachedTo: PartId; solutionAfter?: readonly PartId[] };
 const placements: Placement[] = [];
 function place(position: Vector, normal: Vector, attachedTo: PartId, solutionAfter?: readonly PartId[]) {
-  placements.push({ position, normal, attachedTo, solutionAfter });
+  placements.push({ position: resizeFurniturePoint(attachedTo, position), normal, attachedTo, solutionAfter });
 }
 function roof(side: number, run: number, z: number, part: PartId, offset = 0.095) {
   place([side * (run + Math.sin(ROOF_PITCH) * offset), HOUSE.ridge - run * HOUSE.roofRise / HOUSE.roofRun + Math.cos(ROOF_PITCH) * offset, z],
@@ -162,18 +162,20 @@ for (const side of [-1, 1]) {
 place([-3.2, 1.11, 2.91], [0, 0.3786328457, 0.9255469562], "christmas-tree");
 place([-3.2, 1.49, 3.10], [0, 0, 1], "tree-star");
 for (const [part, x, z] of [["gift-left", -3.2, 3.65], ["gift-right", 3.05, -0.65]] as const) place([x, -1.1, z + 0.37], [0, 0, 1], part);
-place([3.05, -0.7, -0.8], [0, 0, 1], "santa");
+place([3.42, -0.22, -1.30], [0, 0, 1], "holiday-lantern");
 for (const [part, side] of [["candy-left", -1], ["candy-right", 1]] as const) place([side * 0.6, -0.55, 2.63], [0, 0, 1], part);
 for (const x of [-0.55, 0.55]) place([x, -1.235, 2.5], [0, 1, 0], "porch-snow");
 place([-0.8, 4.67, 0.6], [0, 1, 0], "chimney-snow");
 for (const [part, side] of [["roof-lights-left", -1], ["roof-lights-right", 1]] as const) roof(side, 1.35, 2.1, part, 0.54);
 for (const part of ["present-bed", "present-desk", "present-sofa", "present-table"] as const) {
   const [x, y, z] = PART_PIVOTS[part];
+  // These pivots already include the furniture transform.
   if (part === "present-table") {
-    place([x, y - 0.02, z + 0.325], [0, 0, 1], part, lowerRoom);
+    placements.push({ position: [x, y - 0.01, z + 0.175], normal: [0, 0, 1], attachedTo: part, solutionAfter: lowerRoom });
     continue;
   }
-  place([x, y + 0.28, z + 0.18], [0, 1, 0], part, part === "present-bed" || part === "present-desk" ? upperRoom : lowerRoom);
+  placements.push({ position: [x, y + 0.15, z + 0.09], normal: [0, 1, 0], attachedTo: part,
+    solutionAfter: part === "present-bed" || part === "present-desk" ? upperRoom : lowerRoom });
 }
 const lighterTiles = new Set<PartId>(["tile-nw", "tile-n", "tile-ne", "tile-w", "tile-e", "tile-sw", "tile-se"]);
 for (const part of TILE_IDS) {
@@ -192,6 +194,15 @@ for (const part of TILE_IDS) {
   else if (x !== 0) place([x + Math.sign(x) * 1.395, -2.01, 0.7], [Math.sign(x), 0, 0], part, after);
   else place([0, -1.855, 0], [0, 1, 0], part, after);
 }
+place([-2, 0.627, 1.18], [0, 1, 0], "reading-chair", upperRoom);
+place([-2.10, 0.80, 1.435], [0, 0, -1], "reading-chair", upperRoom);
+place([-1.72, 0.409, -0.06], [0, 1, 0], "bedroom-rug", upperRoom);
+place([2.025, 1.228, -1.27], [0, 1, 0], "bookcase", upperRoom);
+place([2.135, 0.743, -1.071], [0, 0, 1], "bookcase", upperRoom);
+place([1.75, 0.409, -0.08], [0, 1, 0], "study-rug", upperRoom);
+place([1.39, -0.998, -0.93], [0, 1, 0], "sideboard", lowerRoom);
+place([0.94, -1.265, -0.676], [0, 0, 1], "sideboard", lowerRoom);
+place([-0.19, -1.501, -1.44], [0, 1, 0], "hall-runner", lowerRoom);
 export const DEMO_LEVEL: Screw[] = placements.map((placement, index) => ({ ...placement, solutionAfter: placement.solutionAfter ? [...placement.solutionAfter] : undefined,
   obstructedBy: findScrewObstructions(placement, SCREW_SCALE), id: `screw-${index + 1}`,
   // Quotas are whole triples; actual positions receive verified randomized colors.

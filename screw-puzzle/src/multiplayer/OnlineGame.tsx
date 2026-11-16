@@ -19,6 +19,7 @@ const wallClock = { now: Date.now };
 export default function OnlineGame({ onBack }: { onBack: () => void }) {
   const room = useRoom();
   const { snapshot, player, connected, send, clockOffset, frame } = room;
+  const looseNow = useCallback(() => Date.now() + clockOffset, [clockOffset]);
   const id = snapshot?.id;
   const round = snapshot?.round ?? 0;
   const started = snapshot?.started ?? false;
@@ -124,6 +125,7 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   const completedLifeline = room.completedLifeline?.round === round ? room.completedLifeline.box : undefined;
   return <div className="game-layout" onContextMenu={(event) => event.preventDefault()}>
     {game && <GameScene key={id} logical={game} fallingParts={fallingParts} fallStarts={fallStarts} round={round}
+      looseParts={snapshot?.looseParts ?? {}} looseNow={looseNow} onLooseDismiss={(part) => send({ type: "dismiss", round, part })}
       view={view} playable={playable} orbitable={orbitable} onCameraArrive={cameraArrived} onReady={sceneReady}
       onFallFinished={finishFall} onScrewSelect={select} onBlockedScrew={() => play("blocked")} projectorRef={project}
       pingMode={pingMode} pingScrew={pingScrew} pingSequence={room.ping?.sequence} rejectedScrew={room.blocked}

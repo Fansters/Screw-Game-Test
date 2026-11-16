@@ -50,7 +50,7 @@ export default function HelpDialog({ dialogRef }: { dialogRef: RefObject<HTMLDia
       </div>
       <div className="help-tips">
         <HelpTip icon="screw" title="Twist one out">
-          Tap or click an exposed screw to pull it out. Pull the last one on a part and down it goes, revealing more of the cottage.
+          Tap an exposed screw to pull it out. The last screw releases the part. If loose pieces pile up, tap them to clear them in a puff.
         </HelpTip>
         <HelpTip icon="match" title="Match a triple">
           You start with {ACTIVE_BOX_COUNT} colored boxes. Collect {MATCH_SIZE} screws of the same color to clear a box and bring in the next one.

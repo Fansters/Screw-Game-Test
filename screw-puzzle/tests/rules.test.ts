@@ -11,6 +11,7 @@ import type { RunState } from "../src/animation/run.ts";
 import { buildSequence } from "../src/animation/sequence.ts";
 import { PIECES } from "../src/scene/houseModel.ts";
 import { geometryFor } from "../src/scene/geometry.ts";
+import { detachLooseParts, dismissLoosePart, findLooseBlocker, isLooseVisible, loosePartY, looseY } from "../src/scene/loosePhysics.ts";
 import { findExposedScrews } from "../src/scene/exposure.ts";
 
 function fixture(counts: Partial<Record<ScrewColor, number>> = { red: 6, blue: 6, yellow: 6, green: 6 }): Screw[] {
@@ -98,19 +99,20 @@ function snowRevealRun() {
   let run = start(createRun(createInitialState(DEMO_LEVEL.map((screw) => ({ ...screw, color: "red" })))));
   for (const screw of run.logical.screws.filter((screw) => screw.attachedTo === "roof-lights-left")) run = runReducer(run, { type: "select", id: screw.id, now: 0 });
   run = finishFalls(drain(run));
+  run = runReducer(run, { type: "dismiss", part: "roof-lights-left", now: 800 });
   const target = run.logical.screws.find((screw) => screw.attachedTo?.startsWith("roof-left-front") && screw.obstructedBy?.includes("snow-left-front"))!;
   return { run, target };
 }
 
-test("all 270 screws release 137 objects, with twelve whole-triple color quotas", () => {
-  assert.equal(DEMO_LEVEL.length, 270);
+test("all 279 screws release 143 objects, with twelve whole-triple color quotas", () => {
+  assert.equal(DEMO_LEVEL.length, 279);
   assert.equal(new Set(DEMO_LEVEL.map((screw) => screw.id)).size, DEMO_LEVEL.length);
   assert.equal(DEMO_LEVEL.filter((screw) => screw.attachedTo).length, DEMO_LEVEL.length);
-  assert.equal(PART_IDS.length, 137);
+  assert.equal(PART_IDS.length, 143);
   assert.equal(SCREW_COLOR_ORDER.length, 12);
   const counts = SCREW_COLOR_ORDER.map((color) => DEMO_LEVEL.filter((screw) => screw.color === color).length);
-  assert.equal(counts.filter((count) => count === 24).length, 6);
-  assert.equal(counts.filter((count) => count === 21).length, 6);
+  assert.equal(counts.filter((count) => count === 24).length, 9);
+  assert.equal(counts.filter((count) => count === 21).length, 3);
   assert.equal(SCREW_SCALE, 0.275 * 1.25 * 1.15);
   assert.ok(PIECES.every((piece) => PART_IDS.includes(piece.part)));
   assert.ok(DEMO_LEVEL.every((screw) => Math.abs(Math.hypot(...screw.normal) - 1) < 1e-10));
@@ -322,18 +324,19 @@ test("terminal loss is immediate even with pending animations, and reset ignores
   assert.equal(runReducer(run, { type: "begin", job: stale }), run);
 });
 
-test("falls start during the collection queue and only finished covers stop blocking", () => {
+test("falls start during the collection queue and a resting cover blocks until cleared", () => {
   const fixture = snowRevealRun();
   let run = fixture.run;
-  for (const screw of run.logical.screws.filter((screw) => screw.attachedTo === "snow-left-front")) run = runReducer(run, { type: "select", id: screw.id, now: 0 });
+  for (const screw of run.logical.screws.filter((screw) => screw.attachedTo === "snow-left-front")) run = runReducer(run, { type: "select", id: screw.id, now: 900 });
   assert.ok(run.logical.removedParts.includes("snow-left-front"));
   assert.deepEqual(run.fallingParts, ["snow-left-front"]);
   assert.ok(!run.display.removedParts.includes("snow-left-front"));
-  assert.equal(runReducer(run, { type: "select", id: fixture.target.id, now: 1 }), run);
+  assert.equal(runReducer(run, { type: "select", id: fixture.target.id, now: 901 }), run);
   const jobs = run.jobs;
   run = finishFalls(run);
   assert.equal(run.jobs, jobs, "Finishing a fall must leave the collection queue in place");
-  const accepted = runReducer(run, { type: "select", id: fixture.target.id, now: 2 });
+  run = runReducer(run, { type: "dismiss", part: "snow-left-front", now: 1800 });
+  const accepted = runReducer(run, { type: "select", id: fixture.target.id, now: 1801 });
   assert.equal(accepted.jobs.length, jobs.length + 1);
 });
 
@@ -445,10 +448,14 @@ test("victory stops the timer on the final accepted screw before queued animatio
 test("a full generated house also wins through the concurrent presentation controller", () => {
   const puzzle = generatePuzzle(404);
   let run = start(createRun(puzzle.state));
-  for (const id of puzzle.solution) {
+  for (const [index, id] of puzzle.solution.entries()) {
     const screw = run.logical.screws.find((candidate) => candidate.id === id)!;
     if (!isScrewAccessible({ ...run.logical, removedParts: settledParts(run) }, screw)) run = finishFalls(run);
-    run = runReducer(run, { type: "select", id, now: 0 });
+    const count = run.logical.removedParts.length;
+    const now = index * 1000;
+    run = runReducer(run, { type: "select", id, now });
+    const detached = run.logical.removedParts[count];
+    if (detached) run = runReducer(run, { type: "dismiss", part: detached, now: now + 850 });
   }
   assert.equal(run.logical.status, "won");
   run = finishFalls(drain(run));
@@ -494,10 +501,56 @@ test("every screw in a generated solution has a clear view through the actual ho
   assert.deepEqual(blocked, []);
 });
 
+test("loose props settle on intact supports, drop when a support goes, and can be dismissed once", () => {
+  const id = "table-vase";
+  const loose = detachLooseParts({}, id, [id], 1000);
+  const motion = loose[id]!;
+  assert.equal(motion.support, "table");
+  assert.ok(looseY(motion, 1150) > motion.fromY);
+  assert.equal(looseY(motion, 2000), motion.toY);
+  assert.equal(dismissLoosePart(loose, id, [id], 900), loose);
+  const table = detachLooseParts(loose, "table", [id, "table"], 2000);
+  assert.equal(table[id]!.support, "table");
+  assert.ok(loosePartY(table, id, 2100) > motion.toY, "The vase follows the table's bounce");
+  const falling = dismissLoosePart(table, "table", [id, "table"], 2400);
+  assert.equal(falling[id]!.support, "ground-se");
+  assert.equal(falling[id]!.fromY, table[id]!.toY);
+  assert.ok(looseY(falling[id]!, 2650) < motion.toY);
+  const poof = dismissLoosePart(falling, id, [id, "table"], 2650);
+  assert.equal(poof[id]!.poof?.y, looseY(falling[id]!, 2650));
+  assert.equal(dismissLoosePart(poof, id, [id, "table"], 2700), poof);
+  assert.equal(isLooseVisible(poof[id]!, 2700), false);
+  const offMap = detachLooseParts({}, id, PART_IDS, 0)[id]!;
+  assert.equal(isLooseVisible(offMap, 5000), false);
+});
+
+test("a roof section lands on the debris pile and drops again when its support is tapped away", () => {
+  const roof = "roof-left-front-ridge", ceiling = "ceiling-front";
+  const removed = PART_IDS.filter((part) => part !== "ground-sw" && part !== "ground-se");
+  const lower = detachLooseParts({}, ceiling, removed, 1000);
+  const pile = detachLooseParts(lower, roof, removed, 3000);
+  const roofMotion = pile[roof]!;
+  assert.equal(roofMotion.support, ceiling);
+  assert.ok(roofMotion.toY < roofMotion.fromY - 2, "The roof drops into the ground-floor room");
+  const cleared = dismissLoosePart(pile, ceiling, removed, 5000);
+  assert.equal(cleared[roof]?.fromY, roofMotion.toY);
+  assert.ok(cleared[roof]!.toY < roofMotion.toY);
+});
+
+test("the new furnishings cover floor screw heads and the loose sideboard must be cleared", () => {
+  for (const part of ["bedroom-rug", "study-rug", "reading-chair", "bookcase", "hall-runner", "sideboard"] as const) {
+    assert.ok(DEMO_LEVEL.some((screw) => /^(floor|ground)-/.test(screw.attachedTo ?? "") && screw.obstructedBy?.includes(part)), part);
+  }
+  const screw = DEMO_LEVEL.find((screw) => screw.attachedTo === "ground-ne" && screw.obstructedBy?.includes("sideboard"))!;
+  const loose = detachLooseParts({}, "sideboard", ["sideboard"], 0);
+  assert.equal(findLooseBlocker(loose, screw, SCREW_SCALE, 700), "sideboard");
+  assert.equal(findLooseBlocker(dismissLoosePart(loose, "sideboard", ["sideboard"], 700), screw, SCREW_SCALE, 701), undefined);
+});
+
 test("the natural opening stays below ten percent across eighty views and requires matching-color reveals", () => {
   const initial = generatePuzzle(123).state;
   const exposed = findExposedScrews(initial);
-  assert.equal(exposed.length, 24);
+  assert.equal(exposed.length, 25);
   assert.ok(exposed.length / initial.screws.length < 0.1);
   assert.deepEqual(new Set(exposed), new Set(initial.screws.filter((screw) => !screw.obstructedBy?.length && !screw.solutionAfter?.length).map((screw) => screw.id)));
   for (const owner of ["wall-front-upper-1", "partition-upper-left", "bed"] as const) {

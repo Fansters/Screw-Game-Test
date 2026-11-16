@@ -6,6 +6,9 @@ import { BONUS_SLOT, isScrewAccessible, planBonusBox, planScrewRemoval } from ".
 import type { CollectionState, GameState, MatchBox, MoveEvent, PartId } from "../src/game/types.ts";
 import type { CollectionMove, RoomCommand, RoomGame, RoomNotice, RoomSnapshot } from "../src/multiplayer/protocol.ts";
 import { PING_COOLDOWN_MS, ROOM_LEVEL_VERSION, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
+import { detachLooseParts, dismissLoosePart, findLooseBlocker } from "../src/scene/loosePhysics.ts";
+import type { LooseParts } from "../src/scene/loosePhysics.ts";
+import { SCREW_SCALE } from "../src/game/levels.ts";
 
 export const RECONNECT_MS = 30_000;
 export const FALL_LEAD_MS = 62.5;
@@ -20,7 +23,7 @@ type Seat = {
 type Room = {
   id: string; seats: Seat[]; soloAllowed: boolean; round: number; seed: number; game: GameState;
   startedAt: number | null; lifelines: number; fallStarts: Map<PartId, number>;
-  elapsedMs: number; clockSince: number | null;
+  elapsedMs: number; clockSince: number | null; looseParts: LooseParts;
 };
 
 function wireGame({ screws, ...game }: GameState): RoomGame {
@@ -52,6 +55,7 @@ function snapshot(room: Room, now: number): RoomSnapshot {
     started: room.startedAt !== null, canStart: canStart(room), paused: paused(room), lifelines: room.lifelines,
     game: wireGame(room.game),
     fallStarts: Object.fromEntries([...room.fallStarts].filter(([, at]) => now < at + FALL_DURATION_MS)),
+    looseParts: room.looseParts,
     elapsedMs: room.elapsedMs + (room.clockSince === null ? 0 : now - room.clockSince),
     clockRunning: room.clockSince !== null, serverTime: now,
   };
@@ -130,7 +134,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
         const seed = nextSeed();
         const room: Room = { id: secret(), seats: [], soloAllowed: false, round: 0, seed,
           game: generatePuzzle(seed).state, startedAt: null, lifelines: LIFELINE_COUNT, fallStarts: new Map(),
-          elapsedMs: 0, clockSince: null };
+          elapsedMs: 0, clockSince: null, looseParts: {} };
         rooms.set(room.id, room);
         attach(peer, room, addSeat(room));
         return;
@@ -168,6 +172,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
       room.startedAt = null;
       room.lifelines = LIFELINE_COUNT;
       room.fallStarts.clear();
+      room.looseParts = {};
       room.elapsedMs = 0;
       room.clockSince = null;
       for (const member of room.seats) {
@@ -185,6 +190,15 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     }
     if (room.startedAt === null || !seat.ready ||
         paused(room) || room.game.status !== "playing") return;
+    if (command.type === "dismiss") {
+      const looseParts = dismissLoosePart(room.looseParts, command.part, room.game.removedParts, time);
+      if (looseParts !== room.looseParts) {
+        room.looseParts = looseParts;
+        room.fallStarts.delete(command.part);
+        publish(room);
+      }
+      return;
+    }
     if (command.type === "ping") {
       if (time - seat.lastPing < PING_COOLDOWN_MS ||
           !room.game.screws.some((screw) => screw.id === command.screw && !screw.removed)) return;
@@ -208,13 +222,18 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     const screw = room.game.screws.find((entry) => entry.id === command.screw);
     if (!screw || screw.removed) return;
     const removedParts = room.game.removedParts.filter((part) => time >= (room.fallStarts.get(part) ?? -Infinity) + FALL_DURATION_MS);
-    if (!isScrewAccessible({ ...room.game, removedParts }, screw)) return reject(peer, "That screw is blocked.", screw.id);
+    if (!isScrewAccessible({ ...room.game, removedParts }, screw) ||
+        findLooseBlocker(room.looseParts, screw, SCREW_SCALE, time)) return reject(peer, "That screw is blocked.", screw.id);
     const { finalState, events } = planScrewRemoval(room.game, screw.id);
     if (finalState === room.game) return;
     seat.collected += 1;
     room.clockSince ??= time;
     for (const event of events) {
-      if (event.kind === "detach") room.fallStarts.set(event.part, time + FALL_LEAD_MS);
+      if (event.kind === "detach") {
+        const startAt = time + FALL_LEAD_MS;
+        room.fallStarts.set(event.part, startAt);
+        room.looseParts = detachLooseParts(room.looseParts, event.part, finalState.removedParts, startAt);
+      }
     }
     commit(room, finalState, events);
   }

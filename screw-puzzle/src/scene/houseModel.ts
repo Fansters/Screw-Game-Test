@@ -119,9 +119,20 @@ box([0, -1.82, 2.65], [1.55, 0.14, 0.34], "#c9c3b2", "steps");
 for (const side of [-1, 1]) {
   const part = side === -1 ? "planter-left" : "planter-right";
   round("cylinder", [side * 2.9, -1.65, 1.9], [0.35, 0.5, 0.35], "#bb8463", part);
-  round("cylinder", [side * 2.9, -1.38, 1.9], [0.4, 0.1, 0.4], "#cc9570", part);
-  round("ico", [side * 2.9, -1.05, 1.9], [0.4, 0.42, 0.4], "#68a780", part);
-  for (const dx of [-0.18, 0, 0.18]) round("ico", [side * 2.9 + dx, -0.78, 2], [0.07, 0.07, 0.07], "#f3b4b1", part);
+  round("cylinder", [side * 2.9, -1.865, 1.9], [0.327, 0.085, 0.327], "#a76a50", part);
+  round("cylinder", [side * 2.9, -1.39, 1.9], [0.40, 0.09, 0.40], "#c98868", part);
+  round("cylinder", [side * 2.9, -1.345, 1.9], [0.382, 0.036, 0.382], "#dda485", part);
+  round("cylinder", [side * 2.9, -1.317, 1.9], [0.319, 0.035, 0.319], "#775c4a", part);
+  for (let index = 0; index < 12; index += 1) {
+    const angle = (index + 0.5) * Math.PI / 6;
+    const dx = Math.sin(angle), dz = Math.cos(angle);
+    box([side * 2.9 + dx * 0.329, -1.615, 1.9 + dz * 0.329], [0.037, 0.31, 0.024], "#ca9473", part, [0, angle, 0]);
+    const height = -1.08 + (index % 3) * 0.10;
+    round("ico", [side * 2.9 + dx * 0.23, height, 1.9 + dz * 0.23],
+      [0.16, 0.19, 0.16], index % 2 ? "#77ab80" : "#518c6b", part);
+    if (index % 3 === 0) round("ico", [side * 2.9 + dx * 0.30, height + 0.13, 1.9 + dz * 0.30], [0.042, 0.046, 0.042], "#e86c87", part);
+  }
+  round("ico", [side * 2.9, -0.93, 1.9], [0.25, 0.25, 0.25], "#669b70", part);
 }
 // Removable upper floor wings surround an open stairwell.
 box([-1.375, 0.25, 0], [1.85, 0.12, 3.4], "#d0ac79", "floor-left");
@@ -206,3 +217,32 @@ for (const x of [1.22, 1.3, 1.38]) {
 }
 addChristmasDetails(PIECES, PART_PIVOTS, ROOF_PITCH);
 addInteriors(PIECES, PART_PIVOTS);
+
+// Group tabletop props and dining chairs with their furniture so their feet
+// and bases stay on the right surfaces when the room is scaled.
+const furnitureFamilies = [
+  { base: 0.31, ids: ["bed", "present-bed"] },
+  { base: 0.31, ids: ["wardrobe"] },
+  { base: 0.31, ids: ["desk", "present-desk"] },
+  { base: -1.6, ids: ["sofa", "present-sofa"] },
+  { base: -1.6, ids: ["kitchen"] },
+  { base: -1.6, ids: ["table", "table-vase", "present-table", ...DINING_CHAIRS.map(({ id }) => id)] },
+] as const;
+const furnitureAnchors = new Map<PartId, Vector>();
+const FURNITURE_SCALE = 0.5;
+for (const { base, ids } of furnitureFamilies) {
+  const [x, , z] = PART_PIVOTS[ids[0]];
+  for (const id of ids) furnitureAnchors.set(id, [x, base, z]);
+}
+export function resizeFurniturePoint(part: PartId, point: Vector): Vector {
+  const anchor = furnitureAnchors.get(part);
+  if (!anchor) return point;
+  const [x, y, z] = anchor;
+  return [x + (point[0] - x) * FURNITURE_SCALE, y + (point[1] - y) * FURNITURE_SCALE, z + (point[2] - z) * FURNITURE_SCALE];
+}
+for (const part of furnitureAnchors.keys()) PART_PIVOTS[part] = resizeFurniturePoint(part, PART_PIVOTS[part]);
+for (const piece of PIECES) {
+  if (!furnitureAnchors.has(piece.part)) continue;
+  piece.position = resizeFurniturePoint(piece.part, piece.position);
+  piece.size = [piece.size[0] * FURNITURE_SCALE, piece.size[1] * FURNITURE_SCALE, piece.size[2] * FURNITURE_SCALE];
+}

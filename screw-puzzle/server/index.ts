@@ -3,6 +3,7 @@ import { env } from "node:process";
 import { WebSocket, WebSocketServer } from "ws";
 import { createRoomServer } from "./room.ts";
 import type { RoomCommand, RoomNotice } from "../src/multiplayer/protocol.ts";
+import { isLevelPart } from "../src/scene/loosePhysics.ts";
 
 function parseCommand(data: string): RoomCommand | null {
   const value: unknown = JSON.parse(data);
@@ -27,9 +28,14 @@ function parseCommand(data: string): RoomCommand | null {
     case "start":
     case "reset":
     case "boost":
+    case "dismiss":
     case "ping":
     case "select":
       if (!("round" in value) || typeof value.round !== "number" || !Number.isSafeInteger(value.round)) break;
+      if (value.type === "dismiss") {
+        if ("part" in value && isLevelPart(value.part)) return { type: value.type, round: value.round, part: value.part };
+        break;
+      }
       if (value.type !== "ping" && value.type !== "select") return { type: value.type, round: value.round };
       if ("screw" in value && typeof value.screw === "string" && /^screw-\d{1,6}$/.test(value.screw)) {
         return { type: value.type, round: value.round, screw: value.screw };

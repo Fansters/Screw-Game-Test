@@ -80,6 +80,7 @@ test("a cover unlocks from a shared fall timestamp and pings go to the partner",
   leader.send({ type: "select", round: 0, screw: chimney.id });
   assert.equal(leader.notices.at(-1)?.type, "rejected");
   advance(1);
+  guest.send({ type: "dismiss", round: 0, part: "chimney-snow" });
   leader.send({ type: "select", round: 0, screw: chimney.id });
   assert.ok(guest.state().game.removed.includes(chimney.id));
 });
@@ -118,8 +119,12 @@ test("both seats can finish the same seeded cottage", () => {
   const { leader, guest, advance } = fixture();
   const { solution } = generatePuzzle(leader.state().seed);
   for (const [index, screw] of solution.entries()) {
-    (index % 2 ? guest : leader).send({ type: "select", round: 0, screw });
+    const peer = index % 2 ? guest : leader;
+    const count = leader.state().game.removedParts.length;
+    peer.send({ type: "select", round: 0, screw });
     advance(FALL_LEAD_MS + FALL_DURATION_MS);
+    const part = leader.state().game.removedParts[count];
+    if (part) peer.send({ type: "dismiss", round: 0, part });
   }
   assert.equal(guest.state().game.status, "won");
   assert.equal(leader.state().game.removed.length, DEMO_LEVEL.length);
@@ -135,7 +140,9 @@ test("rapid moves from both seats replay the third screw before completing and r
   let playback = collectionPlayback(emptyPlayback, { type: "reset", scene });
   let cleared = 0;
   for (const [index, screw] of solution.entries()) {
-    (index % 2 ? guest : leader).send({ type: "select", round: 0, screw });
+    const peer = index % 2 ? guest : leader;
+    const count = leader.state().game.removedParts.length;
+    peer.send({ type: "select", round: 0, screw });
     advance(FALL_LEAD_MS + FALL_DURATION_MS);
     const notice = leader.notices.at(-1)!;
     assert.deepEqual(notice, guest.notices.at(-1));
@@ -146,6 +153,8 @@ test("rapid moves from both seats replay the third screw before completing and r
     if (first) assert.equal(playback.queue[0], first);
     cleared = notice.snapshot.game.clearedCount;
     if (cleared) break;
+    const part = notice.snapshot.game.removedParts[count];
+    if (part) peer.send({ type: "dismiss", round: 0, part });
   }
   assert.ok(cleared > 0 && leader.notices.length > start + 1);
   const [first] = playback.queue;
@@ -174,17 +183,43 @@ test("a browser with an older cottage layout receives a version error", () => {
 test("both browsers receive the filled lifeline for animation when opening completes it", () => {
   const { leader, guest } = fixture(1);
   const opening = leader.state().game.colors;
-  const cyan = DEMO_LEVEL.filter((screw, index) => opening[index] === "cyan" && !screw.obstructedBy?.length).slice(0, 3);
-  assert.equal(cyan.length, 3);
-  assert.ok(leader.state().game.boxes.every((box) => box?.color !== "cyan"));
-  for (const screw of cyan) guest.send({ type: "select", round: 0, screw: screw.id });
+  const color = "black";
+  const waiting = DEMO_LEVEL.filter((screw, index) => opening[index] === color && !screw.obstructedBy?.length).slice(0, 3);
+  assert.equal(waiting.length, 3);
+  assert.ok(leader.state().game.boxes.every((box) => box?.color !== color));
+  for (const screw of waiting) guest.send({ type: "select", round: 0, screw: screw.id });
   leader.send({ type: "boost", round: 0 });
   for (const peer of [leader, guest]) {
     const notice = peer.notices.findLast((notice) => notice.type === "state")!;
-    assert.equal(notice.completedLifeline?.color, "cyan");
+    assert.equal(notice.completedLifeline?.color, color);
     assert.equal(notice.completedLifeline?.screws.length, 3);
     assert.deepEqual(notice.moves?.map(({ kind }) => kind), ["bonus-open", "transfer", "transfer", "transfer", "complete"]);
     assert.equal(notice.snapshot.game.boxes.length, 2);
     assert.equal(notice.snapshot.game.tray.length, 0);
   }
+});
+
+test("both seats see the same loose lantern and one shared poof", () => {
+  const { leader, guest, advance } = fixture(1);
+  const part = "holiday-lantern";
+  const screw = DEMO_LEVEL.find((screw) => screw.attachedTo === part)!;
+  guest.send({ type: "dismiss", round: 0, part });
+  assert.deepEqual(leader.state().looseParts, {});
+  leader.send({ type: "select", round: 0, screw: screw.id });
+  const motion = leader.state().looseParts[part]!;
+  assert.equal(motion.support, "snowbank-right");
+  assert.equal(motion.startedAt, leader.state().serverTime + FALL_LEAD_MS);
+  guest.send({ type: "dismiss", round: 0, part });
+  assert.equal(leader.state().looseParts[part]!.poof, undefined);
+  advance(450);
+  guest.send({ type: "dismiss", round: 0, part });
+  assert.ok(leader.state().looseParts[part]!.poof);
+  assert.equal(leader.state().fallStarts[part], undefined);
+  assert.deepEqual(guest.state().looseParts, leader.state().looseParts);
+  const length = leader.notices.length;
+  leader.send({ type: "dismiss", round: 0, part });
+  assert.equal(leader.notices.length, length);
+  assert.deepEqual(leader.state().players.map(({ collected }) => collected), [1, 0]);
+  leader.send({ type: "reset", round: 0 });
+  assert.deepEqual(guest.state().looseParts, {});
 });

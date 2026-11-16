@@ -6,13 +6,14 @@ import { isScrewAccessible } from "../game/rules.ts";
 
 type CanvasRect = { left: number; top: number; width: number; height: number };
 type Point = [number, number];
-type Target = { kind: "screw"; id: string } | { kind: "part"; id: PartId };
+type Target = { kind: "screw"; id: string } | { kind: "part" | "loose"; id: PartId };
 type Surface = Target | { kind: "blocked" };
 
 function hitTarget(hit: Intersection): Surface | undefined {
   for (let object: Object3D | null = hit.object; object; object = object.parent) {
     if (object.userData.pickBlocker) {
       const part: PartId | undefined = object.userData.part;
+      if (part && object.userData.loose) return object.parent?.visible ? { kind: "loose", id: part } : undefined;
       return part ? { kind: "part", id: part } : { kind: "blocked" };
     }
     const screw: string | undefined = hit.instanceId === undefined ? object.userData.screwId : object.userData.screwIds?.[hit.instanceId];
@@ -36,6 +37,7 @@ export function pickSceneTarget(scene: Object3D, camera: Camera, rect: CanvasRec
   const ray = new Raycaster();
   pointRay(ray, camera, rect, point);
   const hit = firstHit(ray, scene);
+  if (hit?.kind === "loose") return hit;
   if (hit?.kind === "screw") {
     const screw = game.screws.find((screw) => screw.id === hit.id);
     return screw && !screw.removed && ray.ray.direction.dot(new Vector3(...screw.normal)) < 0 ? hit : null;

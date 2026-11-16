@@ -20,6 +20,7 @@ export const FRAME_POSTS = (["nw", "ne", "sw", "se"] as const).flatMap((corner) 
     x: corner.endsWith("w") ? -2.37 : 2.37, z: corner.startsWith("n") ? -1.91 : 1.91,
   })));
 export const FLOOR_BEAMS = ["beam-front", "beam-back"] as const;
+export const INTERIOR_PROPS = ["reading-chair", "bedroom-rug", "bookcase", "study-rug", "sideboard", "hall-runner"] as const;
 export const DINING_CHAIRS = [
   { id: "chair-front", z: 1.5, outward: 1 },
   { id: "chair-back", z: -0.3, outward: -1 },
@@ -35,9 +36,9 @@ export const GARLANDS = (["front", "back", "left", "right"] as const).flatMap((f
 export const DECOR_IDS = [...SNOW_ROOFS.map((part) => part.id), ...GARLANDS.map((part) => part.id),
   "icicles-front", "icicles-back", "snowbank-front", "snowbank-back", "snowbank-left", "snowbank-right",
   "wreath-upper-left", "wreath-upper-right", "wreath-lower-left", "wreath-lower-right", "door-bow",
-  "christmas-tree", "tree-star", "gift-left", "santa", "gift-right", "candy-left", "candy-right", "porch-snow", "chimney-snow",
+  "christmas-tree", "tree-star", "gift-left", "holiday-lantern", "gift-right", "candy-left", "candy-right", "porch-snow", "chimney-snow",
   "roof-lights-left", "roof-lights-right", "present-bed", "present-desk", "present-sofa", "present-table"] as const;
-export const PART_IDS = [...HOUSE_PART_IDS, ...DINING_CHAIRS.map((chair) => chair.id), "table-vase", ...FRAME_POSTS.map((post) => post.id), ...FLOOR_BEAMS, ...GROUND_IDS, ...PLINTH_IDS, ...TILE_IDS, ...DECOR_IDS] as const;
+export const PART_IDS = [...HOUSE_PART_IDS, ...DINING_CHAIRS.map((chair) => chair.id), "table-vase", ...FRAME_POSTS.map((post) => post.id), ...FLOOR_BEAMS, ...GROUND_IDS, ...PLINTH_IDS, ...TILE_IDS, ...DECOR_IDS, ...INTERIOR_PROPS] as const;
 export type PartId = typeof PART_IDS[number];
 
 export type Screw = {

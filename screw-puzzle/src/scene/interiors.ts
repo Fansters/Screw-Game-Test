@@ -33,4 +33,45 @@ export function addInteriors(pieces: Piece[], pivots: Record<PartId, Vector>) {
       box([side * 1.45, bottom + 0.06, -0.4], [1.68, 0.1, 0.145], "#9f8064", part);
     }
   }
+
+  pivots["reading-chair"] = [-2, 0.51, 1.27];
+  box([-2, 0.47, 1.27], [0.52, 0.14, 0.52], "#aa775c", "reading-chair");
+  box([-2, 0.565, 1.23], [0.44, 0.09, 0.40], "#7caaa4", "reading-chair");
+  box([-2, 0.71, 1.49], [0.50, 0.46, 0.09], "#aa775c", "reading-chair");
+  for (const x of [-2.2, -1.8]) {
+    box([x, 0.65, 1.28], [0.075, 0.095, 0.47], "#93624f", "reading-chair");
+    for (const z of [1.09, 1.46]) box([x, 0.39, z], [0.075, 0.16, 0.075], "#93624f", "reading-chair");
+  }
+
+  pivots.bookcase = [2.045, 0.76, -1.31];
+  box([2.045, 0.76, -1.53], [0.48, 0.9, 0.061], "#9c6f58", "bookcase");
+  for (const x of [1.825, 2.265]) box([x, 0.76, -1.31], [0.063, 0.9, 0.46], "#ac7d5e", "bookcase");
+  for (const y of [0.35, 0.73, 1.18]) box([2.045, y, -1.31], [0.48, 0.077, 0.46], "#c3926b", "bookcase");
+  for (const [index, color] of ["#ca6176", "#d8b65e", "#7395af", "#7a9271", "#a786ba"].entries()) {
+    const height = 0.21 + (index % 3) * 0.037;
+    box([1.885 + index * 0.067, 0.77 + height / 2, -1.36], [0.048, height, 0.21], color, "bookcase");
+  }
+
+  pivots.sideboard = [1.18, -1.28, -0.92];
+  box([1.18, -1.33, -0.93], [0.80, 0.50, 0.40], "#986851", "sideboard");
+  box([1.18, -1.045, -0.93], [0.85, 0.074, 0.47], "#c39671", "sideboard");
+  for (const y of [-1.46, -1.25]) {
+    box([1.18, y, -0.71], [0.72, 0.165, 0.045], "#b5856a", "sideboard");
+    box([1.18, y + 0.028, -0.68], [0.15, 0.032, 0.039], "#e4bb77", "sideboard");
+  }
+
+  for (const [part, x, y, z, width, depth, color] of [
+    ["bedroom-rug", -1.42, 0.355, -0.06, 1.22, 0.52, "#ad789b"],
+    ["study-rug", 1.44, 0.355, -0.05, 1.20, 0.64, "#73a196"],
+    ["hall-runner", 0, -1.555, -1.46, 1.02, 0.39, "#bd776f"],
+  ] as const) {
+    pivots[part] = [x, y, z];
+    box([x, y, z], [width, 0.09, depth], color, part);
+    for (const side of [-1, 1]) {
+      box([x, y + 0.046, z + side * (depth / 2 - 0.033)], [width - 0.08, 0.009, 0.023], "#e8c8a8", part);
+      for (const along of [-0.33, -0.21, -0.1, 0, 0.1, 0.21, 0.33]) {
+        box([x + along, y - 0.006, z + side * depth / 2], [0.026, 0.017, 0.077], "#b68b83", part);
+      }
+    }
+  }
 }

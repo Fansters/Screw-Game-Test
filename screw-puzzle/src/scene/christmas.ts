@@ -116,17 +116,29 @@ export function addChristmasDetails(pieces: Piece[], pivots: Record<PartId, Vect
   }
   gift("gift-left", [-3.2, -0.85, 3.65], "#a779bd");
   gift("gift-right", [3.05, -0.85, -0.65], red);
-  pivots.santa = [3.05, -0.55, -1.3];
-  box([3.05, -0.65, -1.3], [0.95, 1.85, 0.1], "#c09b75", "santa");
-  round("ico", [3.05, -0.65, -1.13], [0.44, 0.6, 0.35], red, "santa");
-  box([3.05, -0.82, -0.9], [0.78, 0.12, 0.12], "#6b5362", "santa");
-  box([3.05, -0.82, -0.82], [0.2, 0.18, 0.05], gold, "santa");
-  round("ico", [3.05, 0.02, -1.12], [0.28, 0.28, 0.25], "#efc3a5", "santa");
-  round("ico", [3.05, -0.09, -0.89], [0.27, 0.24, 0.13], snow, "santa");
-  round("cone", [3.05, 0.37, -1.12], [0.29, 0.55, 0.29], red, "santa");
-  round("ico", [3.05, 0.66, -1.12], [0.1, 0.1, 0.1], snow, "santa");
-  for (const dx of [-0.09, 0.09]) round("ico", [3.05 + dx, 0.08, -0.883], [0.025, 0.025, 0.025], "#665066", "santa");
-  for (const dx of [-0.21, 0.21]) box([3.05 + dx, -1.48, -1.09], [0.28, 0.18, 0.4], "#665066", "santa");
+  const lantern = "holiday-lantern", iron = "#394e4b";
+  const lx = 3.42, lz = -1.62;
+  pivots[lantern] = [lx, -0.63, lz];
+  for (const [y, size] of [[-1.095, 0.74], [-1.02, 0.63], [-0.22, 0.62], [-0.12, 0.52], [-0.043, 0.35]]) {
+    box([lx, y, lz], [size, 0.085, size], iron, lantern);
+  }
+  for (const dx of [-0.26, 0.26]) for (const dz of [-0.26, 0.26]) {
+    box([lx + dx, -0.62, lz + dz], [0.047, 0.82, 0.047], iron, lantern);
+    box([lx + dx, -0.91, lz + dz], [0.069, 0.075, 0.069], "#91724e", lantern);
+  }
+  for (const dx of [-0.105, 0.105]) box([lx + dx, 0.073, lz], [0.033, 0.16, 0.04], iron, lantern);
+  box([lx, 0.155, lz], [0.22, 0.035, 0.041], iron, lantern);
+  for (const [dx, dz, height] of [[-0.10, -0.05, 0.43], [0.14, 0.12, 0.29]]) {
+    round("cylinder", [lx + dx, -0.975 + height / 2, lz + dz], [0.066, height, 0.066], "#fff0c3", lantern);
+    round("ico", [lx + dx, -0.94 + height, lz + dz], [0.028, 0.061, 0.028], "#ffb54d", lantern);
+  }
+  for (const [index, dx] of [-0.31, -0.18, -0.04, 0.12, 0.27].entries()) {
+    round("ico", [lx + dx, -0.985 + (index % 2) * 0.032, lz + 0.26], [0.12, 0.051, 0.08], green, lantern);
+    if (index % 2 === 0) round("ico", [lx + dx, -0.94, lz + 0.31], [0.035, 0.033, 0.035], red, lantern);
+  }
+  for (const side of [-1, 1]) box([lx + side * 0.096, -0.055, lz + 0.209],
+    [0.18, 0.086, 0.035], red, lantern, [0, 0, side * 0.3]);
+  round("ico", [lx, -0.06, lz + 0.233], [0.065, 0.055, 0.031], red, lantern);
 
   for (const [part, side] of [["candy-left", -1], ["candy-right", 1]] as const) {
     pivots[part] = [side * 0.6, -0.45, 2.5];
@@ -137,10 +149,17 @@ export function addChristmasDetails(pieces: Piece[], pivots: Record<PartId, Vect
     }
   }
   pivots["porch-snow"] = [0, -1.48, 2.4];
-  box(pivots["porch-snow"], [1.75, 0.45, 1.15], snow, "porch-snow");
+  round("snow-slab", pivots["porch-snow"], [1.75, 0.45, 1.15], snow, "porch-snow");
+  for (const [x, z, width] of [[-0.68, 2.8, 0.22], [-0.28, 2.94, 0.24], [0.17, 2.86, 0.29], [0.63, 2.79, 0.25]]) {
+    round("snow-drift", [x, -1.43, z], [width, 0.15, 0.15], shadedSnow, "porch-snow");
+  }
   pivots["chimney-snow"] = [-0.8, 3.95, 0.6];
-  box(pivots["chimney-snow"], [0.85, 1.2, 0.85], snow, "chimney-snow");
+  round("snow-slab", pivots["chimney-snow"], [0.85, 1.2, 0.85], snow, "chimney-snow");
   for (const dx of [-0.27, 0, 0.27]) round("ico", [-0.8 + dx, 4.5, 0.6], [0.23, 0.15, 0.4], snow, "chimney-snow");
+  for (const [index, dx] of [-0.28, -0.07, 0.18, 0.32].entries()) {
+    round("snow-drift", [-0.8 + dx, 4.43 - (index % 2) * 0.06, 0.97],
+      [0.12, 0.12 + (index % 2) * 0.04, 0.09], snow, "chimney-snow");
+  }
   for (const [part, position, color] of [
     ["present-bed", [-1.1, 1.15, 0.75], "#d7798f"], ["present-desk", [1, 1.29, -1.15], "#74a7b7"],
     ["present-sofa", [-1.1, -0.55, 0.7], "#b98bce"], ["present-table", [1.8, -0.28, 0.6], "#ce8a70"],

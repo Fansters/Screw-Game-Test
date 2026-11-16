@@ -17,9 +17,12 @@ import FloatingTitle from "./FloatingTitle";
 import CameraRig from "./CameraRig";
 import { TITLE_CAMERA } from "../scene/camera";
 import type { CameraView } from "../scene/camera";
+import type { LooseParts } from "../scene/loosePhysics";
+import { findLooseBlocker } from "../scene/loosePhysics";
 
 type GameSceneProps = { logical: GameState; fallingParts: PartId[]; round: number; playable: boolean;
   orbitable?: boolean;
+  looseParts: LooseParts; looseNow?: () => number; onLooseDismiss: (part: PartId) => void;
   fallStarts?: Partial<Record<PartId, number>>;
   pingMode?: boolean; pingScrew?: Screw; pingSequence?: number; onScrewPing?: (id: string) => void;
   rejectedScrew?: { screw: string; sequence: number } | null;
@@ -54,8 +57,10 @@ function PingMarker({ screw }: { screw: Screw }) {
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const PREVIEW_HOLD_MS = 420;
 type PartPreview = { part: PartId; round: number; x: number; y: number };
+const localNow = () => performance.now();
 
 function SceneContents({ logical, fallingParts, fallStarts, round, playable, orbitable, pingMode, pingScrew, pingSequence, onScrewPing, rejectedScrew,
+  looseParts, looseNow = localNow, onLooseDismiss,
   view, onCameraArrive, onReady, onFallFinished, onScrewSelect, onBlockedScrew, projectorRef, outlinedPart, onPreview }: GameSceneProps & {
     outlinedPart?: PartId; onPreview: (preview: PartPreview | null) => void;
   }) {
@@ -99,6 +104,10 @@ function SceneContents({ logical, fallingParts, fallStarts, round, playable, orb
       onScrewPing?.(id);
       return;
     }
+    if (findLooseBlocker(looseParts, screw, SCREW_SCALE, looseNow())) {
+      blocked();
+      return;
+    }
     if (fallStarts) {
       if (isScrewAccessible(visible, screw)) onScrewSelect(id);
       else blocked();
@@ -133,9 +142,10 @@ function SceneContents({ logical, fallingParts, fallStarts, round, playable, orb
     if (!playable) return;
     const target = targetAt(event);
     if (target?.kind === "screw") attempt(target.id);
+    if (target?.kind === "loose" && !pingMode) onLooseDismiss(target.id);
     if (target?.kind === "part" && !pingMode && !logical.removedParts.includes(target.id)) {
       setFade((current) => current?.round === round && current.part === target.id ? null : { part: target.id, round });
-    }
+    } else setFade(null);
   });
   const startGesture = useEffectEvent((event: PointerEvent) => {
     return gestures.start(event, playable && event.target === gl.domElement) && !pingMode;
@@ -172,6 +182,9 @@ function SceneContents({ logical, fallingParts, fallStarts, round, playable, orb
       cancelHold();
       if (gestures.release(event, event.target === canvas)) pickTap(event);
     }, options);
+    doc.addEventListener("click", (event) => {
+      if (event.target !== canvas) setFade(null);
+    }, options);
     doc.addEventListener("pointercancel", (event) => {
       cancelHold();
       gestures.cancel(event.pointerId);
@@ -192,8 +205,9 @@ function SceneContents({ logical, fallingParts, fallStarts, round, playable, orb
     <ambientLight intensity={0.8} /><hemisphereLight args={["#fff5df", "#91aab4", 1.25]} />
     <directionalLight position={[5, 10, 7]} intensity={2.2} /><directionalLight position={[-6, 5, -5]} intensity={1.2} color="#d7eeff" />
     <FloatingTitle menu={view === "title"} />
-    <House key={`house-${round}`} removedParts={visible.removedParts} fallingParts={fallingParts} fallStarts={fallStarts}
-      outlinedPart={outlinedPart} fadedPart={fadedPart} onFallFinished={(part) => onFallFinished(part, round)} />
+    <House key={`house-${round}`} removedParts={visible.removedParts} fallingParts={fallingParts}
+      outlinedPart={outlinedPart} fadedPart={fadedPart} looseParts={looseParts} looseNow={looseNow}
+      onFallFinished={(part) => onFallFinished(part, round)} />
     <ScrewField key={`screws-${round}`} game={visible} wiggleRef={wiggle} />
     {pingScrew && <PingMarker key={pingSequence} screw={pingScrew} />}
     <CameraRig view={view} round={round} playable={orbitable ?? playable} onArrive={onCameraArrive} />

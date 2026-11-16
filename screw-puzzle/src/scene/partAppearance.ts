@@ -4,7 +4,7 @@ import type { Material, Object3D } from "three";
 function transparentCopy(source: Material) {
   const material = source.clone();
   material.transparent = true;
-  material.opacity *= 0.4;
+  material.opacity *= 0.5;
   material.depthWrite = false;
   return material;
 }
