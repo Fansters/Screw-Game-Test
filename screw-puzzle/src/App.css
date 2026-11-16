@@ -2,13 +2,15 @@
 .game-layout, .game-layout * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .scene { position: absolute; inset: max(env(safe-area-inset-top), clamp(0px, calc(700px - 100dvh), 140px)) 0 env(safe-area-inset-bottom); background: transparent; }
 .scene canvas { cursor: grab; touch-action: none; }
+.part-preview { position: fixed; z-index: 7; translate: -50% -100%; display: grid; gap: 2px; width: max-content; max-width: 210px; padding: 6px 11px; border: 2px solid #ffd454; border-radius: 10px; background: #fff8ea; color: #59417c; text-align: center; font-size: 13px; pointer-events: none; }
 .game-controls { position: absolute; z-index: 12; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); display: flex; gap: 7px; }
 .game-controls .icon-button { width: 44px; border-radius: 50%; }
 .game-controls .icon-button:disabled { opacity: .55; }
 .game-controls .icon-button:hover:not(:disabled) { background: #8c62bc; }
 .icon-button .mute-slash { paint-order: stroke; filter: drop-shadow(1px 1px #7651a8) drop-shadow(-1px -1px #7651a8); }
-.reset-dialog { max-width: min(350px, calc(100% - 32px)); padding: 23px; border: 2px solid #fff8df; border-radius: 22px; color: #59417c; background: #fff8ea; text-align: center; box-shadow: 0 8px 32px #45345a50; }
-.reset-dialog::backdrop { background: #322b4966; }
+.reset-dialog, .help-dialog { border: 2px solid #fff8df; border-radius: 22px; color: #59417c; background: #fff8ea; box-shadow: 0 8px 32px #45345a50; }
+.reset-dialog { max-width: min(350px, calc(100% - 32px)); padding: 23px; text-align: center; }
+.reset-dialog::backdrop, .help-dialog::backdrop { background: #322b4966; }
 .reset-dialog h2 { margin: 0 0 18px; font-size: 21px; }
 .dialog-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .dialog-actions button { min-height: 44px; padding: 6px 14px; border: 2px solid #7651a8; border-radius: 12px; background: transparent; color: #65476d; font: inherit; font-weight: 800; touch-action: manipulation; }
@@ -18,6 +20,28 @@
 .icon-button svg { width: 24px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 .icon-button:active:not(:disabled) { transform: translateY(2px); }
 .icon-button:focus-visible { outline: 3px solid #ffe18a; outline-offset: 3px; }
+.help-dialog { width: min(640px, calc(100% - 2 * max(12px, env(safe-area-inset-left), env(safe-area-inset-right)))); max-width: none; max-height: min(760px, calc(100dvh - 2 * max(12px, env(safe-area-inset-top), env(safe-area-inset-bottom)))); padding: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.help-header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px clamp(14px, 4vw, 23px); border-bottom: 1px solid #e4d6e6; background: #fff8ea; }
+.help-header h2 { margin: 0; font-size: 25px; }
+.help-header .icon-button { border-radius: 50%; }
+.help-content { padding: 14px clamp(12px, 3vw, 20px) 10px; font-size: 14px; line-height: 1.4; }
+.help-content p { margin: 0; }
+.help-goal, .help-tip { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 10px; padding: 10px; border-radius: 14px; }
+.help-goal { align-items: center; margin-bottom: 10px; background: #f3e5fa; }
+.help-goal strong { display: block; margin-bottom: 2px; font-size: 17px; }
+.help-tips { display: grid; gap: 8px; }
+.help-tip { background: #fffdf6; border: 1px solid #eadceb; }
+.help-tip h3 { margin: 0 0 3px; font-size: 16px; }
+.help-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; color: #65428b; background: #efddfa; box-shadow: inset 0 -2px #33203d18; }
+.help-icon svg { width: 23px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.help-icon-goal, .help-icon-lifeline { background: #ffe5a0; color: #81500d; }
+.help-icon-screw, .help-icon-team { background: #f8ddea; color: #982c64; }
+.help-icon-match, .help-icon-preview { background: #daf0cc; color: #30663b; }
+.help-icon-tray, .help-icon-orbit { background: #dceafc; color: #2c5590; }
+.help-version { margin-top: 14px; color: #786984; text-align: right; font-size: 11px; }
+@media (min-width: 560px) {
+  .help-tips { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .game-ui { --box-width: 83px; --box-gap: 12px; position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 56px); left: 50%; translate: -50% 0; width: 178px; pointer-events: none; }
 .game-progress { position: absolute; bottom: max(16px, env(safe-area-inset-bottom)); left: max(14px, env(safe-area-inset-left)); display: grid; gap: 3px; pointer-events: none; }
 .removed-counter { font-size: 23px; font-weight: 900; color: #fff8df; text-shadow: 0 3px #796295, 2px 0 #796295, -2px 0 #796295; }
@@ -77,14 +101,14 @@
 @media (hover: hover) and (pointer: fine) and (min-width: 651px) {
   .desktop-cursor { display: block; }
   .game-layout, .game-layout *, .game-layout .scene canvas { cursor: none; }
-  .game-layout .reset-dialog, .game-layout .reset-dialog * { cursor: auto; }
-  .game-layout .reset-dialog button { cursor: pointer; }
-  .game-layout:has(.reset-dialog[open]) .desktop-cursor { display: none; }
+  .game-layout :is(.reset-dialog, .help-dialog), .game-layout :is(.reset-dialog, .help-dialog) * { cursor: auto; }
+  .game-layout :is(.reset-dialog, .help-dialog) button { cursor: pointer; }
+  .game-layout:has(:is(.reset-dialog, .help-dialog)[open]) .desktop-cursor { display: none; }
 }
 @media (min-width: 651px) {
   .scene { top: 0; }
   .game-controls { top: max(24px, env(safe-area-inset-top)); right: max(24px, env(safe-area-inset-right)); }
-  .game-ui { --box-width: 119px; --box-gap: 14px; top: max(24px, env(safe-area-inset-top)); left: max(24px, env(safe-area-inset-left)); translate: none; width: 252px; }
+  .game-ui { --box-width: clamp(105px, calc((100vw - 336px) / 3), 119px); --box-gap: 14px; top: max(24px, env(safe-area-inset-top)); left: max(24px, env(safe-area-inset-left)); translate: none; width: 252px; }
   .match-boxes { left: 0; translate: none; }
   .match-box { padding: 11px 6px 15px; border-width: 3px; border-radius: 23px; }
   .match-sockets { padding: 11px 5px; gap: 7px; border-radius: 16px; }

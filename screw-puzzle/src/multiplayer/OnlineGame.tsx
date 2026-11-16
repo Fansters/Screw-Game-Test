@@ -26,7 +26,7 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   const view = started ? "house" : "title";
   const scene = `${id}:${round}`;
   const [arrival, setArrival] = useState<{ view: CameraView; round: number }>();
-  const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmation, setConfirmation] = useState<"reset" | "leave" | null>(null);
   const [pingScene, setPingScene] = useState<string | null>(null);
   const [expiredPing, setExpiredPing] = useState(0);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "manual">("idle");
@@ -50,7 +50,7 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
     .map(([part, at]) => [part, at - clockOffset])) as Partial<Record<PartId, number>>, [snapshot, clockOffset]);
   const fallingParts = (Object.keys(fallStarts) as PartId[])
     .filter((part) => finished?.scene !== scene || !finished.parts.includes(part));
-  const orbitable = started && cameraReady && game?.status === "playing" && !confirmReset;
+  const orbitable = started && cameraReady && game?.status === "playing" && !confirmation;
   const playable = orbitable && connected && !snapshot?.paused;
   const canPing = playable && snapshot?.players.length === 2;
   const pingMode = canPing && pingScene === scene;
@@ -105,7 +105,7 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
     send({ type: "select", round, screw });
   }
   function reset() {
-    setConfirmReset(false);
+    setConfirmation(null);
     setPingScene(null);
     send({ type: "reset", round });
   }
@@ -158,12 +158,13 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
       </>}
       <GameTimer key={scene} clock={wallClock} startedAt={sampledAt - snapshot.elapsedMs}
         stoppedAt={snapshot.clockRunning ? room.disconnectedAt : sampledAt} removed={removed} total={game.screws.length} />
-      <GameOverlay mode={result} onStart={start} onRestart={leader && connected ? () => setConfirmReset(true) : undefined} />
+      <GameOverlay mode={result} onStart={start} onRestart={leader && connected ? () => setConfirmation("reset") : undefined} />
     </>}
     {pingScrew && <span className="room-ping" role="status">{room.ping?.own ? "You" : "Your partner"} pinged a {pingScrew.color} screw</span>}
-    {confirmReset && leader && <ResetDialog onCancel={() => setConfirmReset(false)} onConfirm={reset} />}
-    <GameControls muted={muted} toggle={toggle} onReset={started && leader ? () => setConfirmReset(true) : undefined}
-      resetDisabled={!connected} onLeave={snapshot ? leave : undefined} />
+    {confirmation && (confirmation === "leave" || leader) && <ResetDialog action={confirmation}
+      onCancel={() => setConfirmation(null)} onConfirm={confirmation === "leave" ? leave : reset} />}
+    <GameControls muted={muted} toggle={toggle} onReset={started && leader ? () => setConfirmation("reset") : undefined}
+      resetDisabled={!connected} onLeave={snapshot ? () => setConfirmation("leave") : undefined} />
     <DesktopCursor />
   </div>;
 }

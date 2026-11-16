@@ -1,7 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
 import { useFrame } from "@react-three/fiber";
-import type { ThreeEvent } from "@react-three/fiber";
 import { Color, Object3D, Quaternion, Vector3 } from "three";
 import type { InstancedMesh } from "three";
 import type { GameState } from "../game/types";
@@ -12,8 +11,8 @@ import { headGeometry, recessGeometry, shaftGeometry } from "./screwGeometry";
 
 // All screws stay resident, including concealed ones. Three instanced draws replace
 // per-screw draws; instance IDs still identify each independently pickable head.
-export default function ScrewField({ game, playable, onPick, wiggleRef }: {
-  game: GameState; playable: boolean; onPick: (id: string, event: ThreeEvent<MouseEvent>) => void;
+export default function ScrewField({ game, wiggleRef }: {
+  game: GameState;
   wiggleRef: MutableRefObject<(id: string) => void>;
 }) {
   const head = useRef<InstancedMesh>(null);
@@ -96,18 +95,12 @@ export default function ScrewField({ game, playable, onPick, wiggleRef }: {
       if (shaft.current) shaft.current.instanceMatrix.needsUpdate = true;
     }
   });
-  function pick(event: ThreeEvent<MouseEvent>) {
-    // Even an inaccessible/removed head blocks rays from reaching screws behind it.
-    event.stopPropagation();
-    const screw = event.instanceId === undefined ? undefined : game.screws[event.instanceId];
-    if (playable && screw && !screw.removed) onPick(screw.id, event);
-  }
   const metadata = { screwIds: ids };
   return <group>
-    <instancedMesh ref={head} args={[headGeometry, undefined, count]} userData={metadata} onClick={pick} frustumCulled={false}>
+    <instancedMesh ref={head} args={[headGeometry, undefined, count]} userData={metadata} frustumCulled={false}>
       <meshStandardMaterial metalness={0.1} roughness={0.35} />
     </instancedMesh>
-    <instancedMesh ref={recess} args={[recessGeometry, undefined, count]} userData={metadata} onClick={pick} frustumCulled={false}>
+    <instancedMesh ref={recess} args={[recessGeometry, undefined, count]} userData={metadata} frustumCulled={false}>
       <meshStandardMaterial roughness={0.8} />
     </instancedMesh>
     <instancedMesh ref={shaft} args={[shaftGeometry, undefined, count]} userData={{ pickBlocker: true }} frustumCulled={false}>

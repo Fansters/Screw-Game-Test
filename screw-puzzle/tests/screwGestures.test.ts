@@ -6,12 +6,11 @@ const finger = {
   pointerId: 1, pointerType: "touch", isPrimary: true, button: 0, clientX: 40, clientY: 50,
 };
 
-test("a touch tap resolves on lift and cannot be repeated by the browser click", () => {
+test("a touch tap resolves once on lift", () => {
   const gestures = createScrewGestures();
   gestures.start(finger, true);
   gestures.move({ ...finger, clientX: 44, clientY: 54 });
   assert.equal(gestures.release({ ...finger, clientX: 44, clientY: 54 }, true), true);
-  assert.equal(gestures.consumeClick(0), false);
   assert.equal(gestures.release(finger, true), false);
 });
 
@@ -40,30 +39,33 @@ test("a second touch cancels the first even when it lands outside the canvas", (
   assert.equal(gestures.release(finger, true), true);
 });
 
-test("desktop picking still uses a single primary click after release", () => {
+test("a desktop tap resolves on lift, while movement cancels it", () => {
   const gestures = createScrewGestures();
   const mouse = { ...finger, pointerType: "mouse" };
   gestures.start(mouse, true);
+  assert.equal(gestures.release(mouse, true), true);
   assert.equal(gestures.release(mouse, true), false);
-  assert.equal(gestures.consumeClick(0), true);
-  assert.equal(gestures.consumeClick(0), false);
   gestures.start(mouse, false);
-  gestures.release(mouse, true);
-  assert.equal(gestures.consumeClick(0), false);
+  assert.equal(gestures.release(mouse, true), false);
   gestures.start(mouse, true);
   gestures.move({ ...mouse, clientX: 46 });
-  gestures.release(mouse, true);
-  assert.equal(gestures.consumeClick(0), false);
+  assert.equal(gestures.release(mouse, true), false);
 });
 
-test("the first desktop ping resolves on release while a drag never pings", () => {
-  const gestures = createScrewGestures();
-  const mouse = { ...finger, pointerType: "mouse" };
-  gestures.start(mouse, true, true);
-  assert.equal(gestures.release({ ...mouse, clientX: 44 }, true), true);
-  assert.equal(gestures.consumeClick(0), false);
-  gestures.start(mouse, true, true);
-  gestures.move({ ...mouse, clientX: 46 });
-  assert.equal(gestures.release(mouse, true), false);
-  assert.equal(gestures.consumeClick(0), false);
+test("holding previews once and consumes release, while a drag or a second touch prevents a hold", () => {
+  for (const pointerType of ["mouse", "touch"]) {
+    const gestures = createScrewGestures();
+    const contact = { ...finger, pointerType };
+    gestures.start(contact, true);
+    assert.equal(gestures.hold(contact.pointerId), true);
+    assert.equal(gestures.hold(contact.pointerId), false);
+    assert.equal(gestures.release(contact, true), false);
+    gestures.start(contact, true);
+    assert.equal(gestures.move({ ...contact, clientX: 51 }), true);
+    assert.equal(gestures.hold(contact.pointerId), false);
+    gestures.start(contact, true);
+    gestures.start({ ...finger, pointerId: 2, isPrimary: false }, true);
+    assert.equal(gestures.hold(contact.pointerId), false);
+    assert.equal(gestures.release(contact, true), false);
+  }
 });

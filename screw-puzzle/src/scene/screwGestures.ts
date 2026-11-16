@@ -3,9 +3,8 @@ type Gesture = {
   pointerId: number;
   x: number;
   y: number;
-  direct: boolean;
-  pickOnRelease: boolean;
-  released: boolean;
+  tolerance: number;
+  held: boolean;
 };
 
 export function createScrewGestures() {
@@ -13,47 +12,43 @@ export function createScrewGestures() {
   let gesture: Gesture | null = null;
 
   function move(event: Contact) {
-    if (gesture?.pointerId !== event.pointerId) return;
-    const tolerance = gesture.direct ? 10 : 5;
-    if (Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > tolerance) gesture = null;
+    if (gesture?.pointerId !== event.pointerId ||
+      Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) <= gesture.tolerance) return false;
+    gesture = null;
+    return true;
   }
 
   return {
-    start(event: Contact, onCanvas: boolean, assisted = false) {
+    start(event: Contact, onCanvas: boolean) {
       if (event.pointerType === "touch") touches.add(event.pointerId);
       gesture = null;
-      if (!onCanvas || !event.isPrimary || event.button !== 0 || touches.size > 1) return;
-      const direct = event.pointerType === "touch" || event.pointerType === "pen";
+      if (!onCanvas || !event.isPrimary || event.button !== 0 || touches.size > 1) return false;
       gesture = {
         pointerId: event.pointerId,
         x: event.clientX,
         y: event.clientY,
-        direct,
-        pickOnRelease: direct || assisted,
-        released: false,
+        tolerance: event.pointerType === "touch" || event.pointerType === "pen" ? 10 : 5,
+        held: false,
       };
+      return true;
     },
     move,
+    hold(pointerId: number) {
+      if (gesture?.pointerId !== pointerId || gesture.held) return false;
+      gesture.held = true;
+      return true;
+    },
     release(event: Contact, onCanvas: boolean) {
       touches.delete(event.pointerId);
       move(event);
       if (gesture?.pointerId !== event.pointerId) return false;
-      if (onCanvas && event.button === 0 && !gesture.pickOnRelease) {
-        gesture.released = true;
-        return false;
-      }
-      const tapped = onCanvas && event.button === 0 && gesture.pickOnRelease;
+      const tapped = onCanvas && event.button === 0 && !gesture.held;
       gesture = null;
       return tapped;
     },
     cancel(pointerId: number) {
       touches.delete(pointerId);
       if (gesture?.pointerId === pointerId) gesture = null;
-    },
-    consumeClick(button: number) {
-      const clicked = button === 0 && gesture?.released === true;
-      gesture = null;
-      return clicked;
     },
     reset() {
       touches.clear();

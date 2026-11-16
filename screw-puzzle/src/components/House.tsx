@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
@@ -10,14 +10,20 @@ import { MODEL_BATCHES } from "../scene/modelBatches";
 import { CHEST_ORIGIN, isChestPart } from "../scene/chestModel";
 import chestUrl from "../assets/treasure_chest_parts.glb?url";
 import { FALL_DURATION_MS } from "../game/fallTiming";
+import { showPartAppearance } from "../scene/partAppearance";
 const FALL_SECONDS = FALL_DURATION_MS / 1000;
 
-function FallingPart({ id, hidden, active, startAt, onFallFinished, children }: {
+function FallingPart({ id, hidden, active, startAt, faded, outlined, onFallFinished, children }: {
   id: PartId; hidden: boolean; active: boolean; startAt?: number; onFallFinished: (id: PartId) => void; children: ReactNode;
+  faded: boolean; outlined: boolean;
 }) {
   const root = useRef<Group>(null);
+  const surface = useRef<Group>(null);
   const elapsed = useRef(0);
   const pivot = PART_PIVOTS[id];
+  useLayoutEffect(() => {
+    if (surface.current && (faded || outlined)) return showPartAppearance(surface.current, faded, outlined);
+  }, [hidden, faded, outlined]);
   useFrame((_, delta) => {
     if (!root.current || !active || hidden || elapsed.current >= FALL_SECONDS) return;
     const seconds = startAt === undefined ? elapsed.current + delta : (Date.now() - startAt) / 1000;
@@ -32,16 +38,20 @@ function FallingPart({ id, hidden, active, startAt, onFallFinished, children }: 
     if (t === 1) onFallFinished(id);
   });
   if (hidden) return null;
-  return <group ref={root} position={pivot}><group name={`part-${id}`} position={[-pivot[0], -pivot[1], -pivot[2]]}>{children}</group></group>;
+  return <group ref={root} position={pivot}>
+    <group ref={surface} name={`part-${id}`} position={[-pivot[0], -pivot[1], -pivot[2]]}
+      userData={{ pickBlocker: true, part: id }}>{children}</group>
+  </group>;
 }
-export default function House({ removedParts, fallingParts, fallStarts, onFallFinished }: {
+export default function House({ removedParts, fallingParts, fallStarts, fadedPart, outlinedPart, onFallFinished }: {
   removedParts: PartId[]; fallingParts: PartId[]; fallStarts?: Partial<Record<PartId, number>>; onFallFinished: (id: PartId) => void;
+  fadedPart?: PartId; outlinedPart?: PartId;
 }) {
   const { nodes } = useGLTF(chestUrl, false, false);
   const chest = useMemo(() => Object.fromEntries(CHEST_PART_IDS.map((part) => [part, nodes[part].clone(true)])), [nodes]);
-  return <group userData={{ pickBlocker: true }} onClick={(event) => event.stopPropagation()}>
+  return <group>
     {PART_IDS.map((part) => <FallingPart key={part} id={part} hidden={removedParts.includes(part)} active={fallingParts.includes(part)} startAt={fallStarts?.[part]}
-      onFallFinished={onFallFinished}>
+      faded={part === fadedPart} outlined={part === outlinedPart} onFallFinished={onFallFinished}>
       {isChestPart(part) ? <group position={CHEST_ORIGIN}><primitive object={chest[part]} /></group> : MODEL_BATCHES.filter((batch) => batch.part === part).map((batch) => <mesh key={`${batch.color}:${batch.smooth}`} geometry={batch.geometry}>
         <meshStandardMaterial color={batch.color} roughness={0.8} flatShading={!batch.smooth} />
       </mesh>)}
