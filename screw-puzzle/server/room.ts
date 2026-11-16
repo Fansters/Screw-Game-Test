@@ -13,7 +13,10 @@ const newSeed = () => randomInt(0, 2 ** 32);
 const secret = () => randomBytes(18).toString("base64url");
 
 type Peer = { send: (notice: RoomNotice) => void; close: () => void };
-type Seat = { id: string; token: string; peer: Peer | null; ready: boolean; reconnectBy: number | null; lastPing: number };
+type Seat = {
+  id: string; token: string; number: 1 | 2; collected: number;
+  peer: Peer | null; ready: boolean; reconnectBy: number | null; lastPing: number;
+};
 type Room = {
   id: string; seats: Seat[]; soloAllowed: boolean; round: number; seed: number; game: GameState;
   startedAt: number | null; lifelines: number; fallStarts: Map<PartId, number>;
@@ -43,7 +46,9 @@ function snapshot(room: Room, now: number): RoomSnapshot {
   return {
     levelVersion: ROOM_LEVEL_VERSION,
     id: room.id, leader: room.seats[0].id, round: room.round, seed: room.seed,
-    players: room.seats.map((seat) => ({ id: seat.id, ready: seat.ready, connected: Boolean(seat.peer) })),
+    players: room.seats.map((seat) => ({
+      id: seat.id, number: seat.number, collected: seat.collected, ready: seat.ready, connected: Boolean(seat.peer),
+    })),
     started: room.startedAt !== null, canStart: canStart(room), paused: paused(room), lifelines: room.lifelines,
     game: wireGame(room.game),
     fallStarts: Object.fromEntries([...room.fallStarts].filter(([, at]) => now < at + FALL_DURATION_MS)),
@@ -63,7 +68,8 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     peer.send({ type: "rejected", reason, screw });
   }
   function addSeat(room: Room) {
-    const seat: Seat = { id: secret(), token: secret(), peer: null, ready: false, reconnectBy: null, lastPing: -Infinity };
+    const number = room.seats.some((member) => member.number === 1) ? 2 : 1;
+    const seat: Seat = { id: secret(), token: secret(), number, collected: 0, peer: null, ready: false, reconnectBy: null, lastPing: -Infinity };
     room.seats.push(seat);
     return seat;
   }
@@ -164,7 +170,10 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
       room.fallStarts.clear();
       room.elapsedMs = 0;
       room.clockSince = null;
-      for (const member of room.seats) member.ready = false;
+      for (const member of room.seats) {
+        member.ready = false;
+        member.collected = 0;
+      }
       publish(room);
       return;
     }
@@ -202,6 +211,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     if (!isScrewAccessible({ ...room.game, removedParts }, screw)) return reject(peer, "That screw is blocked.", screw.id);
     const { finalState, events } = planScrewRemoval(room.game, screw.id);
     if (finalState === room.game) return;
+    seat.collected += 1;
     room.clockSince ??= time;
     for (const event of events) {
       if (event.kind === "detach") room.fallStarts.set(event.part, time + FALL_LEAD_MS);

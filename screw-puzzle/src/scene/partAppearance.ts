@@ -11,7 +11,7 @@ function transparentCopy(source: Material) {
 
 export function showPartAppearance(part: Object3D, faded: boolean, outlined: boolean) {
   const restore: (() => void)[] = [];
-  const accent = outlined ? new LineBasicMaterial({ color: "#ffd454", toneMapped: false, transparent: true, depthWrite: false }) : null;
+  const accent = outlined ? new LineBasicMaterial({ color: "#ff244b", toneMapped: false, transparent: true, depthWrite: false }) : null;
   part.traverse((object) => {
     if (!(object instanceof Mesh)) return;
     if (faded) {

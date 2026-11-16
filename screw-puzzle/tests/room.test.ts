@@ -48,6 +48,7 @@ test("both players use one puzzle, while only its leader can spend a lifeline or
   guest.send({ type: "select", round: 0, screw: screws[1].id });
   assert.deepEqual(leader.state(), guest.state());
   assert.deepEqual(guest.state().game.removed, screws.map((screw) => screw.id));
+  assert.deepEqual(guest.state().players.map(({ number, collected }) => [number, collected]), [[1, 1], [2, 1]]);
   guest.send({ type: "boost", round: 0 });
   guest.send({ type: "reset", round: 0 });
   assert.equal(guest.notices.at(-1)?.type, "rejected");
@@ -59,6 +60,7 @@ test("both players use one puzzle, while only its leader can spend a lifeline or
   leader.send({ type: "reset", round: 0 });
   assert.equal(guest.state().round, 1);
   assert.equal(guest.state().game.removed.length, 0);
+  assert.deepEqual(guest.state().players.map(({ collected }) => collected), [0, 0]);
   leader.send({ type: "select", round: 0, screw: screws[0].id });
   assert.equal(leader.state().game.removed.length, 0);
 });
@@ -100,12 +102,14 @@ test("refresh restores the seat and puzzle, then an expired leader hands off the
   assert.equal(refreshed.state().elapsedMs, 500);
   assert.equal(refreshed.state().clockRunning, true);
   assert.equal(refreshed.state().game.removed[0], screws[0].id);
+  assert.deepEqual(refreshed.state().players.map(({ collected }) => collected), [1, 0]);
   refreshed.disconnect();
   advance(RECONNECT_MS);
   assert.equal(guest.state().leader, guest.seat().player);
   assert.equal(guest.state().paused, false);
   guest.send({ type: "select", round: 0, screw: screws[1].id });
   assert.equal(guest.state().game.removed.length, 2);
+  assert.deepEqual(guest.state().players.map(({ number, collected }) => [number, collected]), [[2, 1]]);
   guest.send({ type: "reset", round: 0 });
   assert.equal(guest.state().round, 1);
 });
@@ -145,7 +149,7 @@ test("rapid moves from both seats replay the third screw before completing and r
   }
   assert.ok(cleared > 0 && leader.notices.length > start + 1);
   const [first] = playback.queue;
-  assert.equal(frameDelay(first, 100), 700);
+  assert.equal(frameDelay(first, 100), 350);
   assert.equal(frameDelay(first, 850), 0);
   const frames = playback.queue.map(({ frame }) => frame);
   const complete = frames.findIndex((frame) => frame.kind === "complete");

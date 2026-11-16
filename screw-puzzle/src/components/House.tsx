@@ -53,7 +53,7 @@ export default function House({ removedParts, fallingParts, fallStarts, fadedPar
     {PART_IDS.map((part) => <FallingPart key={part} id={part} hidden={removedParts.includes(part)} active={fallingParts.includes(part)} startAt={fallStarts?.[part]}
       faded={part === fadedPart} outlined={part === outlinedPart} onFallFinished={onFallFinished}>
       {isChestPart(part) ? <group position={CHEST_ORIGIN}><primitive object={chest[part]} /></group> : MODEL_BATCHES.filter((batch) => batch.part === part).map((batch) => <mesh key={`${batch.color}:${batch.smooth}`} geometry={batch.geometry}>
-        <meshStandardMaterial color={batch.color} roughness={0.8} flatShading={!batch.smooth} />
+        <meshStandardMaterial color={batch.color} roughness={0.8} flatShading={!batch.smooth} vertexColors={batch.smooth} />
       </mesh>)}
     </FallingPart>)}
   </group>;

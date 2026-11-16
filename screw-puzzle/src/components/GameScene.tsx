@@ -5,7 +5,6 @@ import { Billboard, PerspectiveCamera } from "@react-three/drei";
 import { Vector3 } from "three";
 import type { Group } from "three";
 import type { GameState, PartId, Screw } from "../game/types";
-import { PART_LABELS } from "../game/types";
 import { SCREW_SCALE } from "../game/levels";
 import { pickSceneTarget } from "../scene/picking";
 import { createScrewGestures } from "../scene/screwGestures";
@@ -212,8 +211,7 @@ export default function GameScene(props: GameSceneProps) {
     {activePreview && <output className="part-preview" style={{
       left: `clamp(115px, ${activePreview.x}px, calc(100vw - 115px))`, top: Math.max(72, activePreview.y - 24),
     }}>
-      <strong>{PART_LABELS[activePreview.part]}</strong>
-      <span>{remaining} {remaining === 1 ? "screw" : "screws"} left</span>
+      <strong>{remaining} {remaining === 1 ? "screw" : "screws"} left</strong>
     </output>}
   </section>;
 }

@@ -16,6 +16,15 @@ export function addChristmasDetails(pieces: Piece[], pivots: Record<PartId, Vect
     const tilt: Vector = [0, 0, -side * pitch];
     round("snow-slab", [x, y, strip.z], [3.11, 0.24, 1.38], snow, strip.id, tilt);
     round("snow-slab", [side * 2.83, 1.95, strip.z], [0.20, 0.44, 1.38], shadedSnow, strip.id);
+    // Thin, uneven shelves stay on the same snow section as it detaches.
+    for (const [index, run] of [0.72, 1.98, 2.47].entries()) {
+      const lift = 0.29;
+      const ridgeX = side * (run + Math.sin(pitch) * lift);
+      const ridgeY = 3.5 - run / 1.8 + Math.cos(pitch) * lift;
+      round("snow-drift", [ridgeX, ridgeY, strip.z + (index - 1) * 0.16],
+        [0.34 + index * 0.065, 0.08 + index * 0.017, 0.55 - index * 0.055],
+        index === 2 ? shadedSnow : snow, strip.id, tilt);
+    }
     for (const [index, dz] of [-0.48, -0.16, 0.21, 0.50].entries()) {
       const drip = 0.16 + ((index + Math.round(strip.z + 2)) % 3) * 0.048;
       round("snow-drift", [side * 2.84, 2.09, strip.z + dz], [0.14, 0.15 + drip * 0.2, 0.20], snow, strip.id);
@@ -48,6 +57,10 @@ export function addChristmasDetails(pieces: Piece[], pivots: Record<PartId, Vect
     pivots[part] = [0, 1.88, sign * 2.42];
     round("snow-slab", pivots[part], [5.02, 0.45, 0.48], snow, part);
     for (let index = 0; index < 12; index += 1) round("cone", [(index - 5.5) * 0.41, 1.54 - (index % 3) * 0.035, sign * 2.36], [0.08, 0.36, 0.08], "#d9ebf7", part, [Math.PI, 0, 0]);
+    for (const [index, x] of [-2.17, -1.03, -0.39, 0.72, 1.74, 2.23].entries()) {
+      round("snow-drift", [x, 2.045 + (index % 3) * 0.023, sign * 2.55],
+        [0.29 + (index % 3) * 0.05, 0.10, 0.18], snow, part);
+    }
   }
   for (const [part, axis, sign] of [["snowbank-front", "z", 1], ["snowbank-back", "z", -1], ["snowbank-left", "x", -1], ["snowbank-right", "x", 1]] as const) {
     const broad = axis === "z";
@@ -58,6 +71,9 @@ export function addChristmasDetails(pieces: Piece[], pivots: Record<PartId, Vect
       const edge = sign * (3.55 + (index % 3 - 1) * 0.22);
       round("snow-drift", broad ? [along, -1.20, edge] : [edge, -1.20, along],
         broad ? [0.84, drift, 0.70] : [0.70, drift, 0.55], snow, part);
+      const crest = sign * (3.78 + (index % 3 - 1) * 0.16);
+      round("snow-drift", broad ? [along + 0.18, -1.17, crest] : [crest, -1.17, along - 0.10],
+        broad ? [0.56, drift * 0.75, 0.40] : [0.41, drift * 0.75, 0.43], "#f8fbff", part);
       if (index % 2 === 0) {
         round("snow-drift", broad ? [along + 0.32, -1.32, sign * 3.06] : [sign * 3.06, -1.32, along + 0.12],
           broad ? [0.63, drift, 0.62] : [0.62, drift, 0.43], shadedSnow, part);

@@ -18,13 +18,23 @@ for (let index = 0; index < 10; index += 1) {
   else star.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
 }
 star.closePath();
+function shadeSnow(geometry: BufferGeometry, halfHeight: number) {
+  const position = geometry.getAttribute("position");
+  const colors = new Float32Array(position.count * 3);
+  for (let index = 0; index < position.count; index += 1) {
+    const height = (1 + position.getY(index) / halfHeight) / 2;
+    colors.set([0.54 + 0.46 * height, 0.69 + 0.31 * height, 0.86 + 0.14 * height], index * 3);
+  }
+  geometry.setAttribute("color", new Float32BufferAttribute(colors, 3));
+  return geometry;
+}
 export const PIECE_GEOMETRIES = {
   box: new BoxGeometry(1, 1, 1),
   cylinder: new CylinderGeometry(1, 0.9, 1, 16),
   ico: new IcosahedronGeometry(1, 1),
   cone: new ConeGeometry(1, 1, 12),
-  "snow-slab": new RoundedBoxGeometry(1, 1, 1, 2, 0.12),
-  "snow-drift": new SphereGeometry(1, 20, 10),
+  "snow-slab": shadeSnow(new RoundedBoxGeometry(1, 1, 1, 2, 0.12), 0.5),
+  "snow-drift": shadeSnow(new SphereGeometry(1, 20, 10), 1),
   star: new ExtrudeGeometry(star, { depth: 0.14, bevelEnabled: false }).translate(0, 0, -0.07),
   gable: new ExtrudeGeometry(shape, { depth: 0.12, bevelEnabled: false }).translate(0, 0, -0.06),
 };

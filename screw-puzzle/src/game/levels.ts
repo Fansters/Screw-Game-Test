@@ -1,4 +1,4 @@
-import { CEILING_IDS, CHEST_PART_IDS, FLOOR_BEAMS, FRAME_POSTS, GARLANDS, GROUND_IDS, PARTITION_IDS, PLINTH_IDS, ROOF_IDS, ROOF_SECTIONS, SCREW_COLOR_ORDER, SNOW_ROOFS, TILE_IDS, WALL_SECTIONS } from "./types.ts";
+import { CEILING_IDS, CHEST_PART_IDS, DINING_CHAIRS, FLOOR_BEAMS, FRAME_POSTS, GARLANDS, GROUND_IDS, PARTITION_IDS, PLINTH_IDS, ROOF_IDS, ROOF_SECTIONS, SCREW_COLOR_ORDER, SNOW_ROOFS, TILE_IDS, WALL_SECTIONS } from "./types.ts";
 import type { PartId, Screw } from "./types.ts";
 import { HOUSE, PART_PIVOTS, ROOF_PITCH } from "../scene/houseModel.ts";
 import { findScrewObstructions } from "../scene/obstructions.ts";
@@ -66,6 +66,12 @@ for (const [x, z] of [[-2.05, -1.55], [-0.85, -0.95]]) place([x, -0.485, z], [0,
 place([-0.635, -1.1, -1.25], [1, 0, 0], "kitchen", lowerRoom);
 place([0.85, -0.535, 0.25], [0, 1, 0], "table", lowerRoom);
 place([1.8, -0.535, 0.95], [0, 1, 0], "table", lowerRoom);
+place([1.84, -0.72, 1.125], [0, 0, 1], "table", lowerRoom);
+for (const { id, z, outward } of DINING_CHAIRS) {
+  place([1.25, -1.017, z - outward * 0.08], [0, 1, 0], id, lowerRoom);
+  place([1.42, -0.72, z + outward * 0.19], [0, 0, -outward], id, lowerRoom);
+}
+place([1.3, -0.36, 0.711], [0, 0, 1], "table-vase", lowerRoom);
 
 // Outer wall heads face INTO rooms, on solid jambs and corners, never buried
 // in their own wall. Real windows, doorways and the roof provide access.
@@ -113,7 +119,7 @@ for (const part of PARTITION_IDS) {
 for (const part of GROUND_IDS) {
   const [x, , z] = PART_PIVOTS[part];
   for (const [dx, dz] of [[-0.75, -0.55], [0.75, -0.55], [-0.75, 0.55], [0.75, 0.55], [0, 0]]) {
-    const after: PartId[] = [...floors, "stairs", "sofa", "kitchen", "table"];
+    const after: PartId[] = [...floors, "stairs", "sofa", "kitchen", "table", ...DINING_CHAIRS.map((chair) => chair.id)];
     // The floor faces the walls along these two outside edges of each room.
     if (x * dx > 0) place([Math.sign(x) * 2.32, -1.62, z + dz], [Math.sign(x), 0, 0], part, after);
     else {

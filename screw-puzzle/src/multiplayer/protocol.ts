@@ -1,9 +1,9 @@
 import type { CollectionState, GameState, MatchBox, MoveEvent, PartId, ScrewColor } from "../game/types.ts";
 
 // Both peers use the same ordered screw IDs and part geometry.
-export const ROOM_LEVEL_VERSION = 2;
+export const ROOM_LEVEL_VERSION = 3;
 export const ROOM_VERSION_MESSAGE = "The room and game versions differ. Refresh the game, or wait for the server update to finish.";
-export const COMPLETED_LIFELINE_MS = 640;
+export const COMPLETED_LIFELINE_MS = 320;
 export const PING_COOLDOWN_MS = 600;
 
 export type CollectionMove = Exclude<MoveEvent<CollectionState>, { kind: "detach" }>;
@@ -15,7 +15,7 @@ export type RoomSnapshot = {
   levelVersion: number;
   id: string;
   leader: string;
-  players: { id: string; connected: boolean; ready: boolean }[];
+  players: { id: string; number: 1 | 2; collected: number; connected: boolean; ready: boolean }[];
   round: number;
   seed: number;
   started: boolean;

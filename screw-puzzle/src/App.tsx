@@ -79,7 +79,7 @@ function SoloGame({ onOnline }: { onOnline: () => void }) {
   function selectScrew(id: string, clearedParts?: readonly PartId[]) {
     if (playable) dispatch({ type: "select", id, now: performance.now(), clearedParts });
   }
-  const mode = !run.ready ? "loading" : !run.started ? (cameraReady ? "start" : null) : run.logical.status === "lost" ? "lost" :
+  const mode = !run.ready ? "loading" : !run.started ? (cameraReady ? "start" : null) : run.logical.status === "lost" && !run.jobs.length ? "lost" :
     run.logical.status === "won" && !run.jobs.length && !run.fallingParts.length ? "won" : null;
   return <div className="game-layout" onContextMenu={(event) => event.preventDefault()}>
     <GameScene logical={run.logical} fallingParts={run.fallingParts} round={run.round} onFallFinished={finishFall}

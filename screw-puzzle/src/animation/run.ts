@@ -1,4 +1,4 @@
-import { buildSequence } from "./sequence.ts";
+import { buildSequence, SCREW_SPIN_MS } from "./sequence.ts";
 import type { PlaybackFrame } from "./sequence.ts";
 import { BONUS_SLOT, isScrewAccessible, planBonusBox, planScrewRemoval } from "../game/rules.ts";
 import type { GameState, PartId } from "../game/types.ts";
@@ -49,7 +49,7 @@ export function runReducer(run: RunState, action: RunAction): RunState {
     const result = planScrewRemoval(run.logical, action.id);
     if (result.finalState === run.logical) return run;
     const job = { id: run.nextJobId, frames: buildSequence(result.events).filter((frame) => frame.kind !== "unscrew"),
-      finalState: result.finalState, readyAt: action.now + 700 };
+      finalState: result.finalState, readyAt: action.now + SCREW_SPIN_MS };
     const detach = result.events.find((event) => event.kind === "detach");
     return { ...run, logical: result.finalState, jobs: [...run.jobs, job], nextJobId: run.nextJobId + 1,
       fallingParts: detach ? [...run.fallingParts, detach.part] : run.fallingParts,

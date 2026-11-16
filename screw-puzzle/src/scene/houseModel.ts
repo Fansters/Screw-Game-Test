@@ -1,4 +1,4 @@
-import { CHEST_PART_IDS, FLOOR_BEAMS, FRAME_POSTS, GROUND_IDS, PLINTH_IDS, ROOF_SECTIONS, TILE_IDS, WALL_SECTIONS } from "../game/types.ts";
+import { CHEST_PART_IDS, DINING_CHAIRS, FLOOR_BEAMS, FRAME_POSTS, GROUND_IDS, PLINTH_IDS, ROOF_SECTIONS, TILE_IDS, WALL_SECTIONS } from "../game/types.ts";
 import type { ChestPartId, PartId } from "../game/types.ts";
 import { addChristmasDetails } from "./christmas.ts";
 import { addInteriors } from "./interiors.ts";
@@ -17,7 +17,7 @@ export const PART_PIVOTS = {
   door: [0, -0.75, 2], steps: [0, -1.72, 2.35], "planter-left": [-2.9, -1.5, 1.9], "planter-right": [2.9, -1.5, 1.9],
   bed: [-1.45, 0.65, 0.65], wardrobe: [-1.55, 1.1, -1.25], desk: [1.4, 0.8, -1.15],
   stairs: [0, -0.6, 0], "floor-left": [-1.375, 0.25, 0], "floor-right": [1.375, 0.25, 0],
-  sofa: [-1.45, -1.15, 0.65], kitchen: [-1.45, -1.1, -1.25], table: [1.35, -0.9, 0.6],
+  sofa: [-1.45, -1.15, 0.65], kitchen: [-1.45, -1.1, -1.25], table: [1.35, -0.9, 0.6], "table-vase": [1.3, -0.32, 0.6],
   "ground-nw": [-1.1625, -1.65, -0.9125], "ground-ne": [1.1625, -1.65, -0.9125], "ground-sw": [-1.1625, -1.65, 0.9125], "ground-se": [1.1625, -1.65, 0.9125],
   "plinth-nw": [-1.2625, -1.82, -1.0125], "plinth-ne": [1.2625, -1.82, -1.0125], "plinth-sw": [-1.2625, -1.82, 1.0125], "plinth-se": [1.2625, -1.82, 1.0125],
   "tile-nw": [-2.8, -2.01, -2.8], "tile-n": [0, -2.01, -2.8], "tile-ne": [2.8, -2.01, -2.8],
@@ -35,7 +35,7 @@ for (const section of WALL_SECTIONS) {
 }
 export const PIECES: Piece[] = [];
 function box(position: Vector, size: Vector, color: string, part: PartId, rotation?: Vector) { PIECES.push({ kind: "box", position, size, color, part, rotation }); }
-function round(kind: "cylinder" | "ico", position: Vector, size: Vector, color: string, part: PartId) { PIECES.push({ kind, position, size, color, part }); }
+function round(kind: "cylinder" | "ico", position: Vector, size: Vector, color: string, part: PartId, rotation?: Vector) { PIECES.push({ kind, position, size, color, part, rotation }); }
 function window(x: number, y: number, part: PartId) {
   box([x, y, 1.99], [0.96, 1.05, 0.12], "#89685b", part);
   box([x, y, 2.07], [0.78, 0.86, 0.06], "#f6d985", part);
@@ -161,20 +161,48 @@ box([-1.45, -1.23, 0.65], [1.5, 0.55, 1.25], "#6e9eaa", "sofa");
 box([-1.45, -0.78, 0.03], [1.5, 1.1, 0.16], "#739faa", "sofa");
 for (const x of [-2.13, -0.77]) box([x, -0.98, 0.65], [0.16, 0.6, 1.25], "#7baab4", "sofa");
 for (const x of [-1.78, -1.12]) box([x, -0.9, 0.7], [0.61, 0.12, 0.98], "#9bc2c8", "sofa");
+for (const x of [-1.78, -1.12]) {
+  box([x, -0.855, 1.185], [0.55, 0.025, 0.025], "#c3dbe0", "sofa");
+  box([x, -0.49, 0.123], [0.57, 0.28, 0.075], "#8eb6bb", "sofa");
+}
+for (const x of [-2.07, -0.82]) for (const z of [0.19, 1.12]) box([x, -1.535, z], [0.13, 0.12, 0.13], "#8d6551", "sofa");
 box([-1.45, -1.1, -1.25], [1.6, 1, 0.9], "#b7c4a3", "kitchen");
 box([-1.45, -0.55, -1.25], [1.7, 0.1, 1], "#e1d4b7", "kitchen");
 box([-1.75, -0.48, -1.25], [0.43, 0.06, 0.45], "#9caeb0", "kitchen");
 box([-1.75, -0.44, -1.25], [0.31, 0.02, 0.33], "#667f83", "kitchen");
 for (const z of [-1.45, -1.05]) round("cylinder", [-1.13, -0.48, z], [0.13, 0.035, 0.13], "#6d6c72", "kitchen");
 box([-1.75, -0.26, -1.5], [0.04, 0.38, 0.04], "#c1cac4", "kitchen");
-box([1.35, -0.61, 0.6], [1.5, 0.12, 1.1], "#c49570", "table");
-for (const x of [0.75, 1.95]) for (const z of [0.2, 1]) box([x, -1.09, z], [0.09, 0.85, 0.09], "#a57858", "table");
-for (const z of [-0.3, 1.5]) {
-  box([1.35, -1.08, z], [0.55, 0.1, 0.5], "#bda17e", "table");
-  box([1.35, -0.83, z + Math.sign(z - 0.6) * 0.24], [0.55, 0.6, 0.07], "#bda17e", "table");
-  for (const x of [1.14, 1.56]) box([x, -1.36, z], [0.07, 0.5, 0.07], "#a58261", "table");
+for (const x of [-1.97, -1.45, -0.93]) {
+  box([x, -1.055, -0.785], [0.46, 0.69, 0.05], "#aabd99", "kitchen");
+  box([x, -1.075, -0.753], [0.35, 0.51, 0.025], "#c4d1b2", "kitchen");
+  box([x, -0.785, -0.737], [0.18, 0.044, 0.07], "#c58e66", "kitchen");
 }
-round("cylinder", [1.3, -0.4, 0.6], [0.1, 0.3, 0.1], "#b38cc1", "table");
-round("ico", [1.3, -0.18, 0.6], [0.16, 0.16, 0.16], "#e9c3dc", "table");
+box([1.35, -0.63, 0.6], [1.5, 0.09, 1.1], "#9e6e50", "table");
+for (const [index, color] of ["#bc8b65", "#cc9d74", "#c49570", "#d1a279", "#bf9069"].entries()) {
+  box([1.35, -0.575, 0.16 + index * 0.22], [1.5, 0.05, 0.214], color, "table");
+}
+for (const z of [0.14, 1.06]) box([1.35, -0.733, z], [1.28, 0.16, 0.1], "#ad7958", "table");
+for (const x of [0.75, 1.95]) for (const z of [0.2, 1]) {
+  box([x, -1.09, z], [0.09, 0.85, 0.09], "#a57858", "table");
+  box([x, -1.48, z], [0.12, 0.12, 0.12], "#895d49", "table");
+}
+for (const { id, z, outward } of DINING_CHAIRS) {
+  PART_PIVOTS[id] = [1.35, -1.1, z];
+  const back = z + outward * 0.24;
+  box([1.35, -1.08, z], [0.55, 0.1, 0.5], "#c99770", id);
+  for (const x of [1.12, 1.58]) {
+    for (const offset of [-0.18, 0.18]) box([x, -1.34, z + offset], [0.07, 0.52, 0.07], "#9b6b51", id);
+    box([x, -0.82, back], [0.075, 0.6, 0.075], "#9b6b51", id);
+    box([x, -1.34, z], [0.055, 0.055, 0.35], "#ae7c5c", id);
+  }
+  for (const y of [-0.72, -0.92]) box([1.35, y, back], [0.48, 0.10, 0.07], "#c99770", id);
+  box([1.35, -0.54, back], [0.55, 0.095, 0.095], "#b47d5e", id);
+}
+round("cylinder", [1.3, -0.4, 0.6], [0.1, 0.3, 0.1], "#b38cc1", "table-vase");
+round("cylinder", [1.3, -0.26, 0.6], [0.109, 0.035, 0.109], "#d1a8de", "table-vase");
+for (const x of [1.22, 1.3, 1.38]) {
+  round("cylinder", [x, -0.22, 0.6], [0.013, 0.16, 0.013], "#5c9274", "table-vase", [0, 0, (1.3 - x) * 4]);
+  round("ico", [x, -0.12 - Math.abs(x - 1.3) * 0.48, 0.6], [0.073, 0.068, 0.071], "#e9adc7", "table-vase");
+}
 addChristmasDetails(PIECES, PART_PIVOTS, ROOF_PITCH);
 addInteriors(PIECES, PART_PIVOTS);

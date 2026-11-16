@@ -119,7 +119,7 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   }
   const pingScrew = room.ping && room.ping.round === round && room.ping.sequence !== expiredPing
     ? game?.screws.find((screw) => screw.id === room.ping?.screw && !screw.removed) : undefined;
-  const result = game?.status === "lost" ? "lost" : game?.status === "won" && !frame && !fallingParts.length ? "won" : null;
+  const result = game?.status === "lost" && !frame ? "lost" : game?.status === "won" && !frame && !fallingParts.length ? "won" : null;
   const sampledAt = (snapshot?.serverTime ?? 0) - clockOffset;
   const completedLifeline = room.completedLifeline?.round === round ? room.completedLifeline.box : undefined;
   return <div className="game-layout" onContextMenu={(event) => event.preventDefault()}>
@@ -158,6 +158,10 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
       </>}
       <GameTimer key={scene} clock={wallClock} startedAt={sampledAt - snapshot.elapsedMs}
         stoppedAt={snapshot.clockRunning ? room.disconnectedAt : sampledAt} removed={removed} total={game.screws.length} />
+      <ul className="player-counts" aria-label="Screws removed by each player">
+        {[...snapshot.players].sort((a, b) => a.number - b.number).map((seat) =>
+          <li key={seat.id}>Player {seat.number}{seat.id === player && " (you)"} <strong>{seat.collected}</strong></li>)}
+      </ul>
       <GameOverlay mode={result} onStart={start} onRestart={leader && connected ? () => setConfirmation("reset") : undefined} />
     </>}
     {pingScrew && <span className="room-ping" role="status">{room.ping?.own ? "You" : "Your partner"} pinged a {pingScrew.color} screw</span>}

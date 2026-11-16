@@ -102,15 +102,15 @@ function snowRevealRun() {
   return { run, target };
 }
 
-test("all 264 screws release 134 objects, with twelve whole-triple color quotas", () => {
-  assert.equal(DEMO_LEVEL.length, 264);
-  assert.equal(new Set(DEMO_LEVEL.map((screw) => screw.id)).size, 264);
-  assert.equal(DEMO_LEVEL.filter((screw) => screw.attachedTo).length, 264);
-  assert.equal(PART_IDS.length, 134);
+test("all 270 screws release 137 objects, with twelve whole-triple color quotas", () => {
+  assert.equal(DEMO_LEVEL.length, 270);
+  assert.equal(new Set(DEMO_LEVEL.map((screw) => screw.id)).size, DEMO_LEVEL.length);
+  assert.equal(DEMO_LEVEL.filter((screw) => screw.attachedTo).length, DEMO_LEVEL.length);
+  assert.equal(PART_IDS.length, 137);
   assert.equal(SCREW_COLOR_ORDER.length, 12);
   const counts = SCREW_COLOR_ORDER.map((color) => DEMO_LEVEL.filter((screw) => screw.color === color).length);
-  assert.equal(counts.filter((count) => count === 24).length, 4);
-  assert.equal(counts.filter((count) => count === 21).length, 8);
+  assert.equal(counts.filter((count) => count === 24).length, 6);
+  assert.equal(counts.filter((count) => count === 21).length, 6);
   assert.equal(SCREW_SCALE, 0.275 * 1.25 * 1.15);
   assert.ok(PIECES.every((piece) => PART_IDS.includes(piece.part)));
   assert.ok(DEMO_LEVEL.every((screw) => Math.abs(Math.hypot(...screw.normal) - 1) < 1e-10));
@@ -149,7 +149,7 @@ test("one hundred random seeds all have balanced colors, mixed fasteners, and a 
       if (seed <= 5) inventory(state);
     }
     assert.equal(state.status, "won");
-    assert.equal(state.clearedCount, 264);
+    assert.equal(state.clearedCount, DEMO_LEVEL.length);
     assert.equal(state.removedParts.length, PART_IDS.length);
   }
   assert.ok(starts.size >= 8);
@@ -277,6 +277,7 @@ test("animation events keep the completed box visible before replacement and tra
   assert.deepEqual(plan.events.map((event) => event.kind), ["collect", "complete", "replace", "transfer", "transfer"]);
   const frames = buildSequence(plan.events);
   assert.deepEqual(frames.slice(0, 6).map((frame) => frame.kind), ["unscrew", "fly", "land", "complete", "pause", "replace"]);
+  assert.deepEqual(frames.slice(0, 6).map((frame) => frame.duration), [350, 160, 75, 200, 35, 120]);
   assert.equal(frames[3].game.boxes[1]?.screws.length, 3);
   assert.equal(frames.filter((frame) => frame.kind === "fly").length, 3);
 });
@@ -361,6 +362,10 @@ test("object size limits fixings to one to three, with at most five on large flo
   }
   for (const part of ["tree-star", "window-upper-left", "planter-left", "gift-left", "present-bed", "candy-left"] as const) {
     assert.equal(DEMO_LEVEL.filter((screw) => screw.attachedTo === part).length, 1);
+  }
+  for (const [part, count] of [["table", 3], ["chair-front", 2], ["chair-back", 2], ["table-vase", 1]] as const) {
+    assert.equal(DEMO_LEVEL.filter((screw) => screw.attachedTo === part).length, count);
+    assert.ok(PIECES.filter((piece) => piece.part === part).length > 3);
   }
   assert.ok(PIECES.every((piece) => !["roof-wrap", "yard-lights", "festival-sash"].includes(piece.part)));
 });
@@ -448,7 +453,7 @@ test("a full generated house also wins through the concurrent presentation contr
   assert.equal(run.logical.status, "won");
   run = finishFalls(drain(run));
   assert.deepEqual(run.display, run.logical);
-  assert.equal(run.display.clearedCount, 264);
+  assert.equal(run.display.clearedCount, DEMO_LEVEL.length);
   assert.equal(run.display.removedParts.length, PART_IDS.length);
 });
 
