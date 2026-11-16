@@ -7,6 +7,10 @@ import { generatePuzzle } from "../src/game/randomize.ts";
 import { collectionPlayback, emptyPlayback, frameDelay } from "../src/multiplayer/collectionPlayback.ts";
 import type { RoomCommand, RoomNotice } from "../src/multiplayer/protocol.ts";
 import { ROOM_LEVEL_VERSION, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
+import { initPilotPhysics, LOOSE_LIFETIME_MS } from "../src/scene/pilotPhysics.ts";
+import { loosePartPoof, loosePartPose, SMOKE_DURATION_MS } from "../src/scene/loosePhysics.ts";
+
+await initPilotPhysics();
 
 function fixture(seed?: number) {
   let time = 20_000;
@@ -182,11 +186,13 @@ test("a browser with an older cottage layout receives a version error", () => {
 
 test("both browsers receive the filled lifeline for animation when opening completes it", () => {
   const { leader, guest } = fixture(1);
-  const opening = leader.state().game.colors;
-  const color = "black";
-  const waiting = DEMO_LEVEL.filter((screw, index) => opening[index] === color && !screw.obstructedBy?.length).slice(0, 3);
+  const opening = leader.state().game;
+  const available = DEMO_LEVEL.flatMap((screw, index) => !screw.obstructedBy?.length &&
+    !opening.boxes.some((box) => box?.color === opening.colors[index]) ? [{ id: screw.id, color: opening.colors[index] }] : []);
+  const color = available.find(({ color }) => available.filter((screw) => screw.color === color).length >= 3)?.color;
+  assert.ok(color);
+  const waiting = available.filter((screw) => screw.color === color).slice(0, 3);
   assert.equal(waiting.length, 3);
-  assert.ok(leader.state().game.boxes.every((box) => box?.color !== color));
   for (const screw of waiting) guest.send({ type: "select", round: 0, screw: screw.id });
   leader.send({ type: "boost", round: 0 });
   for (const peer of [leader, guest]) {
@@ -222,4 +228,25 @@ test("both seats see the same loose lantern and one shared poof", () => {
   assert.deepEqual(leader.state().players.map(({ collected }) => collected), [1, 0]);
   leader.send({ type: "reset", round: 0 });
   assert.deepEqual(guest.state().looseParts, {});
+});
+
+test("both seats share Rapier poses and a reconnect drops finished physics tracks", () => {
+  const { leader, guest, room, makePeer, advance } = fixture(1);
+  const part = "roof-bauble";
+  const screw = DEMO_LEVEL.find((candidate) => candidate.attachedTo === part)!;
+  const invite = guest.seat();
+  leader.send({ type: "select", round: 0, screw: screw.id });
+  const { looseParts, serverTime } = leader.state();
+  const releasedAt = serverTime + FALL_LEAD_MS;
+  assert.equal(looseParts[part]?.releasedAt, releasedAt);
+  assert.ok(looseParts[part]?.frames?.length);
+  assert.deepEqual(guest.state().looseParts[part], looseParts[part]);
+  assert.notDeepEqual(loosePartPose(looseParts, part, releasedAt), loosePartPose(looseParts, part, releasedAt + 700));
+  assert.equal(loosePartPoof(looseParts, part).at, releasedAt + LOOSE_LIFETIME_MS);
+  guest.disconnect();
+  advance(FALL_LEAD_MS + LOOSE_LIFETIME_MS + SMOKE_DURATION_MS);
+  const refreshed = makePeer();
+  refreshed.send({ type: "join", room, token: invite.token, levelVersion: ROOM_LEVEL_VERSION });
+  assert.equal(refreshed.seat().snapshot.looseParts[part], undefined);
+  assert.ok(refreshed.seat().snapshot.game.removedParts.includes(part));
 });

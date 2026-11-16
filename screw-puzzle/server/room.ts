@@ -6,7 +6,7 @@ import { BONUS_SLOT, isScrewAccessible, planBonusBox, planScrewRemoval } from ".
 import type { CollectionState, GameState, MatchBox, MoveEvent, PartId } from "../src/game/types.ts";
 import type { CollectionMove, RoomCommand, RoomGame, RoomNotice, RoomSnapshot } from "../src/multiplayer/protocol.ts";
 import { PING_COOLDOWN_MS, ROOM_LEVEL_VERSION, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
-import { detachLooseParts, dismissLoosePart, findLooseBlocker } from "../src/scene/loosePhysics.ts";
+import { detachLooseParts, dismissLoosePart, findLooseBlocker, trimFinishedPilots } from "../src/scene/loosePhysics.ts";
 import type { LooseParts } from "../src/scene/loosePhysics.ts";
 import { SCREW_SCALE } from "../src/game/levels.ts";
 
@@ -55,7 +55,7 @@ function snapshot(room: Room, now: number): RoomSnapshot {
     started: room.startedAt !== null, canStart: canStart(room), paused: paused(room), lifelines: room.lifelines,
     game: wireGame(room.game),
     fallStarts: Object.fromEntries([...room.fallStarts].filter(([, at]) => now < at + FALL_DURATION_MS)),
-    looseParts: room.looseParts,
+    looseParts: trimFinishedPilots(room.looseParts, now),
     elapsedMs: room.elapsedMs + (room.clockSince === null ? 0 : now - room.clockSince),
     clockRunning: room.clockSince !== null, serverTime: now,
   };

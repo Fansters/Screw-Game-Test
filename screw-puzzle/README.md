@@ -26,7 +26,7 @@ The lightning button at bottom center slides in a third matching box while the f
 
 Start enables a quiet, original instrumental loop. A soft click, knock and chime mark removal, obstruction and completion respectively. The music note and speaker toggle music and effects separately. Both are synthesized locally in `src/game/audio.ts`.
 
-Active colors go directly to their boxes. Other colors use waiting slots. Completing a triple replaces that box with the next eligible queued color and automatically transfers matching waiting screws. Resolve cascades before checking loss at five occupied waiting slots. Win when all 264 screws and 88 triples are cleared.
+Active colors go directly to their boxes. Other colors use waiting slots. Completing a triple replaces that box with the next eligible queued color and automatically transfers matching waiting screws. Resolve cascades before checking loss at five occupied waiting slots. Win when all 300 screws and 100 triples are cleared.
 
 Each part starts falling as soon as its last screw is accepted. Falls can overlap while screw transfers and box changes play in order. Players can keep selecting screws and orbiting throughout. Visible heads with blocked extraction wiggle, and a head becomes selectable once its moving covers clear the extraction path. Text selection and the long-press menu are disabled inside the game.
 
@@ -36,38 +36,33 @@ Desktop fine-pointer layouts use a purple/gold screwdriver cursor. Its grip and 
 
 ## Natural difficulty and screw placement
 
-The cottage has Christmas snow, lights, wreaths, candy canes, a tree, gifts, and a candle lantern trimmed with holly and ribbon. All released parts fall and can settle on attached surfaces or stack on other debris. Tap any loose part to clear it in a puff of smoke and let pieces above it drop again.
+The cottage has Christmas snow, lights, wreaths, candy canes, a tree, gifts, and a candle lantern trimmed with holly and ribbon. Loose parts clear in a puff of smoke three seconds after release. Tap one to clear it sooner and let pieces above it drop.
 
-The level has **264** screws. Counts follow object size:
-
-- 51 assemblies have one screw, including individual timber posts and floor beams.
-- 59 assemblies have two screws, including roof/wall panels, room partitions and most furniture.
-- 9 larger assemblies have three screws, including stairs, the tree and some ceiling panels.
-- 7 outdoor tiles have four screws each. The other 8 large floor panels and tiles have five.
+The level has **300** screws across **158** parts. Counts follow object size. Small fixtures such as the towel and mirror have one screw, the sink and toilet have two, and the shower enclosure has three. Large floors and outdoor tiles have four or five.
 
 Wall heads are mounted on interior jambs, corners, and edges hidden by adjacent panels. Eight ground-floor fixings face sideways behind lower walls. Ridge timbers detach with their corresponding roof panels. The 12 roof panels each have a surface fixing and a forward-facing edge fixing; neighboring roof courses naturally obscure some of those edges. Furniture fixings vary between upper corners and side faces. Positions are fixed between rounds; colors change.
 
-Seven removable interior partitions separate upstairs bedrooms/study/storage from the stair hall and downstairs kitchen/living/dining areas. Corridor walls have actual doorways, baseboards and lintels. Cross walls block sightlines between rooms. Three removable attic ceiling panels sit beneath the roof. Rooms, floors, walls and existing furniture provide real occlusion, without wrapping the exterior in new barriers.
+Seven removable interior partitions separate the upstairs bedroom, study and bathroom from the stair hall and downstairs kitchen, living and dining areas. Eight independently fastened doors close the hall openings on both stories. Their screws face the hall. Clearing each loose door opens the doorway and the view into the room. Cross walls block sightlines between rooms, and three removable attic ceiling panels sit beneath the roof.
 
-The 80-view orbit audit finds **24 initially exposed removable screws / 264 (9.1%)**. Both starting colors have only one or two exposed matches, so neither box can finish without revealing another fixing. This is a measured opening constraint; subjective difficulty and later reveal pacing still need playtesting.
+The 80-view orbit audit finds **26 initially exposed removable screws out of 300 (8.7%)**. Both starting colors have only one or two exposed matches, so neither box can finish without revealing another fixing.
 
 ## Colors and verified randomization
 
-The 12 colors are red, blue, lemon yellow, green, orange, purple, brown, pink, light grey, cyan, black and lime. The 88 triples are split across the palette, with seven or eight triples per color. The shared screw/box/tray palette has at least 3:1 luminance contrast for brown/orange, purple/pink, blue/cyan and black/light grey. Recesses and shafts use the corresponding screw color, with darker recess shading.
+The 12 colors are red, blue, lemon yellow, green, orange, purple, brown, pink, light grey, cyan, black and lime. The 100 triples are split across the palette, with eight or nine triples per color. The shared screw/box/tray palette has at least 3:1 luminance contrast for brown/orange, purple/pink, blue/cyan and black/light grey. Recesses and shafts use the corresponding screw color, with darker recess shading.
 
-Whole-triple quotas are 24 screws per color. All 88 targets, including the distinct initial pair, are shuffled. `generatePuzzle(seed)` constructs an accessible peel order, assigns colors while simulating two active boxes, and replays the entire winning sequence through the actual rules. Multi-screw assemblies mix at least two colors; single-screw objects naturally have one. Early assignment limits the opening pair to two exposed matches each instead of relying on blind reshuffling. A crypto-generated seed starts each new round; seeded generation is reproducible.
+Color quotas are 24 or 27 screws. All 100 targets, including the distinct initial pair, are shuffled. `generatePuzzle(seed)` constructs an accessible peel order, assigns colors while simulating two active boxes, and replays the entire winning sequence through the actual rules. That sequence uses zero waiting slots and zero lifelines. Multi-screw assemblies mix at least two colors; single-screw objects naturally have one. A crypto-generated seed starts each new round; seeded generation is reproducible.
 
 `obstructedBy` comes from actual head/extraction collision samples. `solutionAfter` is only a conservative order for constructing a winning solution, never a gameplay lock. Exposed fixings remain selectable even when another fixing on the same object is covered.
 
 ## How the objects are made
 
-The house and decorations are authored in TypeScript with Three.js primitives and rendered with React Three Fiber. Boxes form wall/roof/ceiling panels, partition lintels, furniture and ribbons. Cylinders form trunks/candy canes, cones form tree tiers/icicles/Santa's hat, and low-poly icosahedrons form foliage/snow/ornaments. Stars and gables use extruded outlines. The treasure chest is the first imported model. No runtime texture service, external font or physics engine is required.
+The house and decorations are authored in TypeScript with Three.js primitives and rendered with React Three Fiber. The bathroom uses rounded ceramic bodies, mesh rings for the toilet and basin, and folded shower curtain panels. Each piece has a shape, transform, color and removable owner. The procedural parts batch into 459 meshes, and screws use three instanced meshes. DPR is capped at 1.25 on phones/coarse pointers and 1.5 elsewhere.
 
-Each piece has a shape, transform, color and removable owner. The owner's last screw triggers a scripted fall. The full model has **970 pieces including chest geometry**, with the procedural parts batched into **315 meshes**, plus the three imported chest parts. Convex originals and the exported chest surfaces are available for collision and live-fall checks. Screws use three instanced meshes with independent head IDs and animation transforms. DPR is capped at 1.25 on phones/coarse pointers and 1.5 elsewhere; there are no real-time shadows or post-processing.
+The front-right roof eave panel, its snow strip and the round roof bauble use Rapier. The simulation uses simple angled and rounded colliders, with poses sampled from fixed time steps. The room server sends the same sampled path to both clients. Other parts still use the existing scripted motion. Both paths share the three-second smoke cleanup.
 
-## Imported treasure chest
+## Archived treasure chest
 
-The upstairs chest uses [Treasure chest by JSlyin](https://sketchfab.com/3d-models/treasure-chest-8bdf3dee4f344e36839c4c1c7e1dcd2b), marked [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) in the original `src/assets/treasure_chest.glb`. The original file stays untouched. The Blender split cuts the shared metal at the lid seam, preserves UVs and material maps, normalizes the model, gives each object its own origin, and resizes the textures to 512px. Credits are included in the Blender file, exported GLB metadata, and [asset credits](public/asset-credits.txt), also available at `/asset-credits.txt` in the running game.
+The bathroom replaces the upstairs chest. Its original [Treasure chest by JSlyin](https://sketchfab.com/3d-models/treasure-chest-8bdf3dee4f344e36839c4c1c7e1dcd2b), editable Blender source and split exports stay in the repository for later use. Credits and the CC BY 4.0 license are included in [asset credits](public/asset-credits.txt).
 
 - `chest-lock`: one front screw. Removing the lock exposes a front body screw.
 - `chest-lid`: two top screws. The lid lifts and falls separately, revealing the screw inside the chest.
@@ -79,7 +74,7 @@ Open `art/treasure-chest.blend` in Blender to edit the three mesh objects and th
 blender --background --python-exit-code 1 --python tools/prepare_chest.py -- --export-edited
 ```
 
-This updates the textured `treasure_chest_parts.glb` and `treasure_chest_collision.json` together, using the edited origins and transforms. If you move the screw mounting surfaces, adjust their positions in `src/game/levels.ts` too. Running the script without `--export-edited` rebuilds the split Blender file from the original download. The game loads the export before enabling Start. Three.js applies each part's fall to the corresponding GLB object and checks its matching triangles for clearance.
+This updates the textured `treasure_chest_parts.glb` and `treasure_chest_collision.json` together, using the edited origins and transforms. Running the script without `--export-edited` rebuilds the split Blender file from the original download.
 
 ## Sources
 
@@ -93,9 +88,9 @@ This updates the textured `treasure_chest_parts.glb` and `treasure_chest_collisi
 
 ## Verification
 
-Build and lint pass. Tests cover screw budgets, all owners, 100 complete seeded winning solutions, matching and reset, simultaneous falls, off-center pinch and pan, zoom recentering, touch gestures, palette contrast, and live picking and clearance. Eight full solutions are ray-tested through the actual geometry. The imported chest also has tests for exported meshes, independent release and the lid hiding the interior screw.
+Tests cover screw budgets, all owners, 100 seeded wins with no lifelines or waiting slots, matching and reset, automatic smoke timing, shared Rapier motion, and live picking and clearance. Eight full solutions are ray-tested through the actual geometry.
 
-Browser checks include starting the imported-model game and removing all five chest screws in an isolated cutaway using the real renderer and animation reducer. Earlier checks cover the exterior, timing/collection, title/reset flights, and portrait/landscape layout. The full level has not been manually solved in the browser; physical-device frame rate and touch feel remain unmeasured. Vite retains its existing non-blocking bundle-size warning.
+Physical-device frame rate and touch feel remain unmeasured. Vite reports the client and Rapier chunk sizes during a production build.
 
 Next: playtest a complete round and assess later room-reveal pacing on a phone.
 ## Two-player rooms

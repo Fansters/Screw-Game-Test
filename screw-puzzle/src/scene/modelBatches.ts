@@ -10,7 +10,6 @@ import { geometryFor } from "./geometry.ts";
 const groups = new Map<string, { part: PartId; color: string; smooth: boolean; pieces: BufferGeometry[] }>();
 const transform = new Object3D();
 for (const piece of PIECES) {
-  if (piece.kind === "chest-surface") continue;
   const original = geometryFor(piece);
   const geometry = original.index ? original.toNonIndexed() : original.clone();
   transform.position.set(...piece.position); transform.scale.set(...piece.size);

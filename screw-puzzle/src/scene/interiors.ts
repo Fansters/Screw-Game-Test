@@ -1,4 +1,4 @@
-import { CEILING_IDS } from "../game/types.ts";
+import { CEILING_IDS, INTERIOR_DOORS, INTERIOR_DOORWAYS, INTERIOR_STORIES } from "../game/types.ts";
 import type { PartId } from "../game/types.ts";
 import type { Piece, Vector } from "./houseModel.ts";
 
@@ -12,9 +12,7 @@ export function addInteriors(pieces: Piece[], pivots: Record<PartId, Vector>) {
     box([0, 2.06, z], [4.5, 0.12, 1.18], "#d9b98a", part);
     for (const dz of [-0.57, 0.57]) box([0, 2.125, z + dz], [4.48, 0.025, 0.035], "#a77e61", part);
   }
-  for (const story of ["upper", "lower"] as const) {
-    const bottom = story === "upper" ? 0.33 : -1.59;
-    const top = story === "upper" ? 1.99 : 0.18;
+  for (const { story, bottom, top } of INTERIOR_STORIES) {
     for (const side of [-1, 1]) {
       const part = `partition-${story}-${side === -1 ? "left" : "right"}` as const;
       const x = side * 0.55;
@@ -24,13 +22,39 @@ export function addInteriors(pieces: Piece[], pivots: Record<PartId, Vector>) {
         box([x, (bottom + top) / 2, (a + b) / 2], [0.12, top - bottom, b - a], "#d8c6b1", part);
         box([x, bottom + 0.06, (a + b) / 2], [0.145, 0.1, b - a], "#9f8064", part);
       }
-      for (const z of [-1.15, 0.73]) box([x, top - 0.1, z], [0.12, 0.2, 0.76], "#d8c6b1", part);
+      for (const { z } of INTERIOR_DOORWAYS) {
+        box([x, top - 0.1, z], [0.12, 0.2, 0.76], "#d8c6b1", part);
+        box([x, top - 0.205, z], [0.157, 0.046, 0.766], "#a78368", part);
+      }
     }
     for (const side of story === "upper" ? [-1, 1] : [-1]) {
       const part = `partition-${story}-cross-${side === -1 ? "left" : "right"}` as PartId;
       pivots[part] = [side * 1.45, (bottom + top) / 2, -0.4];
       box([side * 1.45, (bottom + top) / 2, -0.4], [1.68, top - bottom, 0.12], "#c8b9aa", part);
       box([side * 1.45, bottom + 0.06, -0.4], [1.68, 0.1, 0.145], "#9f8064", part);
+    }
+  }
+
+  for (const { id, bottom, top, side, story, z } of INTERIOR_DOORS) {
+    const x = side * 0.55;
+    const height = top - bottom - 0.045;
+    const y = bottom + 0.014 + height / 2;
+    const stile = story === "upper" ? "#557d7a" : "#a4745b";
+    const panel = story === "upper" ? "#739a90" : "#c18e6e";
+    pivots[id] = [x, y, z];
+    box(pivots[id], [0.084, height, 0.724], stile, id);
+    for (const face of [-1, 1]) {
+      for (const [offset, size] of [[-0.31, 0.46], [0.29, 0.52]]) {
+        box([x + face * 0.047, y + offset, z], [0.02, size, 0.542], panel, id);
+      }
+      const latchZ = z - side * 0.26;
+      box([x + face * 0.055, y + 0.046, latchZ], [0.025, 0.13, 0.054], "#aa8053", id);
+      pieces.push({ kind: "ico", position: [x + face * 0.085, y + 0.052, latchZ],
+        size: [0.037, 0.036, 0.036], color: "#edc57e", part: id });
+    }
+    const hingeZ = z + side * 0.342;
+    for (const offset of [-0.48, 0.48]) {
+      box([x - side * 0.049, y + offset, hingeZ], [0.034, 0.115, 0.043], "#b88d64", id);
     }
   }
 

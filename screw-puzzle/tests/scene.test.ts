@@ -8,7 +8,7 @@ import { MODEL_BATCHES } from "../src/scene/modelBatches.ts";
 import { headGeometry } from "../src/components/screwGeometry.ts";
 import { DEMO_LEVEL, SCREW_SCALE } from "../src/game/levels.ts";
 import { createInitialState, isScrewAccessible } from "../src/game/rules.ts";
-import { CHEST_PART_IDS, DECOR_IDS, FLOOR_BEAMS, FRAME_POSTS, GROUND_IDS, PARTITION_IDS, ROOF_IDS, TILE_IDS, WALL_IDS } from "../src/game/types.ts";
+import { BATHROOM_IDS, CHEST_PART_IDS, DECOR_IDS, FLOOR_BEAMS, FRAME_POSTS, GROUND_IDS, INTERIOR_DOORS, PARTITION_IDS, ROOF_IDS, TILE_IDS, WALL_IDS } from "../src/game/types.ts";
 import type { Screw } from "../src/game/types.ts";
 import { pickNearbyHead, pickNearbyScrew, pickSceneTarget } from "../src/scene/picking.ts";
 import { showPartAppearance } from "../src/scene/partAppearance.ts";
@@ -108,6 +108,20 @@ test("interior partitions separate rooms while their actual doorways remain open
     assert.ok(new Vector3(...screw.normal).dot(inward) > 0, "Outer wall heads face into the house");
   }
 });
+
+test("each hall door blocks the room view until its independent assembly is cleared", () => {
+  const ray = new Raycaster();
+  for (const { id, story, side, z, bay, bottom, top } of INTERIOR_DOORS) {
+    const partition = `partition-${story}-${side < 0 ? "left" : "right"}`;
+    const doorway = solids(PIECES.filter((piece) => piece.part === partition || piece.part === id));
+    const screws = DEMO_LEVEL.filter((screw) => screw.attachedTo === id);
+    assert.equal(screws.length, bay === "front" ? 2 : 1);
+    assert.ok(screws.every((screw) => screw.normal[0] === -side));
+    ray.set(new Vector3(0, (bottom + top) / 2, z), new Vector3(side, 0, 0));
+    assert.equal(ray.intersectObjects(doorway, false)[0]?.object.userData.part, id);
+    assert.equal(ray.intersectObjects(doorway.filter((mesh) => mesh.userData.part !== id), false).length, 0);
+  }
+});
 function solids(pieces = PIECES) {
   return pieces.map((piece) => {
     const mesh = new Mesh(geometryFor(piece), material);
@@ -119,7 +133,7 @@ function solids(pieces = PIECES) {
   });
 }
 
-test("the chest GLB has separate textured meshes and the lid physically conceals the interior screw", () => {
+test("the archived chest GLB retains separate textured meshes and asset attribution", () => {
   const bytes = readFileSync(new URL("../src/assets/treasure_chest_parts.glb", import.meta.url));
   const gltf = JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString("utf8"));
   assert.deepEqual(gltf.nodes.map((node) => node.extras.partId), [...CHEST_PART_IDS]);
@@ -134,14 +148,22 @@ test("the chest GLB has separate textured meshes and the lid physically conceals
     assert.ok(primitives.every((primitive) => primitive.attributes.TEXCOORD_0 !== undefined &&
       gltf.materials[primitive.material].pbrMetallicRoughness.baseColorTexture));
   }
+});
+
+test("upstairs fixtures have independent geometry and the shower covers a tray fixing", () => {
+  for (const id of BATHROOM_IDS) {
+    assert.ok(PIECES.filter((piece) => piece.part === id).length >= 3);
+    assert.ok(DEMO_LEVEL.some((screw) => screw.attachedTo === id));
+  }
+  assert.ok(!PIECES.some((piece) => piece.part.startsWith("chest")));
   const doubleSide = new MeshBasicMaterial({ side: DoubleSide });
-  const chest = solids(PIECES.filter((piece) => piece.kind === "chest-surface"));
-  chest.forEach((mesh) => { mesh.material = doubleSide; });
-  const interior = DEMO_LEVEL.find((screw) => screw.attachedTo === "chest" && screw.normal[1] === 1)!;
+  const enclosure = solids(PIECES.filter((piece) => piece.part === "bath-shower"));
+  enclosure.forEach((mesh) => { mesh.material = doubleSide; });
+  const interior = DEMO_LEVEL.find((screw) => screw.attachedTo === "bath-tray")!;
   const origin = new Vector3(...interior.position).add(new Vector3(0, 2, 0));
   const ray = new Raycaster(origin, new Vector3(0, -1, 0), 0, 2 - SCREW_SCALE * 0.144);
-  assert.equal(ray.intersectObjects(chest, false)[0]?.object.userData.part, "chest-lid");
-  assert.equal(ray.intersectObjects(chest.filter((mesh) => mesh.userData.part !== "chest-lid"), false).length, 0);
+  assert.equal(ray.intersectObjects(enclosure, false)[0]?.object.userData.part, "bath-shower");
+  assert.deepEqual(interior.obstructedBy, ["bath-shower"]);
   doubleSide.dispose();
 });
 
@@ -303,7 +325,7 @@ test("roof and wall sections are independently fastened with actual panel seams"
 
 test("batched detail geometry preserves the original model's picking and occlusion surfaces", () => {
   assert.ok(MODEL_BATCHES.length < PIECES.length / 2);
-  const original = solids(PIECES.filter((piece) => piece.kind !== "chest-surface"));
+  const original = solids();
   const batched = MODEL_BATCHES.map((batch) => { const mesh = new Mesh(batch.geometry, material); mesh.updateMatrixWorld(); return mesh; });
   const ray = new Raycaster();
   for (const origin of [new Vector3(10, 8, 13), new Vector3(-10, 7, -13)]) {

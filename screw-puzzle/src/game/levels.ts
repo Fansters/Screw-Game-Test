@@ -1,8 +1,8 @@
-import { CEILING_IDS, CHEST_PART_IDS, DINING_CHAIRS, FLOOR_BEAMS, FRAME_POSTS, GARLANDS, GROUND_IDS, PARTITION_IDS, PLINTH_IDS, ROOF_IDS, ROOF_SECTIONS, SCREW_COLOR_ORDER, SNOW_ROOFS, TILE_IDS, WALL_SECTIONS } from "./types.ts";
+import { BATHROOM_IDS, CEILING_IDS, DINING_CHAIRS, FLOOR_BEAMS, FRAME_POSTS, GARLANDS, GROUND_IDS, INTERIOR_DOORS, PARTITION_IDS, PLINTH_IDS, ROOF_IDS, ROOF_SECTIONS, SCREW_COLOR_ORDER, SNOW_ROOFS, TILE_IDS, WALL_SECTIONS } from "./types.ts";
 import type { PartId, Screw } from "./types.ts";
 import { HOUSE, PART_PIVOTS, ROOF_PITCH, resizeFurniturePoint } from "../scene/houseModel.ts";
 import { findScrewObstructions } from "../scene/obstructions.ts";
-import { chestPosition } from "../scene/chestModel.ts";
+import { BATHROOM } from "../scene/bathroom.ts";
 export { ROOF_PITCH } from "../scene/houseModel.ts";
 export const ROOF_RUN = HOUSE.roofRun;
 export const ROOF_RISE = HOUSE.roofRise;
@@ -46,17 +46,14 @@ place([-1.85, 1.65, -0.87], [0, 0, 1], "wardrobe", upperRoom);
 place([-0.96, 0.75, -1.25], [1, 0, 0], "wardrobe", upperRoom);
 place([1, 1.045, -1.45], [0, 1, 0], "desk", upperRoom);
 place([0.66, 1, -1.15], [-1, 0, 0], "desk", upperRoom);
-place(chestPosition([0, 0.44, 0.408]), [0, 0, 1], "chest-lock", upperRoom);
-for (const [position, normal] of [[[-0.31, 0.881, 0.093], [0, 0.957805, 0.287418]], [[0.31, 0.8794, -0.1028], [0, 0.961147, -0.276036]]]) {
-  const length = Math.hypot(...normal);
-  place(chestPosition(position), [normal[0] / length, normal[1] / length, normal[2] / length], "chest-lid", upperRoom);
+for (const item of BATHROOM) {
+  const after = [...ROOF_IDS, ...CEILING_IDS, "interior-door-upper-right-front" as const, ...(item.after ?? [])];
+  for (const screw of item.screws) place(screw.position, screw.normal, item.id, after);
 }
-place(chestPosition([0, 0.31, 0.367]), [0, 0, 1], "chest", upperRoom);
-place(chestPosition([0, 0.014, 0]), [0, 1, 0], "chest", [...upperRoom, "chest-lid"]);
 for (const step of [1, 7, 11]) place([step % 4 === 1 ? -0.2 : 0.2, -1.485 + step * 0.15, 1.25 - step * 0.18], [0, 1, 0], "stairs", upperRoom);
 for (const side of [-1, 1]) {
   const part = side === -1 ? "floor-left" : "floor-right";
-  const after: PartId[] = [...upperRoom, ...(side === -1 ? ["bed", "wardrobe"] as const : ["desk", ...CHEST_PART_IDS] as const)];
+  const after: PartId[] = [...upperRoom, ...(side === -1 ? ["bed", "wardrobe"] as const : ["desk", ...BATHROOM_IDS] as const)];
   for (const x of [0.65, 2.05]) for (const z of [-1.3, 1.3]) place([side * x, 0.33, z], [0, 1, 0], part, after);
   place([side * 1.4, 0.33, 0], [0, 1, 0], part, after);
 }
@@ -203,6 +200,15 @@ place([1.75, 0.409, -0.08], [0, 1, 0], "study-rug", upperRoom);
 place([1.39, -0.998, -0.93], [0, 1, 0], "sideboard", lowerRoom);
 place([0.94, -1.265, -0.676], [0, 0, 1], "sideboard", lowerRoom);
 place([-0.19, -1.501, -1.44], [0, 1, 0], "hall-runner", lowerRoom);
+for (const { id, bay, side, story, bottom, z } of INTERIOR_DOORS) {
+  const after = story === "upper" ? [...ROOF_IDS, ...CEILING_IDS] : floors;
+  const hallFace = side * 0.481;
+  const firstHeight = bay === "front" ? 0.58 : story === "upper" ? 0.91 : 0.43;
+  place([hallFace, bottom + firstHeight, z - 0.13], [-side, 0, 0], id, after);
+  if (bay === "front") place([hallFace, bottom + 1.15, z + 0.15], [-side, 0, 0], id, after);
+}
+const [baubleX, baubleY, baubleZ] = PART_PIVOTS["roof-bauble"];
+place([baubleX, baubleY + 0.238, baubleZ], [0, 1, 0], "roof-bauble");
 export const DEMO_LEVEL: Screw[] = placements.map((placement, index) => ({ ...placement, solutionAfter: placement.solutionAfter ? [...placement.solutionAfter] : undefined,
   obstructedBy: findScrewObstructions(placement, SCREW_SCALE), id: `screw-${index + 1}`,
   // Quotas are whole triples; actual positions receive verified randomized colors.

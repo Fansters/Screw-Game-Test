@@ -18,6 +18,7 @@ import CameraRig from "./CameraRig";
 import { TITLE_CAMERA } from "../scene/camera";
 import type { CameraView } from "../scene/camera";
 import type { LooseParts } from "../scene/loosePhysics";
+import { initPilotPhysics } from "../scene/pilotPhysics";
 import { findLooseBlocker } from "../scene/loosePhysics";
 
 type GameSceneProps = { logical: GameState; fallingParts: PartId[]; round: number; playable: boolean;
@@ -75,7 +76,7 @@ function SceneContents({ logical, fallingParts, fallStarts, round, playable, orb
     let active = true;
     let frameId = 0;
     // All covered meshes are present too: warm every shader before exposing Start.
-    void gl.compileAsync(scene, camera).then(() => {
+    void Promise.all([gl.compileAsync(scene, camera), initPilotPhysics()]).then(() => {
       if (active) frameId = requestAnimationFrame(() => {
         gl.render(scene, camera);
         if (import.meta.env.DEV) console.debug(`Level render: ${gl.info.render.calls} draws`);

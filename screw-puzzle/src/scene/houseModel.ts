@@ -1,13 +1,11 @@
-import { CHEST_PART_IDS, DINING_CHAIRS, FLOOR_BEAMS, FRAME_POSTS, GROUND_IDS, PLINTH_IDS, ROOF_SECTIONS, TILE_IDS, WALL_SECTIONS } from "../game/types.ts";
-import type { ChestPartId, PartId } from "../game/types.ts";
+import { DINING_CHAIRS, FLOOR_BEAMS, FRAME_POSTS, GROUND_IDS, PLINTH_IDS, ROOF_SECTIONS, TILE_IDS, WALL_SECTIONS } from "../game/types.ts";
+import type { PartId } from "../game/types.ts";
+import { addBathroom } from "./bathroom.ts";
 import { addChristmasDetails } from "./christmas.ts";
 import { addInteriors } from "./interiors.ts";
-import { CHEST_ORIGIN, CHEST_SURFACES, chestPosition } from "./chestModel.ts";
 export type Vector = [number, number, number];
-export type Piece = { position: Vector; size: Vector; color: string; rotation?: Vector } & (
-  { kind: "box" | "cylinder" | "ico" | "gable" | "cone" | "star" | "snow-slab" | "snow-drift"; part: PartId } |
-  { kind: "chest-surface"; part: ChestPartId }
-);
+export type Piece = { position: Vector; size: Vector; color: string; rotation?: Vector; part: PartId;
+  kind: "box" | "cylinder" | "ico" | "gable" | "cone" | "star" | "snow-slab" | "snow-drift" | "ring" };
 export const HOUSE = { halfWidth: 2.4, halfDepth: 1.9, ground: -1.6, upper: 0.25, eave: 2, ridge: 3.5, roofRun: 2.7, roofRise: 1.5 };
 export const ROOF_PITCH = Math.atan2(HOUSE.roofRise, HOUSE.roofRun);
 export const PART_PIVOTS = {
@@ -153,12 +151,7 @@ box([1.35, 1.09, -1.05], [0.35, 0.11, 0.3], "#a797ce", "desk");
 round("cylinder", [1.95, 1.09, -1.4], [0.12, 0.06, 0.12], "#e9bf7d", "desk");
 box([1.95, 1.29, -1.4], [0.045, 0.35, 0.045], "#ad936e", "desk");
 round("cylinder", [1.95, 1.5, -1.4], [0.21, 0.21, 0.21], "#f8d89c", "desk");
-// Exact exported surfaces are used by CPU clearance and visibility audits.
-// The render layer loads the matching textured nodes instead of these meshes.
-for (const part of CHEST_PART_IDS) {
-  PART_PIVOTS[part] = chestPosition(CHEST_SURFACES[part].pivot);
-  PIECES.push({ kind: "chest-surface", part, position: CHEST_ORIGIN, size: [1, 1, 1], color: "#ffffff" });
-}
+addBathroom(PIECES, PART_PIVOTS);
 // A real thirteen-tread stair connects the two stories.
 for (let step = 0; step < 13; step += 1) {
   const top = -1.5 + step * 0.15;

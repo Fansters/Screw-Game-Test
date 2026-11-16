@@ -13,7 +13,7 @@ const solids = PIECES.map((piece) => {
   mesh.position.set(...piece.position); mesh.scale.set(...piece.size);
   if (piece.rotation) mesh.rotation.set(...piece.rotation);
   mesh.updateMatrixWorld();
-  return { mesh, part: piece.part, surfaceOnly: piece.kind === "chest-surface", normalMatrix: new Matrix3().getNormalMatrix(mesh.matrixWorld) };
+  return { mesh, part: piece.part, normalMatrix: new Matrix3().getNormalMatrix(mesh.matrixWorld) };
 });
 
 export function findScrewObstructions(screw: { position: [number, number, number]; normal: [number, number, number]; attachedTo?: PartId }, scale: number,
@@ -27,7 +27,7 @@ export function findScrewObstructions(screw: { position: [number, number, number
       // Keep convex proxies even though rendering merges same-color geometry.
       const mesh = new Mesh(solid.mesh.geometry, material);
       mesh.matrixWorld.multiplyMatrices(live.root.matrixWorld, solid.mesh.matrixWorld);
-      colliders.push({ mesh, part: live.part, surfaceOnly: solid.surfaceOnly, normalMatrix: new Matrix3().getNormalMatrix(mesh.matrixWorld) });
+      colliders.push({ mesh, part: live.part, normalMatrix: new Matrix3().getNormalMatrix(mesh.matrixWorld) });
     }
   }
   const normal = new Vector3(...screw.normal);
@@ -49,8 +49,7 @@ export function findScrewObstructions(screw: { position: [number, number, number
       if (!hit) continue;
       // An outward-facing first hit means the sample starts INSIDE this solid,
       // including deep covers whose exit lies beyond the short spin-out path.
-      // Thin imported surfaces can legitimately be hit from their back side.
-      const inside = !solid.surfaceOnly && hit.face && hit.face.normal.clone().applyNormalMatrix(solid.normalMatrix).dot(normal) > 0.00001;
+      const inside = hit.face && hit.face.normal.clone().applyNormalMatrix(solid.normalMatrix).dot(normal) > 0.00001;
       if (inside || hit.distance < scale * SCREW_PULL_DISTANCE + 0.01) { blocked.add(solid.part); break; }
     }
   }

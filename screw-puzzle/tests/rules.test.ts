@@ -4,15 +4,18 @@ import { DoubleSide, Mesh, MeshBasicMaterial, Raycaster, Vector3 } from "three";
 import { BONUS_SLOT, createInitialState, removeScrew, isScrewAccessible, planScrewRemoval } from "../src/game/rules.ts";
 import { generatePuzzle } from "../src/game/randomize.ts";
 import { DEMO_LEVEL, SCREW_SCALE } from "../src/game/levels.ts";
-import { CHEST_PART_IDS, GROUND_IDS, PART_IDS, SCREW_COLOR_ORDER, TILE_IDS } from "../src/game/types.ts";
+import { GROUND_IDS, PART_IDS, SCREW_COLOR_ORDER, TILE_IDS } from "../src/game/types.ts";
 import type { GameState, PartId, Screw, ScrewColor } from "../src/game/types.ts";
 import { createRun, currentFrame, runReducer, settledParts } from "../src/animation/run.ts";
 import type { RunState } from "../src/animation/run.ts";
 import { buildSequence } from "../src/animation/sequence.ts";
-import { PIECES } from "../src/scene/houseModel.ts";
+import { PART_PIVOTS, PIECES } from "../src/scene/houseModel.ts";
 import { geometryFor } from "../src/scene/geometry.ts";
-import { detachLooseParts, dismissLoosePart, findLooseBlocker, isLooseVisible, loosePartY, looseY } from "../src/scene/loosePhysics.ts";
+import { detachLooseParts, dismissLoosePart, findLooseBlocker, isLooseVisible, loosePartPoof, loosePartPose, loosePartY, looseY } from "../src/scene/loosePhysics.ts";
 import { findExposedScrews } from "../src/scene/exposure.ts";
+import { initPilotPhysics, LOOSE_LIFETIME_MS, PILOT_PARTS } from "../src/scene/pilotPhysics.ts";
+
+await initPilotPhysics();
 
 function fixture(counts: Partial<Record<ScrewColor, number>> = { red: 6, blue: 6, yellow: 6, green: 6 }): Screw[] {
   return SCREW_COLOR_ORDER.flatMap((color) => Array.from({ length: counts[color] ?? 0 }, (_, index) => ({
@@ -104,15 +107,15 @@ function snowRevealRun() {
   return { run, target };
 }
 
-test("all 279 screws release 143 objects, with twelve whole-triple color quotas", () => {
-  assert.equal(DEMO_LEVEL.length, 279);
+test("all 300 screws release 158 objects, with twelve whole-triple color quotas", () => {
+  assert.equal(DEMO_LEVEL.length, 300);
   assert.equal(new Set(DEMO_LEVEL.map((screw) => screw.id)).size, DEMO_LEVEL.length);
   assert.equal(DEMO_LEVEL.filter((screw) => screw.attachedTo).length, DEMO_LEVEL.length);
-  assert.equal(PART_IDS.length, 143);
+  assert.equal(PART_IDS.length, 158);
   assert.equal(SCREW_COLOR_ORDER.length, 12);
   const counts = SCREW_COLOR_ORDER.map((color) => DEMO_LEVEL.filter((screw) => screw.color === color).length);
-  assert.equal(counts.filter((count) => count === 24).length, 9);
-  assert.equal(counts.filter((count) => count === 21).length, 3);
+  assert.equal(counts.filter((count) => count === 24).length, 8);
+  assert.equal(counts.filter((count) => count === 27).length, 4);
   assert.equal(SCREW_SCALE, 0.275 * 1.25 * 1.15);
   assert.ok(PIECES.every((piece) => PART_IDS.includes(piece.part)));
   assert.ok(DEMO_LEVEL.every((screw) => Math.abs(Math.hypot(...screw.normal) - 1) < 1e-10));
@@ -148,6 +151,7 @@ test("one hundred random seeds all have balanced colors, mixed fasteners, and a 
     for (const id of puzzle.solution) {
       assert.ok(isScrewAccessible(state, state.screws.find((screw) => screw.id === id)!));
       state = removeScrew(state, id);
+      assert.equal(state.tray.length, 0, "The generated proof uses only the two starting box slots");
       if (seed <= 5) inventory(state);
     }
     assert.equal(state.status, "won");
@@ -373,27 +377,21 @@ test("object size limits fixings to one to three, with at most five on large flo
   assert.ok(PIECES.every((piece) => !["roof-wrap", "yard-lights", "festival-sash"].includes(piece.part)));
 });
 
-test("the chest lock, lid and body release separately after their own screws", () => {
-  const owner = (part: PartId) => CHEST_PART_IDS.some((id) => id === part);
+test("the shower enclosure and tray release separately after their own screws", () => {
+  const owner = (part: PartId) => part === "bath-shower" || part === "bath-tray";
   let game = { ...createInitialState(DEMO_LEVEL.filter((screw) => screw.attachedTo && owner(screw.attachedTo)).map((screw) => ({ ...screw, color: "red" }))),
     removedParts: PART_IDS.filter((part) => !owner(part)) };
-  const lock = game.screws.filter((screw) => screw.attachedTo === "chest-lock");
-  const lid = game.screws.filter((screw) => screw.attachedTo === "chest-lid");
-  const body = game.screws.filter((screw) => screw.attachedTo === "chest");
-  const front = body.find((screw) => screw.normal[2] === 1)!;
-  assert.deepEqual([lock.length, lid.length, body.length], [1, 2, 2]);
-  assert.equal(removeScrew(game, front.id), game, "The real lock geometry obstructs the front body screw");
-  game = removeScrew(game, lock[0].id);
-  assert.deepEqual(game.removedParts.filter(owner), ["chest-lock"]);
-  assert.ok(isScrewAccessible(game, front));
-  game = removeScrew(game, lid[0].id);
-  assert.deepEqual(game.removedParts.filter(owner), ["chest-lock"]);
-  game = removeScrew(game, lid[1].id);
-  assert.deepEqual(game.removedParts.filter(owner), ["chest-lock", "chest-lid"]);
-  game = removeScrew(game, front.id);
-  assert.ok(!game.removedParts.includes("chest"));
-  game = removeScrew(game, body.find((screw) => screw !== front)!.id);
-  assert.deepEqual(game.removedParts.filter(owner), ["chest-lock", "chest-lid", "chest"]);
+  const shower = game.screws.filter((screw) => screw.attachedTo === "bath-shower");
+  const tray = game.screws.find((screw) => screw.attachedTo === "bath-tray")!;
+  assert.equal(shower.length, 3);
+  assert.equal(removeScrew(game, tray.id), game);
+  for (const screw of shower.slice(0, 2)) game = removeScrew(game, screw.id);
+  assert.ok(!isScrewAccessible(game, tray));
+  game = removeScrew(game, shower[2].id);
+  assert.deepEqual(game.removedParts.filter(owner), ["bath-shower"]);
+  assert.ok(isScrewAccessible(game, tray));
+  game = removeScrew(game, tray.id);
+  assert.deepEqual(game.removedParts.filter(owner), ["bath-shower", "bath-tray"]);
 });
 
 test("independent falls can overlap and only cleared active covers can be bypassed", () => {
@@ -517,7 +515,7 @@ test("loose props settle on intact supports, drop when a support goes, and can b
   assert.equal(falling[id]!.fromY, table[id]!.toY);
   assert.ok(looseY(falling[id]!, 2650) < motion.toY);
   const poof = dismissLoosePart(falling, id, [id, "table"], 2650);
-  assert.equal(poof[id]!.poof?.y, looseY(falling[id]!, 2650));
+  assert.equal(poof[id]!.poof?.position[1], looseY(falling[id]!, 2650));
   assert.equal(dismissLoosePart(poof, id, [id, "table"], 2700), poof);
   assert.equal(isLooseVisible(poof[id]!, 2700), false);
   const offMap = detachLooseParts({}, id, PART_IDS, 0)[id]!;
@@ -528,13 +526,51 @@ test("a roof section lands on the debris pile and drops again when its support i
   const roof = "roof-left-front-ridge", ceiling = "ceiling-front";
   const removed = PART_IDS.filter((part) => part !== "ground-sw" && part !== "ground-se");
   const lower = detachLooseParts({}, ceiling, removed, 1000);
-  const pile = detachLooseParts(lower, roof, removed, 3000);
+  const pile = detachLooseParts(lower, roof, removed, 2600);
   const roofMotion = pile[roof]!;
   assert.equal(roofMotion.support, ceiling);
   assert.ok(roofMotion.toY < roofMotion.fromY - 2, "The roof drops into the ground-floor room");
-  const cleared = dismissLoosePart(pile, ceiling, removed, 5000);
-  assert.equal(cleared[roof]?.fromY, roofMotion.toY);
+  const cleared = dismissLoosePart(pile, ceiling, removed, 3975);
+  assert.equal(cleared[roof]?.fromY, loosePartY(pile, roof, 3975));
   assert.ok(cleared[roof]!.toY < roofMotion.toY);
+  assert.ok(loosePartY(pile, roof, 4400) < roofMotion.toY, "The roof also drops when its support poofs automatically");
+  assert.equal(loosePartPoof(cleared, roof).at, 2600 + LOOSE_LIFETIME_MS);
+});
+
+test("the Rapier prototype slides snow, rolls the ornament and lets the roof tip on contact", () => {
+  const [panel, snow, bauble] = PILOT_PARTS;
+  const roof = detachLooseParts({}, panel, [panel, snow], 1000);
+  const roofPose = loosePartPose(roof, panel, 1850);
+  assert.ok(roofPose.position[1] < PART_PIVOTS[panel][1] - 0.1);
+  assert.ok(Math.abs(roofPose.rotation[2]) > 0.19, "The authored pitch flattens as the panel tips onto its support");
+  const strip = detachLooseParts({}, snow, [snow, "roof-lights-right"], 1000);
+  assert.ok(loosePartPose(strip, snow, 1750).position[0] > PART_PIVOTS[snow][0] + 0.75);
+  const ornament = detachLooseParts({}, bauble, [bauble], 1000);
+  const ball = loosePartPose(ornament, bauble, 1750);
+  assert.ok(ball.position[0] > PART_PIVOTS[bauble][0] + 0.4);
+  assert.ok(Math.abs(ball.rotation[2]) > 0.4);
+  assert.ok(loosePartPose(ornament, bauble, 2500).position[1] > loosePartPose(ornament, bauble, 2260).position[1],
+    "The sphere rebounds off the cottage grounds");
+
+  for (const [part, loose] of [[panel, roof], [snow, strip], [bauble, ornament]] as const) {
+    const at = 1000 + LOOSE_LIFETIME_MS;
+    assert.deepEqual(loosePartPoof(loose, part), { at, position: loosePartPose(loose, part, at).position });
+    assert.equal(isLooseVisible(loose[part]!, at, loosePartPose(loose, part, at).position[1]), false);
+    assert.equal(dismissLoosePart(loose, part, [part], at), loose);
+  }
+});
+
+test("a support release refreshes an active Rapier path without moving its existing pose or resetting its poof", () => {
+  const [, snow, bauble] = PILOT_PARTS;
+  const rolling = detachLooseParts({}, bauble, [bauble], 1000);
+  const at = 1325;
+  const both = detachLooseParts(rolling, snow, [bauble, snow, "roof-lights-right"], at);
+  const before = loosePartPose(rolling, bauble, at);
+  const refreshed = loosePartPose(both, bauble, at);
+  assert.ok(new Vector3(...before.position).distanceTo(new Vector3(...refreshed.position)) < 0.001);
+  assert.notDeepEqual(loosePartPose(rolling, bauble, 2300), loosePartPose(both, bauble, 2300));
+  assert.equal(loosePartPoof(both, bauble).at, 4000);
+  assert.equal(loosePartPoof(both, snow).at, 4325);
 });
 
 test("the new furnishings cover floor screw heads and the loose sideboard must be cleared", () => {
@@ -550,7 +586,7 @@ test("the new furnishings cover floor screw heads and the loose sideboard must b
 test("the natural opening stays below ten percent across eighty views and requires matching-color reveals", () => {
   const initial = generatePuzzle(123).state;
   const exposed = findExposedScrews(initial);
-  assert.equal(exposed.length, 25);
+  assert.equal(exposed.length, 26);
   assert.ok(exposed.length / initial.screws.length < 0.1);
   assert.deepEqual(new Set(exposed), new Set(initial.screws.filter((screw) => !screw.obstructedBy?.length && !screw.solutionAfter?.length).map((screw) => screw.id)));
   for (const owner of ["wall-front-upper-1", "partition-upper-left", "bed"] as const) {

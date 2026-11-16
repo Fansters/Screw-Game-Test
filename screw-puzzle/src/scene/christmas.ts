@@ -9,6 +9,13 @@ export function addChristmasDetails(pieces: Piece[], pivots: Record<PartId, Vect
   const snow = "#f1f6ff", red = "#cf4f61", green = "#397d65", gold = "#efc86c";
   const shadedSnow = "#e2edf7";
   const ice = "#d5e8f3";
+  const bauble = "roof-bauble";
+  const [bx, by, bz] = [2.47 + Math.sin(pitch) * 0.57, 3.5 - 2.47 / 1.8 + Math.cos(pitch) * 0.57, 1.28];
+  pivots[bauble] = [bx, by, bz];
+  round("ico", pivots[bauble], [0.19, 0.19, 0.19], "#c54a58", bauble);
+  round("cylinder", [bx, by + 0.179, bz], [0.078, 0.095, 0.078], gold, bauble);
+  pieces.push({ kind: "ring", part: bauble, color: gold, position: [bx, by - 0.013, bz],
+    size: [0.17, 0.075, 0.17], rotation: [0.28, 0, 0.45] });
   for (const strip of SNOW_ROOFS) {
     const side = strip.side === "left" ? -1 : 1;
     const x = side * (1.35 + Math.sin(pitch) * 0.2), y = 2.75 + Math.cos(pitch) * 0.2;

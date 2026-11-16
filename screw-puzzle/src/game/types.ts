@@ -12,8 +12,22 @@ export const WALL_IDS = WALL_SECTIONS.map((section) => section.id);
 export const CEILING_IDS = ["ceiling-front", "ceiling-middle", "ceiling-back"] as const;
 export const PARTITION_IDS = ["partition-upper-left", "partition-upper-right", "partition-upper-cross-left", "partition-upper-cross-right",
   "partition-lower-left", "partition-lower-right", "partition-lower-cross-left"] as const;
+export const INTERIOR_STORIES = [
+  { story: "upper", bottom: 0.33, top: 1.99 },
+  { story: "lower", bottom: -1.59, top: 0.18 },
+] as const;
+export const INTERIOR_DOORWAYS = [
+  { bay: "rear", z: -1.15 },
+  { bay: "front", z: 0.73 },
+] as const;
+export const INTERIOR_DOORS = INTERIOR_STORIES.flatMap(({ story, bottom, top }) =>
+  (["left", "right"] as const).flatMap((room) => INTERIOR_DOORWAYS.map(({ bay, z }) => ({
+    id: `interior-door-${story}-${room}-${bay}` as const, story, bay, z, bottom, top: top - 0.2,
+    side: room === "left" ? -1 : 1,
+  }))));
 export const CHEST_PART_IDS = ["chest", "chest-lid", "chest-lock"] as const;
 export type ChestPartId = typeof CHEST_PART_IDS[number];
+export const BATHROOM_IDS = ["bath-toilet", "bath-sink", "bath-shower", "bath-tray", "bath-mirror", "bath-towel", "bath-mat", "bath-paper", "bath-soap"] as const;
 export const FRAME_POSTS = (["nw", "ne", "sw", "se"] as const).flatMap((corner) =>
   (["lower", "upper"] as const).map((story) => ({
     id: `post-${corner}-${story}` as const, story,
@@ -25,7 +39,7 @@ export const DINING_CHAIRS = [
   { id: "chair-front", z: 1.5, outward: 1 },
   { id: "chair-back", z: -0.3, outward: -1 },
 ] as const;
-export const HOUSE_PART_IDS = ["chimney", "window-upper-left", "window-upper-right", "window-lower-left", "window-lower-right", "door", "steps", "planter-left", "planter-right", "bed", "wardrobe", "desk", ...CHEST_PART_IDS, "stairs", "floor-left", "floor-right", "sofa", "kitchen", "table", ...ROOF_IDS, ...WALL_IDS, ...CEILING_IDS, ...PARTITION_IDS] as const;
+export const HOUSE_PART_IDS = ["chimney", "window-upper-left", "window-upper-right", "window-lower-left", "window-lower-right", "door", "steps", "planter-left", "planter-right", "bed", "wardrobe", "desk", ...BATHROOM_IDS, "stairs", "floor-left", "floor-right", "sofa", "kitchen", "table", ...ROOF_IDS, ...WALL_IDS, ...CEILING_IDS, ...PARTITION_IDS] as const;
 export const GROUND_IDS = ["ground-nw", "ground-ne", "ground-sw", "ground-se"] as const;
 export const PLINTH_IDS = ["plinth-nw", "plinth-ne", "plinth-sw", "plinth-se"] as const;
 export const TILE_IDS = ["tile-nw", "tile-n", "tile-ne", "tile-w", "tile-center", "tile-e", "tile-sw", "tile-s", "tile-se"] as const;
@@ -37,8 +51,8 @@ export const DECOR_IDS = [...SNOW_ROOFS.map((part) => part.id), ...GARLANDS.map(
   "icicles-front", "icicles-back", "snowbank-front", "snowbank-back", "snowbank-left", "snowbank-right",
   "wreath-upper-left", "wreath-upper-right", "wreath-lower-left", "wreath-lower-right", "door-bow",
   "christmas-tree", "tree-star", "gift-left", "holiday-lantern", "gift-right", "candy-left", "candy-right", "porch-snow", "chimney-snow",
-  "roof-lights-left", "roof-lights-right", "present-bed", "present-desk", "present-sofa", "present-table"] as const;
-export const PART_IDS = [...HOUSE_PART_IDS, ...DINING_CHAIRS.map((chair) => chair.id), "table-vase", ...FRAME_POSTS.map((post) => post.id), ...FLOOR_BEAMS, ...GROUND_IDS, ...PLINTH_IDS, ...TILE_IDS, ...DECOR_IDS, ...INTERIOR_PROPS] as const;
+  "roof-lights-left", "roof-lights-right", "present-bed", "present-desk", "present-sofa", "present-table", "roof-bauble"] as const;
+export const PART_IDS = [...HOUSE_PART_IDS, ...DINING_CHAIRS.map((chair) => chair.id), "table-vase", ...FRAME_POSTS.map((post) => post.id), ...FLOOR_BEAMS, ...GROUND_IDS, ...PLINTH_IDS, ...TILE_IDS, ...DECOR_IDS, ...INTERIOR_PROPS, ...INTERIOR_DOORS.map((door) => door.id)] as const;
 export type PartId = typeof PART_IDS[number];
 
 export type Screw = {

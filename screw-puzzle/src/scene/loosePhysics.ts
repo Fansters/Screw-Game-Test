@@ -4,14 +4,17 @@ import type { PartId, Screw } from "../game/types.ts";
 import { geometryFor } from "./geometry.ts";
 import { PART_PIVOTS, PIECES } from "./houseModel.ts";
 import { findScrewObstructions } from "./obstructions.ts";
+import { isPilotPart, LOOSE_LIFETIME_MS, pilotPose, simulatePilots } from "./pilotPhysics.ts";
+import type { PartPose, PilotMotion } from "./pilotPhysics.ts";
 
-export type LooseMotion = {
+export type LooseMotion = PilotMotion & {
   startedAt: number;
   fromY: number;
   toY: number;
   support: PartId | null;
   kick: number;
-  poof?: { at: number; y: number };
+  floorY?: number;
+  poof?: { at: number; position: [number, number, number] };
 };
 export type LooseParts = Partial<Record<PartId, LooseMotion>>;
 
@@ -82,6 +85,14 @@ function poseInPile(loose: LooseParts, part: PartId, now: number): { y: number; 
   if (!motion.support) return pose;
   const support = loose[motion.support];
   if (!support || support.poof) return pose;
+  const endsAt = support.releasedAt + LOOSE_LIFETIME_MS;
+  if (now >= endsAt && endsAt > motion.startedAt) {
+    const last = poseInPile(loose, part, endsAt - 0.001);
+    const t = (now - endsAt) / 1000;
+    const y = last.y + last.velocity * t - GRAVITY * t * t / 2;
+    const floor = motion.floorY ?? OFF_MAP - 1;
+    return y > floor ? { y, velocity: last.velocity - GRAVITY * t } : { y: floor, velocity: 0 };
+  }
   const beneath = poseInPile(loose, motion.support, now);
   const contactY = motion.toY + beneath.y - support.toY;
   return contactY > pose.y ? { y: contactY, velocity: beneath.velocity } : pose;
@@ -89,8 +100,30 @@ function poseInPile(loose: LooseParts, part: PartId, now: number): { y: number; 
 
 export function loosePartY(loose: LooseParts, part: PartId, now: number) { return poseInPile(loose, part, now).y; }
 
-export function isLooseVisible(motion: LooseMotion, now: number) {
-  return !motion.poof && looseY(motion, now) > OFF_MAP;
+export function loosePartPose(loose: LooseParts, part: PartId, now: number): PartPose {
+  if (isPilotPart(part)) return pilotPose(part, loose[part]!, now);
+  const [x, , z] = PART_PIVOTS[part];
+  return { position: [x, loosePartY(loose, part, now), z], rotation: [0, 0, 0, 1] };
+}
+
+export function isLooseVisible(motion: LooseMotion, now: number, y = looseY(motion, now)) {
+  return !motion.poof && now < motion.releasedAt + LOOSE_LIFETIME_MS && y > OFF_MAP;
+}
+
+export function loosePartPoof(loose: LooseParts, part: PartId) {
+  const motion = loose[part]!;
+  if (motion.poof) return motion.poof;
+  const at = motion.releasedAt + LOOSE_LIFETIME_MS;
+  return { at, position: loosePartPose(loose, part, at).position };
+}
+
+export function trimFinishedPilots(loose: LooseParts, now: number) {
+  const next = { ...loose };
+  for (const part of PART_IDS.filter(isPilotPart)) {
+    const motion = next[part];
+    if (motion && now >= (motion.dismissedAt ?? motion.releasedAt + LOOSE_LIFETIME_MS) + SMOKE_DURATION_MS) delete next[part];
+  }
+  return next;
 }
 
 export function smokeScale(part: PartId) {
@@ -102,7 +135,7 @@ function settlePile(loose: LooseParts, previous: LooseParts, removed: readonly P
   const removedSet = new Set(removed);
   const pile = PART_IDS.flatMap((part) => {
     const motion = loose[part];
-    if (!motion || motion.poof) return [];
+    if (!motion || isPilotPart(part) || motion.poof || now < motion.releasedAt || now >= motion.releasedAt + LOOSE_LIFETIME_MS) return [];
     const { y, velocity } = previous[part] ? poseInPile(previous, part, now) : phase(motion, now);
     if (y <= OFF_MAP) return [];
     const bounds = bodies.get(part)!;
@@ -120,9 +153,12 @@ function settlePile(loose: LooseParts, previous: LooseParts, removed: readonly P
           (!landing || other.top > landing.top + 0.001) && overlap(bounds, other.bounds)) landing = other;
     }
     const toY = landing ? y + Math.min(0, landing.top - bottom) : OFF_MAP - 1;
+    const floorY = fixed ? y + Math.min(0, fixed.top - bottom) : OFF_MAP - 1;
     const support = landing?.part ?? null;
     if (support !== motion.support || Math.abs(toY - motion.toY) > 0.001) {
-      next[part] = { startedAt: now, fromY: y, toY, support, kick: velocity };
+      next[part] = { ...motion, startedAt: now, fromY: y, toY, support, kick: velocity, floorY };
+    } else if (floorY !== motion.floorY) {
+      next[part] = { ...motion, floorY };
     }
     if (landing) settled.push({ part, bounds, top: bounds.max.y + toY - PART_PIVOTS[part][1],
       currentTop: bounds.max.y + y - PART_PIVOTS[part][1] });
@@ -130,18 +166,35 @@ function settlePile(loose: LooseParts, previous: LooseParts, removed: readonly P
   return next;
 }
 
+function updatePilotTracks(loose: LooseParts, removed: readonly PartId[], now: number) {
+  const motions = PART_IDS.flatMap((part) => loose[part] ? [{ part, ...loose[part] }] : []);
+  const tracks = simulatePilots(motions, removed, now, (part, at) => {
+    const motion = loose[part];
+    if (!motion || motion.poof || at >= motion.releasedAt + LOOSE_LIFETIME_MS) return;
+    const [x, y, z] = PART_PIVOTS[part];
+    const height = at < motion.releasedAt ? y : loosePartY(loose, part, at);
+    if (height > OFF_MAP) return { position: [x, height, z], rotation: [0, 0, 0, 1] };
+  });
+  for (const [part, frames] of tracks) loose[part] = { ...loose[part]!, frames };
+  return trimFinishedPilots(loose, now);
+}
+
 export function detachLooseParts(loose: LooseParts, detached: PartId, removed: readonly PartId[], now: number): LooseParts {
   const fromY = PART_PIVOTS[detached][1];
   const bounds = bodies.get(detached)!;
   const height = bounds.max.y - bounds.min.y;
-  return settlePile({ ...loose, [detached]: { startedAt: now, fromY, toY: OFF_MAP - 1,
+  const next = settlePile({ ...loose, [detached]: { releasedAt: now, startedAt: now, fromY, toY: OFF_MAP - 1,
     support: null, kick: height < 1 ? 1.3 : 0.45 } }, loose, removed, now);
+  return updatePilotTracks(next, removed, now);
 }
 
 export function dismissLoosePart(loose: LooseParts, part: PartId, removed: readonly PartId[], now: number): LooseParts {
   const motion = loose[part];
-  if (!motion || now < motion.startedAt || !isLooseVisible(motion, now)) return loose;
-  return settlePile({ ...loose, [part]: { ...motion, poof: { at: now, y: loosePartY(loose, part, now) } } }, loose, removed, now);
+  if (!motion || now < motion.releasedAt || motion.poof || now >= motion.releasedAt + LOOSE_LIFETIME_MS) return loose;
+  const { position } = loosePartPose(loose, part, now);
+  if (position[1] <= OFF_MAP) return loose;
+  const next = settlePile({ ...loose, [part]: { ...motion, dismissedAt: now, poof: { at: now, position } } }, loose, removed, now);
+  return updatePilotTracks(next, removed, now);
 }
 
 export function findLooseBlocker(loose: LooseParts, screw: Screw, scale: number, now: number): PartId | undefined {
@@ -150,15 +203,14 @@ export function findLooseBlocker(loose: LooseParts, screw: Screw, scale: number,
   const probe = new Box3().setFromPoints([base, tip]).expandByScalar(scale * 0.26);
   for (const part of PART_IDS) {
     const motion = loose[part];
-    if (!motion || motion.poof) continue;
-    const y = loosePartY(loose, part, now);
-    if (y <= OFF_MAP) continue;
-    const shift = y - PART_PIVOTS[part][1];
-    const bounds = bodies.get(part)!;
-    if (probe.max.x < bounds.min.x || probe.min.x > bounds.max.x || probe.max.z < bounds.min.z ||
-      probe.min.z > bounds.max.z || probe.max.y < bounds.min.y + shift || probe.min.y > bounds.max.y + shift) continue;
+    if (!motion || motion.poof || now >= motion.releasedAt + LOOSE_LIFETIME_MS) continue;
+    const { position, rotation } = loosePartPose(loose, part, now);
+    if (position[1] <= OFF_MAP) continue;
     const root = new Object3D();
-    root.position.y = shift;
+    root.quaternion.set(...rotation).normalize();
+    root.position.set(...PART_PIVOTS[part]).applyQuaternion(root.quaternion).negate().add(new Vector3(...position));
+    root.updateMatrixWorld();
+    if (!probe.intersectsBox(bodies.get(part)!.clone().applyMatrix4(root.matrixWorld))) continue;
     if (findScrewObstructions(screw, scale, { root, part }).length) return part;
   }
 }
