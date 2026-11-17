@@ -9,22 +9,21 @@ import { SCREW_SCALE } from "../game/levels";
 import { pickSceneTarget } from "../scene/picking";
 import { createScrewGestures } from "../scene/screwGestures";
 import { isScrewAccessible } from "../game/rules";
-import { findScrewObstructions } from "../scene/obstructions";
-import { settledParts } from "../animation/run";
 import House from "./House";
 import ScrewField from "./ScrewField";
 import FloatingTitle from "./FloatingTitle";
 import CameraRig from "./CameraRig";
 import { TITLE_CAMERA } from "../scene/camera";
 import type { CameraView } from "../scene/camera";
-import type { LooseParts } from "../scene/loosePhysics";
-import { initPilotPhysics } from "../scene/pilotPhysics";
+import type { LooseParts, PartReleases } from "../scene/loosePhysics";
+import { createPartPhysics, initPartPhysics } from "../scene/partPhysics";
+import type { PartPhysics } from "../scene/partPhysics";
 import { findLooseBlocker } from "../scene/loosePhysics";
 
 type GameSceneProps = { logical: GameState; fallingParts: PartId[]; round: number; playable: boolean;
   orbitable?: boolean;
-  looseParts: LooseParts; looseNow?: () => number; onLooseDismiss: (part: PartId) => void;
-  fallStarts?: Partial<Record<PartId, number>>;
+  releases?: PartReleases; onlineParts?: { current: LooseParts }; looseNow?: () => number;
+  onLooseDismiss: (part: PartId) => void;
   pingMode?: boolean; pingScrew?: Screw; pingSequence?: number; onScrewPing?: (id: string) => void;
   rejectedScrew?: { screw: string; sequence: number } | null;
   view: CameraView; onCameraArrive: (view: CameraView, round: number) => void;
@@ -60,8 +59,8 @@ const PREVIEW_HOLD_MS = 420;
 type PartPreview = { part: PartId; round: number; x: number; y: number };
 const localNow = () => performance.now();
 
-function SceneContents({ logical, fallingParts, fallStarts, round, playable, orbitable, pingMode, pingScrew, pingSequence, onScrewPing, rejectedScrew,
-  looseParts, looseNow = localNow, onLooseDismiss,
+function SceneContents({ logical, fallingParts, round, playable, orbitable, pingMode, pingScrew, pingSequence, onScrewPing, rejectedScrew,
+  releases, onlineParts, looseNow = localNow, onLooseDismiss,
   view, onCameraArrive, onReady, onFallFinished, onScrewSelect, onBlockedScrew, projectorRef, outlinedPart, onPreview }: GameSceneProps & {
     outlinedPart?: PartId; onPreview: (preview: PartPreview | null) => void;
   }) {
@@ -69,22 +68,49 @@ function SceneContents({ logical, fallingParts, fallStarts, round, playable, orb
   const [gestures] = useState(createScrewGestures);
   const [fade, setFade] = useState<{ part: PartId; round: number } | null>(null);
   const wiggle = useRef<(id: string) => void>(() => {});
+  const physics = useRef<PartPhysics | null>(null);
+  const physicsFrame = useRef<{ parts: LooseParts; now: number }>({ parts: {}, now: 0 });
+  const mountLocalPhysics = useEffectEvent(() => {
+    const cleared = logical.removedParts.filter((part) => !releases?.[part]);
+    const runtime = createPartPhysics(cleared);
+    if (releases) runtime.sync(releases);
+    physics.current = runtime;
+    return runtime;
+  });
+  useLayoutEffect(() => {
+    if (releases) physics.current?.sync(releases);
+  }, [releases]);
+  useFrame(() => {
+    const now = looseNow();
+    physics.current?.advance(now);
+    physicsFrame.current = { parts: onlineParts?.current ?? physics.current?.read() ?? {}, now };
+  }, -1);
   useEffect(() => {
     if (rejectedScrew) wiggle.current(rejectedScrew.screw);
   }, [rejectedScrew]);
   useEffect(() => {
     let active = true;
     let frameId = 0;
+    let runtime: PartPhysics | undefined;
     // All covered meshes are present too: warm every shader before exposing Start.
-    void Promise.all([gl.compileAsync(scene, camera), initPilotPhysics()]).then(() => {
+    void Promise.all([gl.compileAsync(scene, camera), onlineParts ? undefined : initPartPhysics()]).then(() => {
       if (active) frameId = requestAnimationFrame(() => {
+        if (!onlineParts) runtime = mountLocalPhysics();
         gl.render(scene, camera);
         if (import.meta.env.DEV) console.debug(`Level render: ${gl.info.render.calls} draws`);
         onReady(round);
       });
     });
-    return () => { active = false; cancelAnimationFrame(frameId); };
-  }, [camera, gl, scene, round, onReady]);
+    return () => {
+      active = false;
+      cancelAnimationFrame(frameId);
+      if (runtime) {
+        runtime.free();
+        physics.current = null;
+        physicsFrame.current = { parts: {}, now: 0 };
+      }
+    };
+  }, [camera, gl, scene, round, onReady, onlineParts]);
   useLayoutEffect(() => {
     projectorRef.current = (id) => {
       const screw = logical.screws.find((candidate) => candidate.id === id);
@@ -94,7 +120,6 @@ function SceneContents({ logical, fallingParts, fallStarts, round, playable, orb
       return [rect.left + (projected.x + 1) * rect.width / 2, rect.top + (1 - projected.y) * rect.height / 2];
     };
   }, [projectorRef, logical.screws, camera, gl]);
-  const visible = { ...logical, removedParts: settledParts({ logical, fallingParts }) };
   const fadedPart = view === "house" && logical.status === "playing" && fade?.round === round && !logical.removedParts.includes(fade.part)
     ? fade.part : undefined;
   function attempt(id: string) {
@@ -105,27 +130,12 @@ function SceneContents({ logical, fallingParts, fallStarts, round, playable, orb
       onScrewPing?.(id);
       return;
     }
-    if (findLooseBlocker(looseParts, screw, SCREW_SCALE, looseNow())) {
+    const { parts, now } = physicsFrame.current;
+    if (!isScrewAccessible(logical, screw) || findLooseBlocker(parts, screw, SCREW_SCALE, now)) {
       blocked();
       return;
     }
-    if (fallStarts) {
-      if (isScrewAccessible(visible, screw)) onScrewSelect(id);
-      else blocked();
-      return;
-    }
-    const clearedParts: PartId[] = [];
-    for (const fallingPart of fallingParts) {
-      const cover = scene.getObjectByName(`part-${fallingPart}`);
-      if (!cover) continue;
-      if (findScrewObstructions(screw, SCREW_SCALE, { root: cover, part: fallingPart }).length) {
-        blocked();
-        return;
-      }
-      clearedParts.push(fallingPart);
-    }
-    if (isScrewAccessible({ ...visible, removedParts: [...visible.removedParts, ...clearedParts] }, screw)) onScrewSelect(id, clearedParts);
-    else blocked();
+    onScrewSelect(id, fallingParts.filter((part) => Boolean(parts[part])));
 
     function blocked() {
       wiggle.current(id);
@@ -137,7 +147,7 @@ function SceneContents({ logical, fallingParts, fallStarts, round, playable, orb
     const { clientX: x, clientY: y } = event;
     if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return null;
     const radius = pingMode || event.pointerType === "touch" || event.pointerType === "pen" ? 22 : 0;
-    return pickSceneTarget(scene, camera, rect, [x, y], visible, radius, pingMode ? undefined : fadedPart);
+    return pickSceneTarget(scene, camera, rect, [x, y], logical, radius, pingMode ? undefined : fadedPart);
   }
   const pickTap = useEffectEvent((event: PointerEvent) => {
     if (!playable) return;
@@ -206,10 +216,10 @@ function SceneContents({ logical, fallingParts, fallStarts, round, playable, orb
     <ambientLight intensity={0.8} /><hemisphereLight args={["#fff5df", "#91aab4", 1.25]} />
     <directionalLight position={[5, 10, 7]} intensity={2.2} /><directionalLight position={[-6, 5, -5]} intensity={1.2} color="#d7eeff" />
     <FloatingTitle menu={view === "title"} />
-    <House key={`house-${round}`} removedParts={visible.removedParts} fallingParts={fallingParts}
-      outlinedPart={outlinedPart} fadedPart={fadedPart} looseParts={looseParts} looseNow={looseNow}
+    <House key={`house-${round}`} removedParts={logical.removedParts} fallingParts={fallingParts}
+      outlinedPart={outlinedPart} fadedPart={fadedPart} readPhysics={() => physicsFrame.current} looseNow={looseNow}
       onFallFinished={(part) => onFallFinished(part, round)} />
-    <ScrewField key={`screws-${round}`} game={visible} wiggleRef={wiggle} />
+    <ScrewField key={`screws-${round}`} game={logical} wiggleRef={wiggle} />
     {pingScrew && <PingMarker key={pingSequence} screw={pingScrew} />}
     <CameraRig view={view} round={round} playable={orbitable ?? playable} onArrive={onCameraArrive} />
   </>;

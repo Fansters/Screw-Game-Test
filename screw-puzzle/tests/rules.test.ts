@@ -11,11 +11,11 @@ import type { RunState } from "../src/animation/run.ts";
 import { buildSequence } from "../src/animation/sequence.ts";
 import { PART_PIVOTS, PIECES } from "../src/scene/houseModel.ts";
 import { geometryFor } from "../src/scene/geometry.ts";
-import { detachLooseParts, dismissLoosePart, findLooseBlocker, isLooseVisible, loosePartPoof, loosePartPose, loosePartY, looseY } from "../src/scene/loosePhysics.ts";
+import { findLooseBlocker, isLooseVisible, LOOSE_LIFETIME_MS, loosePartPose } from "../src/scene/loosePhysics.ts";
 import { findExposedScrews } from "../src/scene/exposure.ts";
-import { initPilotPhysics, LOOSE_LIFETIME_MS, PILOT_PARTS } from "../src/scene/pilotPhysics.ts";
+import { createPartPhysics, initPartPhysics } from "../src/scene/partPhysics.ts";
 
-await initPilotPhysics();
+await initPartPhysics();
 
 function fixture(counts: Partial<Record<ScrewColor, number>> = { red: 6, blue: 6, yellow: 6, green: 6 }): Screw[] {
   return SCREW_COLOR_ORDER.flatMap((color) => Array.from({ length: counts[color] ?? 0 }, (_, index) => ({
@@ -499,88 +499,81 @@ test("every screw in a generated solution has a clear view through the actual ho
   assert.deepEqual(blocked, []);
 });
 
-test("loose props settle on intact supports, drop when a support goes, and can be dismissed once", () => {
-  const id = "table-vase";
-  const loose = detachLooseParts({}, id, [id], 1000);
-  const motion = loose[id]!;
-  assert.equal(motion.support, "table");
-  assert.ok(looseY(motion, 1150) > motion.fromY);
-  assert.equal(looseY(motion, 2000), motion.toY);
-  assert.equal(dismissLoosePart(loose, id, [id], 900), loose);
-  const table = detachLooseParts(loose, "table", [id, "table"], 2000);
-  assert.equal(table[id]!.support, "table");
-  assert.ok(loosePartY(table, id, 2100) > motion.toY, "The vase follows the table's bounce");
-  const falling = dismissLoosePart(table, "table", [id, "table"], 2400);
-  assert.equal(falling[id]!.support, "ground-se");
-  assert.equal(falling[id]!.fromY, table[id]!.toY);
-  assert.ok(looseY(falling[id]!, 2650) < motion.toY);
-  const poof = dismissLoosePart(falling, id, [id, "table"], 2650);
-  assert.equal(poof[id]!.poof?.position[1], looseY(falling[id]!, 2650));
-  assert.equal(dismissLoosePart(poof, id, [id, "table"], 2700), poof);
-  assert.equal(isLooseVisible(poof[id]!, 2700), false);
-  const offMap = detachLooseParts({}, id, PART_IDS, 0)[id]!;
-  assert.equal(isLooseVisible(offMap, 5000), false);
+test("every removable assembly has a dynamic body, even the smallest decorations", (t) => {
+  const physics = createPartPhysics();
+  t.after(physics.free);
+  for (const part of PART_IDS) physics.release(part, 1000);
+  assert.equal(Object.keys(physics.read()).length, PART_IDS.length);
+  for (const part of PART_IDS) {
+    const position = loosePartPose(part, physics.read()[part]!, 1000).position;
+    assert.ok(new Vector3(...position).distanceTo(new Vector3(...PART_PIVOTS[part])) < 0.001, part);
+  }
+  physics.advance(1017);
+  assert.ok(physics.read()["tile-n"]!.frames.length > 1);
+  assert.ok(physics.read()["bath-mirror"]!.frames.length > 1);
 });
 
-test("a roof section lands on the debris pile and drops again when its support is tapped away", () => {
-  const roof = "roof-left-front-ridge", ceiling = "ceiling-front";
-  const removed = PART_IDS.filter((part) => part !== "ground-sw" && part !== "ground-se");
-  const lower = detachLooseParts({}, ceiling, removed, 1000);
-  const pile = detachLooseParts(lower, roof, removed, 2600);
-  const roofMotion = pile[roof]!;
-  assert.equal(roofMotion.support, ceiling);
-  assert.ok(roofMotion.toY < roofMotion.fromY - 2, "The roof drops into the ground-floor room");
-  const cleared = dismissLoosePart(pile, ceiling, removed, 3975);
-  assert.equal(cleared[roof]?.fromY, loosePartY(pile, roof, 3975));
-  assert.ok(cleared[roof]!.toY < roofMotion.toY);
-  assert.ok(loosePartY(pile, roof, 4400) < roofMotion.toY, "The roof also drops when its support poofs automatically");
-  assert.equal(loosePartPoof(cleared, roof).at, 2600 + LOOSE_LIFETIME_MS);
+test("the loose vase lands on the loose table and drops again when its support poofs", (t) => {
+  const physics = createPartPhysics();
+  t.after(physics.free);
+  const vase = "table-vase";
+  const table = "table";
+  const pose = (part: PartId, at: number) => loosePartPose(part, physics.read()[part]!, at);
+  physics.release(table, 1000);
+  physics.advance(1450);
+  physics.release(vase, 1450);
+  physics.advance(2150);
+  const restingY = pose(vase, 2150).position[1];
+  assert.ok(Math.abs(restingY - pose(table, 2150).position[1] - 0.27) < 0.05);
+  physics.advance(3999);
+  assert.equal(physics.read()[table]!.poof, undefined);
+  physics.advance(4200);
+  assert.equal(physics.read()[table]!.poof?.at, 1000 + LOOSE_LIFETIME_MS);
+  assert.ok(pose(vase, 4200).position[1] < restingY - 0.10, "A sleeping part wakes when its loose support expires");
+  assert.equal(physics.dismiss(vase, 4200), true);
+  assert.equal(physics.dismiss(vase, 4201), false);
+  assert.equal(isLooseVisible(physics.read()[vase]!, 4201, pose(vase, 4201).position[1]), false);
 });
 
-test("the Rapier prototype slides snow, rolls the ornament and lets the roof tip on contact", () => {
-  const [panel, snow, bauble] = PILOT_PARTS;
-  const roof = detachLooseParts({}, panel, [panel, snow], 1000);
-  const roofPose = loosePartPose(roof, panel, 1850);
-  assert.ok(roofPose.position[1] < PART_PIVOTS[panel][1] - 0.1);
-  assert.ok(Math.abs(roofPose.rotation[2]) > 0.19, "The authored pitch flattens as the panel tips onto its support");
-  const strip = detachLooseParts({}, snow, [snow, "roof-lights-right"], 1000);
-  assert.ok(loosePartPose(strip, snow, 1750).position[0] > PART_PIVOTS[snow][0] + 0.75);
-  const ornament = detachLooseParts({}, bauble, [bauble], 1000);
-  const ball = loosePartPose(ornament, bauble, 1750);
+test("normal roof collisions slide snow, roll the ornament and let a pitched panel tumble", (t) => {
+  const motions = (part: PartId, removed: PartId[]) => {
+    const physics = createPartPhysics(removed);
+    t.after(physics.free);
+    physics.release(part, 1000);
+    return (at: number) => {
+      physics.advance(at);
+      return loosePartPose(part, physics.read()[part]!, at);
+    };
+  };
+  const panel = "roof-right-front-eave", snow = "snow-right-front", bauble = "roof-bauble";
+  const roof = motions(panel, [snow, "roof-lights-right"]);
+  const roofPose = roof(3700);
+  assert.ok(roofPose.position[1] < PART_PIVOTS[panel][1] - 0.2);
+  assert.ok(Math.abs(roofPose.rotation[2]) > 0.12);
+  const strip = motions(snow, ["roof-lights-right"]);
+  assert.ok(strip(1850).position[0] > PART_PIVOTS[snow][0] + 0.75);
+  const ornament = motions(bauble, []);
+  const ball = ornament(1750);
   assert.ok(ball.position[0] > PART_PIVOTS[bauble][0] + 0.4);
   assert.ok(Math.abs(ball.rotation[2]) > 0.4);
-  assert.ok(loosePartPose(ornament, bauble, 2500).position[1] > loosePartPose(ornament, bauble, 2260).position[1],
-    "The sphere rebounds off the cottage grounds");
-
-  for (const [part, loose] of [[panel, roof], [snow, strip], [bauble, ornament]] as const) {
-    const at = 1000 + LOOSE_LIFETIME_MS;
-    assert.deepEqual(loosePartPoof(loose, part), { at, position: loosePartPose(loose, part, at).position });
-    assert.equal(isLooseVisible(loose[part]!, at, loosePartPose(loose, part, at).position[1]), false);
-    assert.equal(dismissLoosePart(loose, part, [part], at), loose);
-  }
+  const impactY = ornament(2200).position[1];
+  assert.ok(ornament(2450).position[1] > impactY, "The sphere rebounds off the cottage grounds");
 });
 
-test("a support release refreshes an active Rapier path without moving its existing pose or resetting its poof", () => {
-  const [, snow, bauble] = PILOT_PARTS;
-  const rolling = detachLooseParts({}, bauble, [bauble], 1000);
-  const at = 1325;
-  const both = detachLooseParts(rolling, snow, [bauble, snow, "roof-lights-right"], at);
-  const before = loosePartPose(rolling, bauble, at);
-  const refreshed = loosePartPose(both, bauble, at);
-  assert.ok(new Vector3(...before.position).distanceTo(new Vector3(...refreshed.position)) < 0.001);
-  assert.notDeepEqual(loosePartPose(rolling, bauble, 2300), loosePartPose(both, bauble, 2300));
-  assert.equal(loosePartPoof(both, bauble).at, 4000);
-  assert.equal(loosePartPoof(both, snow).at, 4325);
-});
-
-test("the new furnishings cover floor screw heads and the loose sideboard must be cleared", () => {
+test("the sideboard blocks extraction while loose and clears on the exact smoke timestamp", (t) => {
   for (const part of ["bedroom-rug", "study-rug", "reading-chair", "bookcase", "hall-runner", "sideboard"] as const) {
     assert.ok(DEMO_LEVEL.some((screw) => /^(floor|ground)-/.test(screw.attachedTo ?? "") && screw.obstructedBy?.includes(part)), part);
   }
   const screw = DEMO_LEVEL.find((screw) => screw.attachedTo === "ground-ne" && screw.obstructedBy?.includes("sideboard"))!;
-  const loose = detachLooseParts({}, "sideboard", ["sideboard"], 0);
-  assert.equal(findLooseBlocker(loose, screw, SCREW_SCALE, 700), "sideboard");
-  assert.equal(findLooseBlocker(dismissLoosePart(loose, "sideboard", ["sideboard"], 700), screw, SCREW_SCALE, 701), undefined);
+  const physics = createPartPhysics();
+  t.after(physics.free);
+  physics.release("sideboard", 1000);
+  physics.advance(3999);
+  assert.equal(findLooseBlocker(physics.read(), screw, SCREW_SCALE, 3999), "sideboard");
+  physics.advance(4000);
+  assert.equal(physics.read().sideboard?.poof?.at, 4000);
+  assert.deepEqual(physics.read().sideboard?.poof?.position, loosePartPose("sideboard", physics.read().sideboard!, 4000).position);
+  assert.equal(findLooseBlocker(physics.read(), screw, SCREW_SCALE, 4000), undefined);
 });
 
 test("the natural opening stays below ten percent across eighty views and requires matching-color reveals", () => {

@@ -13,13 +13,14 @@ import { canOpenBonusBox } from "../game/rules";
 import type { PartId } from "../game/types";
 import type { CameraView } from "../scene/camera";
 import { useRoom } from "./useRoom";
+import { ROOM_PHYSICS_DELAY_MS } from "./protocol";
 
 const wallClock = { now: Date.now };
 
 export default function OnlineGame({ onBack }: { onBack: () => void }) {
   const room = useRoom();
-  const { snapshot, player, connected, send, clockOffset, frame } = room;
-  const looseNow = useCallback(() => Date.now() + clockOffset, [clockOffset]);
+  const { snapshot, player, connected, send, clockOffset, frame, onlineParts } = room;
+  const looseNow = useCallback(() => Date.now() + clockOffset - ROOM_PHYSICS_DELAY_MS, [clockOffset]);
   const id = snapshot?.id;
   const round = snapshot?.round ?? 0;
   const started = snapshot?.started ?? false;
@@ -47,9 +48,7 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
       ...screw, color: colors[index], removed: removedIds.has(screw.id),
     })) };
   }, [snapshot]);
-  const fallStarts = useMemo(() => Object.fromEntries(Object.entries(snapshot?.fallStarts ?? {})
-    .map(([part, at]) => [part, at - clockOffset])) as Partial<Record<PartId, number>>, [snapshot, clockOffset]);
-  const fallingParts = (Object.keys(fallStarts) as PartId[])
+  const fallingParts = (Object.keys(snapshot?.fallStarts ?? {}) as PartId[])
     .filter((part) => finished?.scene !== scene || !finished.parts.includes(part));
   const orbitable = started && cameraReady && game?.status === "playing" && !confirmation;
   const playable = orbitable && connected && !snapshot?.paused;
@@ -124,8 +123,8 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   const sampledAt = (snapshot?.serverTime ?? 0) - clockOffset;
   const completedLifeline = room.completedLifeline?.round === round ? room.completedLifeline.box : undefined;
   return <div className="game-layout" onContextMenu={(event) => event.preventDefault()}>
-    {game && <GameScene key={id} logical={game} fallingParts={fallingParts} fallStarts={fallStarts} round={round}
-      looseParts={snapshot?.looseParts ?? {}} looseNow={looseNow} onLooseDismiss={(part) => send({ type: "dismiss", round, part })}
+    {game && <GameScene key={id} logical={game} fallingParts={fallingParts} round={round}
+      onlineParts={onlineParts} looseNow={looseNow} onLooseDismiss={(part) => send({ type: "dismiss", round, part })}
       view={view} playable={playable} orbitable={orbitable} onCameraArrive={cameraArrived} onReady={sceneReady}
       onFallFinished={finishFall} onScrewSelect={select} onBlockedScrew={() => play("blocked")} projectorRef={project}
       pingMode={pingMode} pingScrew={pingScrew} pingSequence={room.ping?.sequence} rejectedScrew={room.blocked}

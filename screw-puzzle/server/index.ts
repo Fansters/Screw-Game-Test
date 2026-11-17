@@ -4,7 +4,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { createRoomServer } from "./room.ts";
 import type { RoomCommand, RoomNotice } from "../src/multiplayer/protocol.ts";
 import { isLevelPart } from "../src/scene/loosePhysics.ts";
-import { initPilotPhysics } from "../src/scene/pilotPhysics.ts";
+import { initPartPhysics } from "../src/scene/partPhysics.ts";
 
 function parseCommand(data: string): RoomCommand | null {
   const value: unknown = JSON.parse(data);
@@ -45,7 +45,7 @@ function parseCommand(data: string): RoomCommand | null {
   return null;
 }
 
-await initPilotPhysics();
+await initPartPhysics();
 const rooms = createRoomServer();
 const server = createServer((_request, response) => {
   response.writeHead(200, { "Content-Type": "text/plain" }).end("Screw Cottage room server");
@@ -94,9 +94,12 @@ const connectionCheck = setInterval(() => {
   }
 }, 5000);
 const seatCheck = setInterval(rooms.expireSeats, 1000);
+const physicsCheck = setInterval(rooms.tickPhysics, 1000 / 30);
 server.on("close", () => {
   clearInterval(connectionCheck);
   clearInterval(seatCheck);
+  clearInterval(physicsCheck);
+  rooms.close();
 });
 
 const port = Number(env.PORT ?? 2567);

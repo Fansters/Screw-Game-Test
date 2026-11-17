@@ -83,7 +83,7 @@ function SoloGame({ onOnline }: { onOnline: () => void }) {
     run.logical.status === "won" && !run.jobs.length && !run.fallingParts.length ? "won" : null;
   return <div className="game-layout" onContextMenu={(event) => event.preventDefault()}>
     <GameScene logical={run.logical} fallingParts={run.fallingParts} round={run.round} onFallFinished={finishFall}
-      looseParts={run.looseParts} onLooseDismiss={(part) => dispatch({ type: "dismiss", part, now: performance.now() })}
+      releases={run.releases} onLooseDismiss={(part) => dispatch({ type: "dismiss", part, now: performance.now() })}
       view={view} onCameraArrive={cameraArrived} playable={playable} onReady={sceneReady} onScrewSelect={selectScrew}
       onBlockedScrew={() => play("blocked")} projectorRef={project} />
     {run.started && cameraReady && <GameUI game={run.display} frame={frame}

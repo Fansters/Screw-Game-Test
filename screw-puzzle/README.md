@@ -58,7 +58,7 @@ Color quotas are 24 or 27 screws. All 100 targets, including the distinct initia
 
 The house and decorations are authored in TypeScript with Three.js primitives and rendered with React Three Fiber. The bathroom uses rounded ceramic bodies, mesh rings for the toilet and basin, and folded shower curtain panels. Each piece has a shape, transform, color and removable owner. The procedural parts batch into 459 meshes, and screws use three instanced meshes. DPR is capped at 1.25 on phones/coarse pointers and 1.5 elsewhere.
 
-The front-right roof eave panel, its snow strip and the round roof bauble use Rapier. The simulation uses simple angled and rounded colliders, with poses sampled from fixed time steps. The room server sends the same sampled path to both clients. Other parts still use the existing scripted motion. Both paths share the three-second smoke cleanup.
+All 158 removable parts use Rapier. A round keeps one physics world. Attached parts stay fixed until their last screw releases them, and loose parts can collide with each other and the remaining cottage. The simulation uses simpler compound colliders for the detailed meshes, runs at 60 fixed steps per second, and lets settled parts sleep. Loose parts can still be cleared early by tapping them, or expire with smoke after three seconds.
 
 ## Archived treasure chest
 
@@ -81,6 +81,7 @@ This updates the textured `treasure_chest_parts.glb` and `treasure_chest_collisi
 - `src/game/levels.ts`: size-based screw counts, varied positions, inward normals, real obstructions and conservative construction order.
 - `src/game/randomize.ts` and `rules.ts`: verified seeded colors, matching, transfers, release, win/loss.
 - `src/scene/houseModel.ts`, `christmas.ts`, `interiors.ts`: original cottage, festive props, actual room walls/doorways and ceilings.
+- `src/scene/partPhysics.ts` and `partColliders.ts`: the shared Rapier runtime and collision shapes. `loosePhysics.ts` interpolates poses and checks screw clearance against moving meshes.
 - `src/scene/modelBatches.ts`, `obstructions.ts`, `picking.ts`, `exposure.ts`: efficient rendering, individual clearance, occlusion-safe input and orbit audits.
 - `src/animation/run.ts`: live logical reservations and ordered animation snapshots.
 - `src/components/CameraRig.tsx` and `src/scene/camera.ts`: title/house flights, orbit sensitivity, point-centered zoom and overview recentering.
@@ -102,7 +103,7 @@ Run `npm install` once. Then open two terminals in the project directory.
 
 Open the Vite URL and choose **Two-player game → Create game**. Copy the invite link and paste it into a second tab or browser. Choose **Join game** there. Once both browsers are ready, click **Start together** in the leader’s tab. To test with a phone on the same Wi-Fi, run `npm run dev -- --host` and open the Network URL Vite prints before creating the room.
 
-Both players can orbit and remove screws at the same time. Shared falls are scheduled 62.5 ms ahead. The browser and the server check that they are using the same cottage layout. The leader confirms resets and spends the shared lifelines. Choose **Ping screw**, then tap a visible screw to briefly mark it on the other player’s screen. A lost connection pauses moves and the timer for up to 30 seconds. A refresh in the same tab restores the seat and the current puzzle. An explicit departure hands control over immediately. If a seat expires, the remaining player can continue the round.
+Both players can orbit and remove screws at the same time. The server runs shared physics and sends compact pose updates up to 30 times per second. Both clients interpolate on the server clock with a 62.5 ms playback buffer, and a reconnect receives the latest active poses. The browser and the server check that they use the same cottage layout and room protocol. The leader confirms resets and spends the shared lifelines. Choose **Ping screw**, then tap a visible screw to briefly mark it on the other player’s screen. A lost connection pauses moves and the timer for up to 30 seconds. A refresh in the same tab restores the seat and the current puzzle. An explicit departure hands control over immediately. If a seat expires, the remaining player can continue the round.
 
 ### Share a room over the internet
 

@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createRoomServer, FALL_LEAD_MS, RECONNECT_MS } from "../server/room.ts";
+import { createRoomServer, RECONNECT_MS } from "../server/room.ts";
 import { FALL_DURATION_MS } from "../src/game/fallTiming.ts";
 import { DEMO_LEVEL } from "../src/game/levels.ts";
 import { generatePuzzle } from "../src/game/randomize.ts";
 import { collectionPlayback, emptyPlayback, frameDelay } from "../src/multiplayer/collectionPlayback.ts";
 import type { RoomCommand, RoomNotice } from "../src/multiplayer/protocol.ts";
-import { ROOM_LEVEL_VERSION, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
-import { initPilotPhysics, LOOSE_LIFETIME_MS } from "../src/scene/pilotPhysics.ts";
-import { loosePartPoof, loosePartPose, SMOKE_DURATION_MS } from "../src/scene/loosePhysics.ts";
+import { ROOM_LEVEL_VERSION, ROOM_PHYSICS_DELAY_MS, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
+import { initPartPhysics } from "../src/scene/partPhysics.ts";
+import { LOOSE_LIFETIME_MS, loosePartPose, mergeLooseParts, SMOKE_DURATION_MS } from "../src/scene/loosePhysics.ts";
 
-await initPilotPhysics();
+await initPartPhysics();
 
 function fixture(seed?: number) {
   let time = 20_000;
@@ -37,7 +37,8 @@ function fixture(seed?: number) {
   guest.send({ type: "ready", round: 0 });
   leader.send({ type: "start", round: 0 });
   assert.equal(guest.state().started, true);
-  return { leader, guest, room, makePeer, advance: (ms: number) => { time += ms; server.expireSeats(); } };
+  return { leader, guest, room, makePeer, advance: (ms: number) => { time += ms; server.expireSeats(); },
+    tickPhysics: server.tickPhysics };
 }
 
 test("both players use one puzzle, while only its leader can spend a lifeline or reset", () => {
@@ -78,13 +79,14 @@ test("a cover unlocks from a shared fall timestamp and pings go to the partner",
   assert.deepEqual(leader.notices.at(-1), { type: "ping", round: 0, screw: snow.id, player: guest.seat().player });
   guest.send({ type: "select", round: 0, screw: snow.id });
   const state = leader.state();
-  assert.equal(guest.state().fallStarts["chimney-snow"], state.serverTime + FALL_LEAD_MS);
+  assert.equal(guest.state().fallStarts["chimney-snow"], state.serverTime);
   assert.equal(guest.state().fallStarts["chimney-snow"], state.fallStarts["chimney-snow"]);
-  advance(FALL_LEAD_MS + FALL_DURATION_MS - 1);
+  advance(ROOM_PHYSICS_DELAY_MS / 2);
   leader.send({ type: "select", round: 0, screw: chimney.id });
   assert.equal(leader.notices.at(-1)?.type, "rejected");
-  advance(1);
+  advance(450);
   guest.send({ type: "dismiss", round: 0, part: "chimney-snow" });
+  advance(ROOM_PHYSICS_DELAY_MS);
   leader.send({ type: "select", round: 0, screw: chimney.id });
   assert.ok(guest.state().game.removed.includes(chimney.id));
 });
@@ -126,9 +128,10 @@ test("both seats can finish the same seeded cottage", () => {
     const peer = index % 2 ? guest : leader;
     const count = leader.state().game.removedParts.length;
     peer.send({ type: "select", round: 0, screw });
-    advance(FALL_LEAD_MS + FALL_DURATION_MS);
+    advance(ROOM_PHYSICS_DELAY_MS + FALL_DURATION_MS);
     const part = leader.state().game.removedParts[count];
     if (part) peer.send({ type: "dismiss", round: 0, part });
+    advance(ROOM_PHYSICS_DELAY_MS);
   }
   assert.equal(guest.state().game.status, "won");
   assert.equal(leader.state().game.removed.length, DEMO_LEVEL.length);
@@ -147,7 +150,7 @@ test("rapid moves from both seats replay the third screw before completing and r
     const peer = index % 2 ? guest : leader;
     const count = leader.state().game.removedParts.length;
     peer.send({ type: "select", round: 0, screw });
-    advance(FALL_LEAD_MS + FALL_DURATION_MS);
+    advance(ROOM_PHYSICS_DELAY_MS + FALL_DURATION_MS);
     const notice = leader.notices.at(-1)!;
     assert.deepEqual(notice, guest.notices.at(-1));
     assert.equal(notice.type, "state");
@@ -159,6 +162,7 @@ test("rapid moves from both seats replay the third screw before completing and r
     if (cleared) break;
     const part = notice.snapshot.game.removedParts[count];
     if (part) peer.send({ type: "dismiss", round: 0, part });
+    advance(ROOM_PHYSICS_DELAY_MS);
   }
   assert.ok(cleared > 0 && leader.notices.length > start + 1);
   const [first] = playback.queue;
@@ -213,14 +217,12 @@ test("both seats see the same loose lantern and one shared poof", () => {
   assert.deepEqual(leader.state().looseParts, {});
   leader.send({ type: "select", round: 0, screw: screw.id });
   const motion = leader.state().looseParts[part]!;
-  assert.equal(motion.support, "snowbank-right");
-  assert.equal(motion.startedAt, leader.state().serverTime + FALL_LEAD_MS);
+  assert.equal(motion.releasedAt, leader.state().serverTime);
   guest.send({ type: "dismiss", round: 0, part });
   assert.equal(leader.state().looseParts[part]!.poof, undefined);
   advance(450);
   guest.send({ type: "dismiss", round: 0, part });
-  assert.ok(leader.state().looseParts[part]!.poof);
-  assert.equal(leader.state().fallStarts[part], undefined);
+  assert.equal(leader.state().looseParts[part]!.poof?.at, leader.state().serverTime);
   assert.deepEqual(guest.state().looseParts, leader.state().looseParts);
   const length = leader.notices.length;
   leader.send({ type: "dismiss", round: 0, part });
@@ -230,21 +232,39 @@ test("both seats see the same loose lantern and one shared poof", () => {
   assert.deepEqual(guest.state().looseParts, {});
 });
 
-test("both seats share Rapier poses and a reconnect drops finished physics tracks", () => {
-  const { leader, guest, room, makePeer, advance } = fixture(1);
+test("both seats interpolate the same compact pose stream, including after a reconnect", () => {
+  const { leader, guest, room, makePeer, advance, tickPhysics } = fixture(1);
   const part = "roof-bauble";
   const screw = DEMO_LEVEL.find((candidate) => candidate.attachedTo === part)!;
   const invite = guest.seat();
   leader.send({ type: "select", round: 0, screw: screw.id });
   const { looseParts, serverTime } = leader.state();
-  const releasedAt = serverTime + FALL_LEAD_MS;
+  const releasedAt = serverTime;
   assert.equal(looseParts[part]?.releasedAt, releasedAt);
-  assert.ok(looseParts[part]?.frames?.length);
   assert.deepEqual(guest.state().looseParts[part], looseParts[part]);
-  assert.notDeepEqual(loosePartPose(looseParts, part, releasedAt), loosePartPose(looseParts, part, releasedAt + 700));
-  assert.equal(loosePartPoof(looseParts, part).at, releasedAt + LOOSE_LIFETIME_MS);
+  let history = looseParts;
+  for (let tick = 0; tick < 21; tick += 1) {
+    advance(1000 / 30);
+    tickPhysics();
+    const update = leader.notices.at(-1)!;
+    assert.equal(update.type, "physics");
+    assert.deepEqual(guest.notices.at(-1), update);
+    assert.ok(update.looseParts[part]!.frames.length <= 3);
+    history = mergeLooseParts(history, update.looseParts);
+  }
+  assert.ok(history[part]!.frames.length > 3);
+  assert.notDeepEqual(loosePartPose(part, looseParts[part]!, releasedAt), loosePartPose(part, history[part]!, releasedAt + 650));
   guest.disconnect();
-  advance(FALL_LEAD_MS + LOOSE_LIFETIME_MS + SMOKE_DURATION_MS);
+  const whileMoving = makePeer();
+  whileMoving.send({ type: "join", room, token: invite.token, levelVersion: ROOM_LEVEL_VERSION });
+  assert.deepEqual(whileMoving.seat().snapshot.looseParts, leader.state().looseParts);
+  advance(LOOSE_LIFETIME_MS - 700);
+  tickPhysics();
+  const expired = leader.notices.at(-1)!;
+  assert.equal(expired.type, "physics");
+  assert.equal(expired.looseParts[part]?.poof?.at, releasedAt + LOOSE_LIFETIME_MS);
+  whileMoving.disconnect();
+  advance(SMOKE_DURATION_MS + 500);
   const refreshed = makePeer();
   refreshed.send({ type: "join", room, token: invite.token, levelVersion: ROOM_LEVEL_VERSION });
   assert.equal(refreshed.seat().snapshot.looseParts[part], undefined);

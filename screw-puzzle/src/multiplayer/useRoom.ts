@@ -4,6 +4,8 @@ import type { MatchBox } from "../game/types";
 import { BONUS_SLOT } from "../game/rules";
 import { COMPLETED_LIFELINE_MS, PING_COOLDOWN_MS, ROOM_LEVEL_VERSION, ROOM_VERSION_MESSAGE } from "./protocol";
 import { collectionPlayback, emptyPlayback, frameDelay } from "./collectionPlayback";
+import { mergeLooseParts } from "../scene/loosePhysics";
+import type { LooseParts } from "../scene/loosePhysics";
 
 const roomKey = (id: string) => `screw-cottage-room-${id}`;
 const endpoint = () => import.meta.env.VITE_ROOM_SERVER ||
@@ -36,6 +38,7 @@ export function useRoom() {
   const [blocked, setBlocked] = useState<{ screw: string; sequence: number } | null>(null);
   const [clockOffset, setClockOffset] = useState(0);
   const socket = useRef<WebSocket | null>(null);
+  const onlineParts = useRef<LooseParts>({});
   const activeRoom = useRef<string | null>(null);
   const lastPingAt = useRef(-Infinity);
   const entry = playback.queue[0];
@@ -60,6 +63,7 @@ export function useRoom() {
     let attempts = 0;
     let bestRtt = Infinity;
     let sampledClock = false;
+    let physicsRound: number | undefined;
     let connection: WebSocket | null = null;
 
     function connect() {
@@ -108,6 +112,8 @@ export function useRoom() {
           attempts = 0;
           if (!sampledClock) setClockOffset(notice.snapshot.serverTime - Date.now());
           setPlayer(notice.player);
+          physicsRound = notice.snapshot.round;
+          onlineParts.current = notice.snapshot.looseParts;
           dispatchPlayback({ type: "reset", scene: `${id}:${notice.snapshot.round}` });
           setSnapshot(notice.snapshot);
           setConnected(true);
@@ -115,6 +121,8 @@ export function useRoom() {
           setError("");
         } else if (notice.type === "state") {
           if (notice.snapshot.levelVersion !== ROOM_LEVEL_VERSION) return;
+          onlineParts.current = mergeLooseParts(physicsRound === notice.snapshot.round ? onlineParts.current : {}, notice.snapshot.looseParts);
+          physicsRound = notice.snapshot.round;
           setSnapshot(notice.snapshot);
           dispatchPlayback({ type: "receive", scene: `${notice.snapshot.id}:${notice.snapshot.round}`,
             moves: notice.moves, receivedAt: performance.now() });
@@ -124,6 +132,8 @@ export function useRoom() {
             window.clearTimeout(lifelineAnimation);
             lifelineAnimation = window.setTimeout(() => setCompletedLifeline(null), COMPLETED_LIFELINE_MS);
           }
+        } else if (notice.type === "physics") {
+          if (notice.round === physicsRound) onlineParts.current = mergeLooseParts(onlineParts.current, notice.looseParts);
         } else if (notice.type === "ping") {
           showPing(notice.round, notice.screw, false);
         } else if (notice.screw) {
@@ -198,6 +208,7 @@ export function useRoom() {
     setRequest(null);
     setConnected(false);
     setSnapshot(null);
+    onlineParts.current = {};
     setPlayer(null);
     setError("");
     setPing(null);
@@ -206,6 +217,6 @@ export function useRoom() {
     setBlocked(null);
   }
   return { invite, snapshot, player, connected, disconnectedAt, error, matched, completedLifeline, ping, pingScrew,
-    frame: entry?.frame ?? null, bonusAnimating, blocked, clockOffset, send, open, leave,
+    frame: entry?.frame ?? null, bonusAnimating, blocked, clockOffset, onlineParts, send, open, leave,
     connecting: Boolean(request && !connected && !snapshot) };
 }

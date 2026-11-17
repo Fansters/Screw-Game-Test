@@ -5,13 +5,13 @@ import { generatePuzzle } from "../src/game/randomize.ts";
 import { BONUS_SLOT, isScrewAccessible, planBonusBox, planScrewRemoval } from "../src/game/rules.ts";
 import type { CollectionState, GameState, MatchBox, MoveEvent, PartId } from "../src/game/types.ts";
 import type { CollectionMove, RoomCommand, RoomGame, RoomNotice, RoomSnapshot } from "../src/multiplayer/protocol.ts";
-import { PING_COOLDOWN_MS, ROOM_LEVEL_VERSION, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
-import { detachLooseParts, dismissLoosePart, findLooseBlocker, trimFinishedPilots } from "../src/scene/loosePhysics.ts";
-import type { LooseParts } from "../src/scene/loosePhysics.ts";
+import { PING_COOLDOWN_MS, ROOM_LEVEL_VERSION, ROOM_PHYSICS_DELAY_MS, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
+import { findLooseBlocker } from "../src/scene/loosePhysics.ts";
+import { createPartPhysics } from "../src/scene/partPhysics.ts";
+import type { PartPhysics } from "../src/scene/partPhysics.ts";
 import { SCREW_SCALE } from "../src/game/levels.ts";
 
 export const RECONNECT_MS = 30_000;
-export const FALL_LEAD_MS = 62.5;
 const newSeed = () => randomInt(0, 2 ** 32);
 const secret = () => randomBytes(18).toString("base64url");
 
@@ -23,7 +23,7 @@ type Seat = {
 type Room = {
   id: string; seats: Seat[]; soloAllowed: boolean; round: number; seed: number; game: GameState;
   startedAt: number | null; lifelines: number; fallStarts: Map<PartId, number>;
-  elapsedMs: number; clockSince: number | null; looseParts: LooseParts;
+  elapsedMs: number; clockSince: number | null; physics?: PartPhysics; physicsRevision: number;
 };
 
 function wireGame({ screws, ...game }: GameState): RoomGame {
@@ -46,6 +46,7 @@ function stopClock(room: Room, now: number) {
   room.clockSince = null;
 }
 function snapshot(room: Room, now: number): RoomSnapshot {
+  room.physics?.advance(now);
   return {
     levelVersion: ROOM_LEVEL_VERSION,
     id: room.id, leader: room.seats[0].id, round: room.round, seed: room.seed,
@@ -54,8 +55,8 @@ function snapshot(room: Room, now: number): RoomSnapshot {
     })),
     started: room.startedAt !== null, canStart: canStart(room), paused: paused(room), lifelines: room.lifelines,
     game: wireGame(room.game),
-    fallStarts: Object.fromEntries([...room.fallStarts].filter(([, at]) => now < at + FALL_DURATION_MS)),
-    looseParts: trimFinishedPilots(room.looseParts, now),
+    fallStarts: Object.fromEntries([...room.fallStarts].filter(([, at]) => now - ROOM_PHYSICS_DELAY_MS < at + FALL_DURATION_MS)),
+    looseParts: room.physics?.packet() ?? {},
     elapsedMs: room.elapsedMs + (room.clockSince === null ? 0 : now - room.clockSince),
     clockRunning: room.clockSince !== null, serverTime: now,
   };
@@ -66,7 +67,21 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
   const memberships = new Map<Peer, { room: Room; seat: Seat }>();
   function publish(room: Room, moves?: CollectionMove[], matched = false, completedLifeline?: MatchBox) {
     const state = snapshot(room, now());
+    room.physicsRevision = room.physics?.revision() ?? 0;
     for (const seat of room.seats) seat.peer?.send({ type: "state", snapshot: state, moves, matched, completedLifeline });
+  }
+  function tickPhysics() {
+    const time = now();
+    for (const room of rooms.values()) {
+      const physics = room.physics;
+      if (!physics) continue;
+      physics.advance(time);
+      const revision = physics.revision();
+      if (revision === room.physicsRevision) continue;
+      room.physicsRevision = revision;
+      const notice: RoomNotice = { type: "physics", round: room.round, looseParts: physics.packet() };
+      for (const seat of room.seats) seat.peer?.send(notice);
+    }
   }
   function reject(peer: Peer, reason: string, screw?: string) {
     peer.send({ type: "rejected", reason, screw });
@@ -97,7 +112,10 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     if (seat.peer) memberships.delete(seat.peer);
     room.seats = room.seats.filter((entry) => entry !== seat);
     room.soloAllowed = true;
-    if (!room.seats.length) rooms.delete(room.id);
+    if (!room.seats.length) {
+      room.physics?.free();
+      rooms.delete(room.id);
+    }
     else {
       resumeClock(room);
       publish(room);
@@ -134,7 +152,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
         const seed = nextSeed();
         const room: Room = { id: secret(), seats: [], soloAllowed: false, round: 0, seed,
           game: generatePuzzle(seed).state, startedAt: null, lifelines: LIFELINE_COUNT, fallStarts: new Map(),
-          elapsedMs: 0, clockSince: null, looseParts: {} };
+          elapsedMs: 0, clockSince: null, physicsRevision: 0 };
         rooms.set(room.id, room);
         attach(peer, room, addSeat(room));
         return;
@@ -172,7 +190,9 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
       room.startedAt = null;
       room.lifelines = LIFELINE_COUNT;
       room.fallStarts.clear();
-      room.looseParts = {};
+      room.physics?.free();
+      room.physics = undefined;
+      room.physicsRevision = 0;
       room.elapsedMs = 0;
       room.clockSince = null;
       for (const member of room.seats) {
@@ -191,12 +211,9 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     if (room.startedAt === null || !seat.ready ||
         paused(room) || room.game.status !== "playing") return;
     if (command.type === "dismiss") {
-      const looseParts = dismissLoosePart(room.looseParts, command.part, room.game.removedParts, time);
-      if (looseParts !== room.looseParts) {
-        room.looseParts = looseParts;
-        room.fallStarts.delete(command.part);
-        publish(room);
-      }
+      const startedAt = room.fallStarts.get(command.part);
+      if (startedAt !== undefined && time - ROOM_PHYSICS_DELAY_MS < startedAt) return;
+      if (room.physics?.dismiss(command.part, time)) publish(room);
       return;
     }
     if (command.type === "ping") {
@@ -221,18 +238,20 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
 
     const screw = room.game.screws.find((entry) => entry.id === command.screw);
     if (!screw || screw.removed) return;
-    const removedParts = room.game.removedParts.filter((part) => time >= (room.fallStarts.get(part) ?? -Infinity) + FALL_DURATION_MS);
-    if (!isScrewAccessible({ ...room.game, removedParts }, screw) ||
-        findLooseBlocker(room.looseParts, screw, SCREW_SCALE, time)) return reject(peer, "That screw is blocked.", screw.id);
+    room.physics?.advance(time);
+    if (!isScrewAccessible(room.game, screw) ||
+        findLooseBlocker(room.physics?.read() ?? {}, screw, SCREW_SCALE, time - ROOM_PHYSICS_DELAY_MS)) {
+      return reject(peer, "That screw is blocked.", screw.id);
+    }
     const { finalState, events } = planScrewRemoval(room.game, screw.id);
     if (finalState === room.game) return;
     seat.collected += 1;
     room.clockSince ??= time;
     for (const event of events) {
       if (event.kind === "detach") {
-        const startAt = time + FALL_LEAD_MS;
-        room.fallStarts.set(event.part, startAt);
-        room.looseParts = detachLooseParts(room.looseParts, event.part, finalState.removedParts, startAt);
+        room.physics ??= createPartPhysics(room.game.removedParts);
+        room.fallStarts.set(event.part, time);
+        room.physics.release(event.part, time);
       }
     }
     commit(room, finalState, events);
@@ -245,5 +264,10 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     if (game.status !== "playing") stopClock(room, now());
     publish(room, moves, matched, completedLifeline);
   }
-  return { receive, disconnect, expireSeats };
+  return { receive, disconnect, expireSeats, tickPhysics,
+    close: () => {
+      for (const room of rooms.values()) room.physics?.free();
+      rooms.clear();
+      memberships.clear();
+    } };
 }
