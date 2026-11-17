@@ -2,8 +2,9 @@ import { Euler, Quaternion } from "three";
 import type { ColliderDesc } from "@dimforge/rapier3d-compat";
 import type { PartId } from "../game/types.ts";
 import { geometryFor } from "./geometry.ts";
-import { PART_PIVOTS, PIECES } from "./houseModel.ts";
+import { LEVEL_MODELS, partLevel, partPivot } from "./levelModels.ts";
 import type { Piece, Vector } from "./houseModel.ts";
+import { WATER_COLLIDERS } from "./titanicWater.ts";
 
 type Engine = typeof import("@dimforge/rapier3d-compat");
 const MAX_SHAPES = 12;
@@ -12,6 +13,8 @@ type Shape = { kind: "box" | "rounded" | "ball" | "cylinder" | "cone" | "hull";
 
 function collisionPieces(part: PartId, pieces: Piece[]): Piece[] {
   const main = pieces[0];
+  const water = WATER_COLLIDERS.get(part);
+  if (water) return [water];
   // Sculpted snow overlaps its support in the render model. Use the load-bearing mass.
   if (part === "chimney-snow") return [{ ...main, position: [-0.8, 4.39, 0.6], size: [0.78, 0.30, 0.78] }];
   if (part.startsWith("snowbank-")) return [{ ...main, position: [main.position[0], -1.48, main.position[2]],
@@ -40,11 +43,11 @@ function collisionPieces(part: PartId, pieces: Piece[]): Piece[] {
 }
 
 function makeShape(piece: Piece): Shape {
-  const pivot = PART_PIVOTS[piece.part];
+  const pivot = partPivot(piece.part);
   const offset: Vector = piece.position.map((value, i) => value - pivot[i]) as Vector;
   const rotation = new Quaternion().setFromEuler(new Euler(...(piece.rotation ?? [0, 0, 0])));
   const size = piece.size;
-  switch (piece.kind) {
+  if (!piece.geometry) switch (piece.kind) {
     case "box":
     case "curtain": return { kind: "box", offset, rotation, size };
     case "snow-slab": return { kind: "rounded", offset, rotation, size };
@@ -70,14 +73,7 @@ function makeShape(piece: Piece): Shape {
   return { kind: "hull", offset, rotation, size, vertices };
 }
 
-const piecesByPart = new Map<PartId, Piece[]>();
-for (const piece of PIECES) {
-  const pieces = piecesByPart.get(piece.part) ?? [];
-  pieces.push(piece);
-  piecesByPart.set(piece.part, pieces);
-}
-const shapesByPart = new Map([...piecesByPart].map(([part, pieces]) =>
-  [part, collisionPieces(part, pieces).map(makeShape)]));
+const shapesByPart = new Map<PartId, Shape[]>();
 
 function colliderFor(engine: Engine, shape: Shape): ColliderDesc {
   const [x, y, z] = shape.size;
@@ -89,7 +85,7 @@ function colliderFor(engine: Engine, shape: Shape): ColliderDesc {
     case "cone": return engine.ColliderDesc.cone(y / 2, x);
     case "hull": {
       const hull = engine.ColliderDesc.convexHull(shape.vertices!);
-      if (!hull) throw new Error("Cottage collision mesh has no volume");
+      if (!hull) throw new Error("Collision mesh has no volume");
       return hull;
     }
     case "box": return engine.ColliderDesc.cuboid(x * 0.49, y * 0.49, z * 0.49);
@@ -101,10 +97,15 @@ export function partColliders(engine: Engine, part: PartId) {
   const ornament = part === "roof-bauble";
   const roofPanel = /^roof-(left|right)-/.test(part);
   const heavy = /^(tile-|ground-|plinth-)/.test(part) || part === "chimney" || part === "steps";
-  const shapes = shapesByPart.get(part);
-  if (!shapes?.length) throw new Error(`Missing collision geometry for ${part}`);
+  let shapes = shapesByPart.get(part);
+  if (!shapes) {
+    const pieces = LEVEL_MODELS[partLevel(part)].pieces.filter((piece) => piece.part === part);
+    if (!pieces.length) throw new Error(`Missing collision geometry for ${part}`);
+    shapes = collisionPieces(part, pieces).map(makeShape);
+    shapesByPart.set(part, shapes);
+  }
   return shapes.map((shape) => colliderFor(engine, shape).setTranslation(...shape.offset).setRotation(shape.rotation)
-    .setDensity(snow ? 0.25 : heavy ? 2 : ornament ? 0.16 : 0.8)
+    .setDensity(snow || part.startsWith("ship-water-") ? 0.25 : heavy ? 2 : ornament ? 0.16 : 0.8)
     .setFriction(snow || ornament ? 0.09 : roofPanel ? 0.32 : 0.53)
     .setFrictionCombineRule(engine.CoefficientCombineRule.Min)
     .setRestitution(ornament ? 0.36 : 0.10)

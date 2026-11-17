@@ -1,7 +1,7 @@
-import { PART_IDS, ROOF_SECTIONS } from "../game/types.ts";
-import type { PartId } from "../game/types.ts";
+import { ROOF_SECTIONS } from "../game/types.ts";
+import type { LevelId, PartId } from "../game/types.ts";
 import type { RigidBody } from "@dimforge/rapier3d-compat";
-import { PART_PIVOTS } from "./houseModel.ts";
+import { LEVEL_MODELS, partPivot } from "./levelModels.ts";
 import { LOOSE_LIFETIME_MS, loosePartPose, OFF_MAP, POSE_HISTORY_MS, SMOKE_DURATION_MS } from "./loosePhysics.ts";
 import type { LooseMotion, LooseParts, PartReleases, PoseFrame } from "./loosePhysics.ts";
 import { partColliders } from "./partColliders.ts";
@@ -48,16 +48,16 @@ function releaseBody(part: PartId, body: RigidBody) {
 type ActivePart = { body: RigidBody; endsAt: number };
 export type PartPhysics = ReturnType<typeof createPartPhysics>;
 
-export function createPartPhysics(alreadyRemoved: readonly PartId[] = []) {
+export function createPartPhysics(alreadyRemoved: readonly PartId[] = [], level: LevelId = "cottage") {
   const world = new engine.World({ x: 0, y: -9.81, z: 0 });
   world.timestep = STEP_MS / 1000;
   const standing = new Map<PartId, RigidBody>();
   const active = new Map<PartId, ActivePart>();
   const motions = new Map<PartId, LooseMotion>();
   const removed = new Set(alreadyRemoved);
-  for (const part of PART_IDS) {
+  for (const part of LEVEL_MODELS[level].parts) {
     if (removed.has(part)) continue;
-    const body = world.createRigidBody(engine.RigidBodyDesc.fixed().setTranslation(...PART_PIVOTS[part])
+    const body = world.createRigidBody(engine.RigidBodyDesc.fixed().setTranslation(...partPivot(part))
       .setLinearDamping(0.10).setAngularDamping(part === "roof-bauble" ? 0.10 : 0.30));
     for (const collider of partColliders(engine, part)) world.createCollider(collider, body);
     standing.set(part, body);

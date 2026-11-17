@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { formatRunTime } from "../game/runTime";
 
-export default function GameTimer({ startedAt, stoppedAt, clock = performance, removed, total }: {
-  startedAt: number | null; stoppedAt: number | null; clock?: { now: () => number }; removed: number; total: number;
+export default function GameTimer({ startedAt, stoppedAt, clock = performance, removed, total, elapsedBefore = 0 }: {
+  startedAt: number | null; stoppedAt: number | null; clock?: { now: () => number }; removed: number; total: number; elapsedBefore?: number;
 }) {
   const [now, setNow] = useState(() => clock.now());
   useEffect(() => {
@@ -10,7 +10,7 @@ export default function GameTimer({ startedAt, stoppedAt, clock = performance, r
     const timer = window.setInterval(() => setNow(clock.now()), 200);
     return () => window.clearInterval(timer);
   }, [startedAt, stoppedAt, clock]);
-  const text = formatRunTime(startedAt === null ? 0 : (stoppedAt ?? now) - startedAt);
+  const text = formatRunTime(elapsedBefore + (startedAt === null ? 0 : Math.max(0, (stoppedAt ?? now) - startedAt)));
   return <div className="game-progress">
     <div className="removed-counter" aria-label={`Screws removed: ${removed} of ${total}`}>{removed}<span> / {total}</span></div>
     <div className="game-timer" role="timer" aria-label={`Elapsed time ${text}`} aria-live="off">

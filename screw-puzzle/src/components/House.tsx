@@ -1,18 +1,17 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Group } from "three";
-import { PART_IDS } from "../game/types";
+import type { LevelId } from "../game/campaign";
 import type { PartId } from "../game/types";
-import { PART_PIVOTS } from "../scene/houseModel";
-import { MODEL_BATCHES } from "../scene/modelBatches";
+import { LEVEL_MODELS, partPivot } from "../scene/levelModels";
+import { modelBatches } from "../scene/modelBatches";
 import { FALL_DURATION_MS } from "../game/fallTiming";
 import { showPartAppearance } from "../scene/partAppearance";
 import { isLooseVisible, loosePartPose, LOOSE_LIFETIME_MS, SMOKE_DURATION_MS, smokeScale } from "../scene/loosePhysics";
 import type { LooseMotion, LooseParts } from "../scene/loosePhysics";
 import SmokePuff from "./SmokePuff";
 type ReadPhysics = () => { parts: LooseParts; now: number };
-const batchesByPart = new Map(PART_IDS.map((part) => [part, MODEL_BATCHES.filter((batch) => batch.part === part)]));
 function FallingPart({ id, hidden, active, faded, outlined, readPhysics, looseNow, onFallFinished, children }: {
   id: PartId; hidden: boolean; active: boolean; onFallFinished: (id: PartId) => void; children: ReactNode;
   faded: boolean; outlined: boolean; readPhysics: ReadPhysics; looseNow: () => number;
@@ -22,7 +21,7 @@ function FallingPart({ id, hidden, active, faded, outlined, readPhysics, looseNo
   const [retired, setRetired] = useState(false);
   const [smoke, setSmoke] = useState<LooseMotion["poof"]>();
   const finished = useRef(false);
-  const pivot = PART_PIVOTS[id];
+  const pivot = partPivot(id);
   useLayoutEffect(() => {
     if (surface.current && (faded || outlined)) return showPartAppearance(surface.current, faded, outlined);
   }, [hidden, faded, outlined]);
@@ -63,15 +62,21 @@ function FallingPart({ id, hidden, active, faded, outlined, readPhysics, looseNo
     {smoke && <SmokePuff position={smoke.position} startAt={smoke.at} now={looseNow} scale={smokeScale(id)} />}
   </>;
 }
-export default function House({ removedParts, fallingParts, fadedPart, outlinedPart, readPhysics, looseNow, onFallFinished }: {
-  removedParts: PartId[]; fallingParts: PartId[]; onFallFinished: (id: PartId) => void;
+export default function House({ level, removedParts, fallingParts, fadedPart, outlinedPart, readPhysics, looseNow, onFallFinished }: {
+  level: LevelId; removedParts: PartId[]; fallingParts: PartId[]; onFallFinished: (id: PartId) => void;
   fadedPart?: PartId; outlinedPart?: PartId; readPhysics: ReadPhysics; looseNow: () => number;
 }) {
+  const parts: readonly PartId[] = LEVEL_MODELS[level].parts;
+  const batchesByPart = useMemo(() => {
+    const batches = modelBatches(level);
+    return new Map(parts.map((part) => [part, batches.filter((batch) => batch.part === part)]));
+  }, [level, parts]);
   return <group>
-    {PART_IDS.map((part) => <FallingPart key={part} id={part} hidden={removedParts.includes(part)} active={fallingParts.includes(part)}
+    {parts.map((part) => <FallingPart key={part} id={part} hidden={removedParts.includes(part)} active={fallingParts.includes(part)}
       faded={part === fadedPart} outlined={part === outlinedPart} readPhysics={readPhysics} looseNow={looseNow} onFallFinished={onFallFinished}>
       {batchesByPart.get(part)!.map((batch) => <mesh key={`${batch.color}:${batch.smooth}`} geometry={batch.geometry}>
-        <meshStandardMaterial color={batch.color} roughness={0.8} flatShading={!batch.smooth} vertexColors={batch.smooth} />
+        <meshStandardMaterial color={batch.color} roughness={part.startsWith("ship-water-") ? 0.24 : 0.8}
+          flatShading={!batch.smooth} vertexColors={batch.smooth} />
       </mesh>)}
     </FallingPart>)}
   </group>;

@@ -58,6 +58,6 @@ export const PIECE_GEOMETRIES = {
   gable: new ExtrudeGeometry(shape, { depth: 0.12, bevelEnabled: false }).translate(0, 0, -0.06),
 };
 export function geometryFor(piece: Piece) {
-  return PIECE_GEOMETRIES[piece.kind];
+  return piece.geometry ?? PIECE_GEOMETRIES[piece.kind];
 }
 if (import.meta.hot) import.meta.hot.dispose(() => Object.values(PIECE_GEOMETRIES).forEach((geometry) => geometry.dispose()));

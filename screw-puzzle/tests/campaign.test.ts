@@ -15,9 +15,9 @@ test("the level order gates Titanic and reads progress from Cottage wins and old
   assert.equal(levelStatus(0, readLevelProgress()), "playable");
   assert.equal(levelStatus(1, readLevelProgress()), "locked");
   saved.set(SOLO_TIMES_KEY, JSON.stringify([{ elapsedMs: 45678, completedAt: 12345 }]));
-  assert.equal(levelStatus(1, readLevelProgress()), "coming-soon");
+  assert.equal(levelStatus(1, readLevelProgress()), "playable");
   saved.delete(SOLO_TIMES_KEY);
   recordLevelClear("cottage");
   assert.equal(saved.get("screw-it:cleared:cottage"), "1");
-  assert.equal(levelStatus(1, readLevelProgress()), "coming-soon");
+  assert.equal(levelStatus(1, readLevelProgress()), "playable");
 });

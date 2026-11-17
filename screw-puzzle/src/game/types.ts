@@ -1,6 +1,7 @@
 export const SCREW_COLOR_ORDER = ["red", "blue", "yellow", "green", "orange", "purple", "brown", "pink", "grey", "cyan", "black", "lime"] as const;
 export type ScrewColor = typeof SCREW_COLOR_ORDER[number];
 export type GameStatus = "playing" | "won" | "lost";
+export type LevelId = "cottage" | "titanic";
 export const ROOF_SECTIONS = (["left", "right"] as const).flatMap((side) =>
   (["front", "middle", "back"] as const).flatMap((lane, index) =>
     (["eave", "ridge"] as const).map((band) => ({ id: `roof-${side}-${lane}-${band}` as const, side, lane, band, z: 1.4 - index * 1.4 }))));
@@ -55,7 +56,8 @@ export const DECOR_IDS = [...SNOW_ROOFS.map((part) => part.id), ...GARLANDS.map(
   "christmas-tree", "tree-star", "gift-left", "holiday-lantern", "gift-right", "candy-left", "candy-right", "porch-snow", "chimney-snow",
   "roof-lights-left", "roof-lights-right", "present-bed", "present-desk", "present-sofa", "present-table", "roof-bauble"] as const;
 export const PART_IDS = [...HOUSE_PART_IDS, ...DINING_CHAIRS.map((chair) => chair.id), "table-vase", ...FRAME_POSTS.map((post) => post.id), ...FLOOR_BEAMS, ...GROUND_IDS, ...PLINTH_IDS, ...TILE_IDS, ...DECOR_IDS, ...INTERIOR_PROPS, ...INTERIOR_DOORS.map((door) => door.id), ...FURNISHING_IDS] as const;
-export type PartId = typeof PART_IDS[number];
+export type TitanicPartId = `ship-${string}`;
+export type PartId = typeof PART_IDS[number] | TitanicPartId;
 
 export type Screw = {
   id: string;

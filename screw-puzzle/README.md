@@ -1,6 +1,6 @@
-# Screw Cottage
+# Screw it!
 
-A mobile-first 3D screw puzzle built with React, Three.js, React Three Fiber and Vite. The original Christmas cottage has **264 screws, 12 colors, and 134 removable assemblies**. Every visible model piece belongs to a fastened assembly.
+A mobile-first 3D screw puzzle built with React, Three.js, React Three Fiber and Vite. Christmas Cottage has **300 screws and 166 removable assemblies**. Titanic has **312 screws and 208 removable assemblies**. Both levels use twelve screw colors.
 
 ## Run and validate
 
@@ -16,19 +16,21 @@ Use Vite's printed local URL. Tests and the room server use Node's native TypeSc
 
 ## Playing
 
-After the scene loads, green **Start** opens the level picker. Select **Christmas Cottage** to fly from the title to the house in 1.25 seconds. The game saves completed levels in the browser. The **Titanic** entry requires a Cottage clear and shows **Coming soon** until its puzzle is available. The **Levels** button after a solo win returns to the picker. All screws are resident before gameplay and become visible as geometry falls away.
+After the scene loads, green **Start** opens the solo level picker. Clear **Christmas Cottage** to unlock **Titanic**. Level clears are stored in the browser. The **Levels** button after a solo win returns to the picker. All screws are resident before gameplay and become visible as geometry falls away. The two-player menu opens the Cottage room mode.
 
 Drag to orbit on desktop and touchscreens. Scroll over a spot to zoom toward it, or pinch around it on a touchscreen. Right-drag or move two fingers together to pan. Zooming back out to the overview recenters on the house. Rotation stops on release. Screws are 15% larger and a 44 CSS-pixel assisted touch target with front-face and occlusion checks. Portrait and landscape layouts account for safe areas and dynamic viewport height.
 
 The HUD retains two matching boxes, five waiting circles, the removal count, a stopwatch, and a 48px **Reset / Quit** arrow. The stopwatch appears after Start, begins only on the first accepted removal, and stops at logical win/loss. Invalid clicks, blocked attempts, camera gestures and cosmetic animation backlogs do not add solve time.
 
-In solo play, the trophy button opens the ten fastest wins stored in the current browser. Each time is measured from the first accepted screw to the win and saved automatically.
+In solo play, the trophy button shows the ten fastest wins for the selected level. Switch levels in that dialog to compare personal times. The level cards also show your best time. Scores are stored in the current browser.
+
+Solo rounds autosave in the current browser. From **Reset / Quit**, choose **Save & exit**, then select **Resume** on that level's card. Elapsed time resumes when the camera arrives. The save restores the puzzle and matching boxes, waiting slots, remaining lifelines, and cleared parts. Loose parts and animation queues settle when restoring. **Reset** discards the current level's checkpoint.
 
 The lightning button at bottom center slides in a third matching box while the five waiting slots keep their positions. There are three lifelines per round and one can be active at a time. The bonus favors a color already waiting and transfers matching screws into the box. It stays open until the third match.
 
 Start enables a quiet, original instrumental loop. A soft click, knock and chime mark removal, obstruction and completion respectively. The music note and speaker toggle music and effects separately. Both are synthesized locally in `src/game/audio.ts`.
 
-Active colors go directly to their boxes. Other colors use waiting slots. Completing a triple replaces that box with the next eligible queued color and automatically transfers matching waiting screws. Resolve cascades before checking loss at five occupied waiting slots. Win when all 300 screws and 100 triples are cleared.
+Active colors go directly to their boxes. Other colors use waiting slots. Completing a triple replaces that box with the next eligible queued color and automatically transfers matching waiting screws. Resolve cascades before checking loss at five occupied waiting slots. Win when all screws in the level are matched.
 
 Each part starts falling as soon as its last screw is accepted. Falls can overlap while screw transfers and box changes play in order. Players can keep selecting screws and orbiting throughout. Visible heads with blocked extraction wiggle, and a head becomes selectable once its moving covers clear the extraction path. Text selection and the long-press menu are disabled inside the game.
 
@@ -40,13 +42,15 @@ Desktop fine-pointer layouts use a purple/gold screwdriver cursor. Its grip and 
 
 The cottage has Christmas snow, lights, wreaths, candy canes, a tree, gifts, and a candle lantern trimmed with holly and ribbon. Loose parts clear in a puff of smoke two seconds after release. Tap one to clear it sooner and let pieces above it drop.
 
-The level has **300** screws across **166** parts. Counts follow object size. Small fixtures such as the towel and mirror have one screw, the sink and toilet have two, and the shower enclosure has three. Large floors and outdoor tiles have up to five.
+The cottage has **300** screws across **166** parts. Counts follow object size. Small fixtures such as the towel and mirror have one screw, the sink and toilet have two, and the shower enclosure has three. Large floors and outdoor tiles have up to five.
 
 Wall heads are mounted on interior jambs, corners, and edges hidden by adjacent panels. Eight ground-floor fixings face sideways behind lower walls. Ridge timbers detach with their corresponding roof panels. The 12 roof panels each have a surface fixing and a forward-facing edge fixing; neighboring roof courses naturally obscure some of those edges. Furniture fixings vary between upper corners and side faces. Positions are fixed between rounds; colors change.
 
 Seven removable interior partitions separate the upstairs bedroom, study and bathroom from the stair hall and downstairs kitchen, living and dining areas. Eight independently fastened doors close the hall openings on both stories. Their screws face the hall. Clearing each loose door opens the doorway and the view into the room. Paintings, carpets and window curtains cover individual interior wall and floor fixings. Cross walls block sightlines between rooms, and three removable attic ceiling panels sit beneath the roof.
 
 The 80-view orbit audit finds **29 initially exposed removable screws out of 300 (9.7%)**. Both starting colors have only one or two exposed matches, so neither box can finish without revealing another fixing.
+
+Titanic has a compact footprint with a tapered bow, four funnels, lifeboats, a bridge, and eight removable deck sections. Clearing the deck reveals staterooms and staircases, then saloon furniture and the machinery and cargo below. Eight individually fastened water blocks surround the lower hull. The stylized ship uses the [Harland & Wolff plans at National Museums NI](https://cms.nationalmuseumsni.org/sites/default/files/2022-09/Digitised-Olympic-and-Titanic-Ship-Plans.pdf) as a reference.
 
 ## Colors and verified randomization
 

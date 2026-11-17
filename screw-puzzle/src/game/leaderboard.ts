@@ -1,10 +1,13 @@
-export const SOLO_TIMES_KEY = "screw-it:solo-times:cottage:v1";
+import type { LevelId } from "./campaign.ts";
+
+const timesKey = (level: LevelId) => `screw-it:solo-times:${level}:v1`;
+export const SOLO_TIMES_KEY = timesKey("cottage");
 export const SOLO_TIMES_LIMIT = 10;
 
 export type SoloTime = { elapsedMs: number; completedAt: number };
 
-let recent: SoloTime[] = [];
-let unsaved: SoloTime[] = [];
+const recent = new Map<LevelId, SoloTime[]>();
+const unsaved = new Map<LevelId, SoloTime[]>();
 
 function isSoloTime(value: unknown): value is SoloTime {
   if (!value || typeof value !== "object" || !("elapsedMs" in value) || !("completedAt" in value)) return false;
@@ -17,30 +20,31 @@ function fastest(times: SoloTime[]) {
   return times.sort((a, b) => a.elapsedMs - b.elapsedMs || a.completedAt - b.completedAt).slice(0, SOLO_TIMES_LIMIT);
 }
 
-export function readSoloTimes(): SoloTime[] {
+export function readSoloTimes(level: LevelId = "cottage"): SoloTime[] {
   try {
-    const saved: unknown = JSON.parse(window.localStorage.getItem(SOLO_TIMES_KEY) ?? "[]");
-    recent = fastest([...(Array.isArray(saved) ? saved.filter(isSoloTime) : []), ...unsaved]);
+    const saved: unknown = JSON.parse(window.localStorage.getItem(timesKey(level)) ?? "[]");
+    recent.set(level, fastest([...(Array.isArray(saved) ? saved.filter(isSoloTime) : []), ...(unsaved.get(level) ?? [])]));
   } catch {
     // Keep the current visit usable when browser storage is unavailable.
   }
-  return recent;
+  return recent.get(level) ?? [];
 }
 
-export function recordSoloTime(elapsedMs: number) {
+export function recordSoloTime(elapsedMs: number, level: LevelId = "cottage") {
   const time = { elapsedMs: Math.round(elapsedMs), completedAt: Date.now() };
   if (!isSoloTime(time)) return;
   function save() {
-    recent = fastest([...readSoloTimes(), time]);
+    const times = fastest([...readSoloTimes(level), time]);
+    recent.set(level, times);
     try {
-      window.localStorage.setItem(SOLO_TIMES_KEY, JSON.stringify(recent));
-      unsaved = [];
+      window.localStorage.setItem(timesKey(level), JSON.stringify(times));
+      unsaved.delete(level);
     } catch {
-      unsaved = fastest([...unsaved, time]);
+      unsaved.set(level, fastest([...(unsaved.get(level) ?? []), time]));
     }
   }
   // Serialize read/modify/write across tabs when the browser supports Web Locks.
   const locks = window.navigator?.locks;
-  if (locks) void locks.request(SOLO_TIMES_KEY, save).catch(save);
+  if (locks) void locks.request(timesKey(level), save).catch(save);
   else save();
 }

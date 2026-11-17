@@ -4,6 +4,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Billboard, PerspectiveCamera } from "@react-three/drei";
 import { Vector3 } from "three";
 import type { Group } from "three";
+import type { LevelId } from "../game/campaign";
 import type { GameState, PartId, Screw } from "../game/types";
 import { SCREW_SCALE } from "../game/levels";
 import { pickSceneTarget } from "../scene/picking";
@@ -21,6 +22,7 @@ import type { PartPhysics } from "../scene/partPhysics";
 import { findLooseBlocker } from "../scene/loosePhysics";
 
 type GameSceneProps = { logical: GameState; fallingParts: PartId[]; round: number; playable: boolean;
+  level?: LevelId;
   orbitable?: boolean;
   releases?: PartReleases; onlineParts?: { current: LooseParts }; looseNow?: () => number;
   onLooseDismiss: (part: PartId) => void;
@@ -59,7 +61,7 @@ const PREVIEW_HOLD_MS = 420;
 type PartPreview = { part: PartId; round: number; x: number; y: number };
 const localNow = () => performance.now();
 
-function SceneContents({ logical, fallingParts, round, playable, orbitable, pingMode, pingScrew, pingSequence, onScrewPing, rejectedScrew,
+function SceneContents({ level = "cottage", logical, fallingParts, round, playable, orbitable, pingMode, pingScrew, pingSequence, onScrewPing, rejectedScrew,
   releases, onlineParts, looseNow = localNow, onLooseDismiss,
   view, onCameraArrive, onReady, onFallFinished, onScrewSelect, onBlockedScrew, projectorRef, outlinedPart, onPreview }: GameSceneProps & {
     outlinedPart?: PartId; onPreview: (preview: PartPreview | null) => void;
@@ -72,7 +74,7 @@ function SceneContents({ logical, fallingParts, round, playable, orbitable, ping
   const physicsFrame = useRef<{ parts: LooseParts; now: number }>({ parts: {}, now: 0 });
   const mountLocalPhysics = useEffectEvent(() => {
     const cleared = logical.removedParts.filter((part) => !releases?.[part]);
-    const runtime = createPartPhysics(cleared);
+    const runtime = createPartPhysics(cleared, level);
     if (releases) runtime.sync(releases);
     physics.current = runtime;
     return runtime;
@@ -212,16 +214,16 @@ function SceneContents({ logical, fallingParts, round, playable, orbitable, ping
     };
   }, [gl, gestures, playable, round, onPreview]);
   return <>
-    <PerspectiveCamera makeDefault position={TITLE_CAMERA} fov={42} near={0.1} far={65} zoom={Math.min(1, size.width / size.height / 0.85)} />
+    <PerspectiveCamera makeDefault position={TITLE_CAMERA} fov={42} near={0.1} far={65} zoom={Math.min(1, size.width / size.height / (level === "titanic" ? 1.12 : 0.85))} />
     <ambientLight intensity={0.8} /><hemisphereLight args={["#fff5df", "#91aab4", 1.25]} />
     <directionalLight position={[5, 10, 7]} intensity={2.2} /><directionalLight position={[-6, 5, -5]} intensity={1.2} color="#d7eeff" />
-    <FloatingTitle menu={view === "title"} />
-    <House key={`house-${round}`} removedParts={logical.removedParts} fallingParts={fallingParts}
+    {(level === "cottage" || view === "title") && <FloatingTitle menu={view === "title"} />}
+    <House key={`house-${round}`} level={level} removedParts={logical.removedParts} fallingParts={fallingParts}
       outlinedPart={outlinedPart} fadedPart={fadedPart} readPhysics={() => physicsFrame.current} looseNow={looseNow}
       onFallFinished={(part) => onFallFinished(part, round)} />
     <ScrewField key={`screws-${round}`} game={logical} wiggleRef={wiggle} />
     {pingScrew && <PingMarker key={pingSequence} screw={pingScrew} />}
-    <CameraRig view={view} round={round} playable={orbitable ?? playable} onArrive={onCameraArrive} />
+    <CameraRig level={level} view={view} round={round} playable={orbitable ?? playable} onArrive={onCameraArrive} />
   </>;
 }
 export default function GameScene(props: GameSceneProps) {

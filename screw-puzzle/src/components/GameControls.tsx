@@ -1,13 +1,14 @@
 import { useRef } from "react";
 import type { AudioChannel } from "../game/audio";
+import type { LevelId } from "../game/campaign";
 import AudioButton from "./AudioButton";
 import HelpDialog from "./HelpDialog";
 import SoloLeaderboard from "./SoloLeaderboard";
 
-export default function GameControls({ muted, toggle, onReset, onLeave, resetDisabled, showLeaderboard }: {
+export default function GameControls({ muted, toggle, onReset, onLeave, resetDisabled, leaderboardLevel }: {
   muted: Record<AudioChannel, boolean>; toggle: (channel: AudioChannel) => void;
   onReset?: () => void; onLeave?: () => void; resetDisabled?: boolean;
-  showLeaderboard?: boolean;
+  leaderboardLevel?: LevelId;
 }) {
   const help = useRef<HTMLDialogElement>(null);
   function showHelp() {
@@ -22,7 +23,7 @@ export default function GameControls({ muted, toggle, onReset, onLeave, resetDis
         aria-haspopup="dialog" aria-controls="game-help" title="How to play">
         <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 10h.01M14 15h2v7m-2 0h4" /></svg>
       </button>
-      {showLeaderboard && <SoloLeaderboard />}
+      {leaderboardLevel && <SoloLeaderboard activeLevel={leaderboardLevel} />}
       <AudioButton channel="music" muted={muted.music} onToggle={() => toggle("music")} />
       <AudioButton channel="effects" muted={muted.effects} onToggle={() => toggle("effects")} />
       {onReset && <button className="icon-button" disabled={resetDisabled} onClick={onReset} aria-label="Reset level and return to title" title="Reset game">

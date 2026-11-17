@@ -1,23 +1,29 @@
 import { DoubleSide, Matrix3, Mesh, MeshBasicMaterial, Raycaster, Vector3 } from "three";
 import type { Object3D } from "three";
-import type { PartId } from "../game/types.ts";
-import { PIECES } from "./houseModel.ts";
+import type { LevelId, PartId } from "../game/types.ts";
+import { LEVEL_MODELS, partLevel } from "./levelModels.ts";
 import { geometryFor } from "./geometry.ts";
 import { SCREW_PULL_DISTANCE } from "./screwDimensions.ts";
 
 // Geometry-derived clearance is independent of color, camera, and React. Cache it
 // in level data; camera picking separately prevents clicks through solid objects.
 const material = new MeshBasicMaterial({ side: DoubleSide });
-const solids = PIECES.map((piece) => {
-  const mesh = new Mesh(geometryFor(piece), material);
-  mesh.position.set(...piece.position); mesh.scale.set(...piece.size);
-  if (piece.rotation) mesh.rotation.set(...piece.rotation);
-  mesh.updateMatrixWorld();
-  return { mesh, part: piece.part, normalMatrix: new Matrix3().getNormalMatrix(mesh.matrixWorld) };
-});
+function buildSolids(level: LevelId) {
+  return LEVEL_MODELS[level].pieces.map((piece) => {
+    const mesh = new Mesh(geometryFor(piece), material);
+    mesh.position.set(...piece.position); mesh.scale.set(...piece.size);
+    if (piece.rotation) mesh.rotation.set(...piece.rotation);
+    mesh.updateMatrixWorld();
+    return { mesh, part: piece.part, normalMatrix: new Matrix3().getNormalMatrix(mesh.matrixWorld) };
+  });
+}
+const solidsByLevel: Partial<Record<LevelId, ReturnType<typeof buildSolids>>> = {};
 
 export function findScrewObstructions(screw: { position: [number, number, number]; normal: [number, number, number]; attachedTo?: PartId }, scale: number,
   live?: { root: Object3D; part: PartId }): PartId[] {
+  const owner = live?.part ?? screw.attachedTo;
+  const level = owner ? partLevel(owner) : "cottage";
+  const solids = solidsByLevel[level] ??= buildSolids(level);
   let colliders = solids;
   if (live) {
     colliders = [];

@@ -98,6 +98,7 @@ Current sources of truth: `src/game/types.ts`, `levels.ts`, `rules.ts`, `randomi
 ## 5. 3D and interaction conventions
 
 - Use `<Canvas>` from React Three Fiber for the scene.
+- Favor compact, roughly cube- or sphere-shaped level volumes that fit a phone screen comfortably. Preserve recognizable features when adapting long subjects like ships.
 - Use Three.js `OrbitControls` with **`enableDamping={false}`** so motion stops immediately on release. Preserve tablet touch rotation tuning in `CameraRig.tsx`.
 - Wheel zoom focuses on the cursor and pinch zoom focuses between the fingers. Right-drag on desktop and two-finger drag on touch move the camera sideways. Keep the target within 8 units of the house center.
 - Allow full horizontal and vertical orbit. Wheel and pinch zoom use distances 6.9 to 30. Gradually return the target to the house center as the player zooms out to the starting overview distance.

@@ -1,11 +1,12 @@
 import { readSoloTimes } from "./leaderboard.ts";
+import type { LevelId } from "./types.ts";
+export type { LevelId } from "./types.ts";
 
 export const CAMPAIGN_LEVELS = [
   { id: "cottage", title: "Christmas Cottage", available: true },
-  { id: "titanic", title: "Titanic", available: false },
+  { id: "titanic", title: "Titanic", available: true },
 ] as const;
 
-export type LevelId = typeof CAMPAIGN_LEVELS[number]["id"];
 const cleared = new Set<LevelId>();
 const clearKey = (id: LevelId) => `screw-it:cleared:${id}`;
 

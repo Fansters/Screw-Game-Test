@@ -1,3 +1,4 @@
+import type { BufferGeometry } from "three";
 import { DINING_CHAIRS, FLOOR_BEAMS, FRAME_POSTS, GROUND_IDS, PLINTH_IDS, ROOF_SECTIONS, TILE_IDS, WALL_SECTIONS } from "../game/types.ts";
 import type { PartId } from "../game/types.ts";
 import { addBathroom } from "./bathroom.ts";
@@ -5,7 +6,7 @@ import { addChristmasDetails } from "./christmas.ts";
 import { addInteriors } from "./interiors.ts";
 import { addFurnishings } from "./furnishings.ts";
 export type Vector = [number, number, number];
-export type Piece = { position: Vector; size: Vector; color: string; rotation?: Vector; part: PartId;
+export type Piece = { position: Vector; size: Vector; color: string; rotation?: Vector; part: PartId; geometry?: BufferGeometry;
   kind: "box" | "cylinder" | "ico" | "ico-detail" | "gable" | "cone" | "curtain" | "star" | "snow-slab" | "snow-drift" | "ring" };
 export const HOUSE = { halfWidth: 2.4, halfDepth: 1.9, ground: -1.6, upper: 0.25, eave: 2, ridge: 3.5, roofRun: 2.7, roofRise: 1.5 };
 export const ROOF_PITCH = Math.atan2(HOUSE.roofRise, HOUSE.roofRun);

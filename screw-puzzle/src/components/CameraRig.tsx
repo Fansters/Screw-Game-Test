@@ -2,8 +2,9 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Vector3 } from "three";
-import { CAMERA_POSES, recenterZoomOut, TITLE_CAMERA } from "../scene/camera";
+import { CAMERA_POSES, PLAY_CAMERA_POSES, recenterZoomOut, TITLE_CAMERA } from "../scene/camera";
 import type { CameraView } from "../scene/camera";
+import type { LevelId } from "../game/campaign";
 type Flight = { from: Vector3; targetFrom: Vector3; to: Vector3; targetTo: Vector3; elapsed: number; round: number; view: CameraView };
 
 // CAMERA SENSITIVITY: lower values rotate less for the same drag.
@@ -11,32 +12,36 @@ const TABLET_TOUCH_ROTATE_SPEED = 0.55;
 const DEFAULT_ROTATE_SPEED = 1;
 const TABLET_MIN_SCREEN_SIDE = 600;
 
-export default function CameraRig({ view, round, playable, onArrive }: {
-  view: CameraView; round: number; playable: boolean; onArrive: (view: CameraView, round: number) => void;
+export default function CameraRig({ level, view, round, playable, onArrive }: {
+  level: LevelId; view: CameraView; round: number; playable: boolean; onArrive: (view: CameraView, round: number) => void;
 }) {
   const flight = useRef<Flight | null>(null);
   const initializedCamera = useRef<object | null>(null);
   const camera = useThree((state) => state.camera);
   const canvas = useThree((state) => state.gl.domElement);
   const controls = useRef<OrbitControls | null>(null);
+  const lastTarget = useRef(new Vector3());
 
   useLayoutEffect(() => {
     const orbit = new OrbitControls(camera);
+    const savedTarget = lastTarget.current;
     controls.current = orbit;
     orbit.enableDamping = false;
     orbit.zoomToCursor = true;
     orbit.minPolarAngle = 0;
     orbit.maxPolarAngle = Math.PI;
-    orbit.maxDistance = 30;
-    orbit.maxTargetRadius = 8;
-    orbit.cursor.set(...CAMERA_POSES.house.target);
+    orbit.maxDistance = level === "titanic" ? 34 : 30;
+    orbit.maxTargetRadius = level === "titanic" ? 10 : 8;
+    orbit.cursor.set(...PLAY_CAMERA_POSES[level].target);
+    orbit.target.copy(savedTarget);
+    orbit.update();
     orbit.connect(canvas);
     let previousDistance = orbit.getDistance();
     const previousTarget = orbit.target.clone();
 
     function followZoom() {
       if (orbit.enabled && !flight.current) {
-        recenterZoomOut(camera.position, orbit.target, previousTarget, previousDistance);
+        recenterZoomOut(camera.position, orbit.target, previousTarget, previousDistance, level);
         camera.updateMatrixWorld();
       }
       previousDistance = orbit.getDistance();
@@ -50,22 +55,23 @@ export default function CameraRig({ view, round, playable, onArrive }: {
     orbit.addEventListener("change", followZoom);
     canvas.addEventListener("pointerdown", setRotateSpeed, true);
     return () => {
+      savedTarget.copy(orbit.target);
       canvas.removeEventListener("pointerdown", setRotateSpeed, true);
       orbit.removeEventListener("change", followZoom);
       orbit.dispose();
       controls.current = null;
     };
-  }, [camera, canvas]);
+  }, [camera, canvas, level]);
   useLayoutEffect(() => {
     const orbit = controls.current;
     if (!orbit) return;
     orbit.enabled = playable;
-    orbit.minDistance = view === "title" ? 0 : 6.9;
-  }, [camera, canvas, playable, view]);
+    orbit.minDistance = view === "title" ? 0 : level === "titanic" ? 4.8 : 6.9;
+  }, [camera, canvas, level, playable, view]);
   useEffect(() => {
     const orbit = controls.current;
     if (!orbit) return;
-    const pose = CAMERA_POSES[view];
+    const pose = view === "title" ? CAMERA_POSES.title : PLAY_CAMERA_POSES[level];
     if (initializedCamera.current !== camera) {
       camera.position.set(...TITLE_CAMERA);
       orbit.target.set(...CAMERA_POSES.title.target);
@@ -74,7 +80,7 @@ export default function CameraRig({ view, round, playable, onArrive }: {
     }
     flight.current = { from: camera.position.clone(), targetFrom: orbit.target.clone(),
       to: new Vector3(...pose.position), targetTo: new Vector3(...pose.target), elapsed: 0, round, view };
-  }, [camera, canvas, view, round]);
+  }, [camera, canvas, level, view, round]);
   useFrame((_, delta) => {
     const current = flight.current;
     const orbit = controls.current;

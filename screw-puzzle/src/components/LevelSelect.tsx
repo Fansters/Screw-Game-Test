@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { CAMPAIGN_LEVELS, levelStatus, readLevelProgress } from "../game/campaign";
 import type { LevelId } from "../game/campaign";
+import { readSoloSave } from "../game/soloSave";
+import { readSoloTimes } from "../game/leaderboard";
+import { formatRunTime } from "../game/runTime";
 
 export default function LevelSelect({ onBack, onSelect }: { onBack: () => void; onSelect: (level: LevelId) => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [completed] = useState(readLevelProgress);
+  const [details] = useState(() => CAMPAIGN_LEVELS.map(({ id }) => ({
+    save: readSoloSave(id), best: readSoloTimes(id)[0],
+  })));
   useEffect(() => {
     const element = dialog.current;
     element?.showModal();
@@ -21,6 +27,8 @@ export default function LevelSelect({ onBack, onSelect }: { onBack: () => void; 
       {CAMPAIGN_LEVELS.map(({ id, title }, index) => {
         const status = levelStatus(index, completed);
         const playable = status === "playable";
+        const { save, best } = details[index];
+        const removed = save?.moves.filter((move) => move !== "boost").length ?? 0;
         return <li key={id}>
           <button className="level-card" type="button" disabled={!playable} autoFocus={index === 0}
             aria-describedby={`level-${id}-status`} onClick={() => onSelect(id)}>
@@ -29,8 +37,10 @@ export default function LevelSelect({ onBack, onSelect }: { onBack: () => void; 
               <strong>{title}</strong>
               <span id={`level-${id}-status`}>
                 {status === "locked" ? `Clear level ${index} to unlock` :
-                  status === "coming-soon" ? "Coming soon" : completed.has(id) ? "Cleared · Play again" : "Ready to play"}
+                  status === "coming-soon" ? "Coming soon" : save ? `Resume · ${removed} ${removed === 1 ? "screw" : "screws"} removed` :
+                    completed.has(id) ? "Cleared · Play again" : "Ready to play"}
               </span>
+              {playable && best && <span>Best {formatRunTime(best.elapsedMs, true)}</span>}
             </span>
             <span className={`level-indicator ${playable ? "play" : status === "locked" ? "locked" : "pending"}`} aria-hidden="true" />
           </button>

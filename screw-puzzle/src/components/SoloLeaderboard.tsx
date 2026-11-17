@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
 import { readSoloTimes, SOLO_TIMES_LIMIT } from "../game/leaderboard";
+import { CAMPAIGN_LEVELS } from "../game/campaign";
+import type { LevelId } from "../game/campaign";
 import { formatRunTime } from "../game/runTime";
 import type { SoloTime } from "../game/leaderboard";
 
@@ -7,12 +9,14 @@ const scoreDate = new Intl.DateTimeFormat(undefined, { month: "short", day: "num
 
 const trophy = <path d="M11 6h10v7a5 5 0 0 1-10 0V6Zm0 3H6v2a5 5 0 0 0 5 5m10-7h5v2a5 5 0 0 1-5 5m-5 2v7m-5 1h10" />;
 
-export default function SoloLeaderboard() {
+export default function SoloLeaderboard({ activeLevel }: { activeLevel: LevelId }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [times, setTimes] = useState<SoloTime[]>([]);
+  const [level, setLevel] = useState(activeLevel);
 
   function showLeaderboard() {
-    setTimes(readSoloTimes());
+    setLevel(activeLevel);
+    setTimes(readSoloTimes(activeLevel));
     dialog.current?.showModal();
     if (dialog.current) dialog.current.scrollTop = 0;
   }
@@ -33,6 +37,15 @@ export default function SoloLeaderboard() {
         </form>
       </header>
       <div className="help-content leaderboard-content">
+        <label className="leaderboard-level">Level
+          <select value={level} onChange={(event) => {
+            const id = event.target.value as LevelId;
+            setLevel(id);
+            setTimes(readSoloTimes(id));
+          }}>
+            {CAMPAIGN_LEVELS.map(({ id, title }) => <option key={id} value={id}>{title}</option>)}
+          </select>
+        </label>
         {times.length ? <table className="leaderboard-times">
           <caption>Top {SOLO_TIMES_LIMIT} solo clears in this browser</caption>
           <thead><tr><th scope="col">Rank</th><th scope="col">Time</th><th scope="col">Date</th></tr></thead>

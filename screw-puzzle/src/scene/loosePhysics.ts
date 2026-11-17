@@ -2,7 +2,7 @@ import { Box3, Object3D, Quaternion, Vector3 } from "three";
 import { PART_IDS } from "../game/types.ts";
 import type { PartId, Screw } from "../game/types.ts";
 import { geometryFor } from "./geometry.ts";
-import { PART_PIVOTS, PIECES } from "./houseModel.ts";
+import { LEVEL_MODELS, partLevel, partPivot } from "./levelModels.ts";
 import type { Vector } from "./houseModel.ts";
 import { findScrewObstructions } from "./obstructions.ts";
 import { SCREW_PULL_DISTANCE } from "./screwDimensions.ts";
@@ -35,22 +35,27 @@ export function isLevelPart(id: unknown): id is PartId {
 }
 
 const localBounds = new Map<PartId, Box3>();
-const transform = new Object3D();
-for (const piece of PIECES) {
-  const geometry = geometryFor(piece);
-  if (!geometry.boundingBox) geometry.computeBoundingBox();
-  transform.position.set(...piece.position);
-  transform.scale.set(...piece.size);
-  transform.rotation.set(...(piece.rotation ?? [0, 0, 0]));
-  transform.updateMatrix();
-  const bounds = localBounds.get(piece.part) ?? new Box3();
-  bounds.union(geometry.boundingBox!.clone().applyMatrix4(transform.matrix));
-  localBounds.set(piece.part, bounds);
+function partBounds(part: PartId): Box3 {
+  const cached = localBounds.get(part);
+  if (cached) return cached;
+  const bounds = new Box3(), transform = new Object3D();
+  for (const piece of LEVEL_MODELS[partLevel(part)].pieces) {
+    if (piece.part !== part) continue;
+    const geometry = geometryFor(piece);
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    transform.position.set(...piece.position);
+    transform.scale.set(...piece.size);
+    transform.rotation.set(...(piece.rotation ?? [0, 0, 0]));
+    transform.updateMatrix();
+    bounds.union(geometry.boundingBox!.clone().applyMatrix4(transform.matrix));
+  }
+  localBounds.set(part, bounds);
+  return bounds;
 }
 
 export function loosePartPose(part: PartId, motion: LooseMotion, now: number): PartPose {
   const frames = motion.frames;
-  if (!frames.length || now < motion.releasedAt) return { position: PART_PIVOTS[part], rotation: [0, 0, 0, 1] };
+  if (!frames.length || now < motion.releasedAt) return { position: partPivot(part), rotation: [0, 0, 0, 1] };
   const right = frames.findIndex(([at]) => at >= now);
   const b = frames[right < 0 ? frames.length - 1 : right];
   const a = right > 0 ? frames[right - 1] : b;
@@ -68,7 +73,7 @@ export function isLooseVisible(motion: LooseMotion, now: number, y: number) {
 }
 
 export function smokeScale(part: PartId) {
-  const bounds = localBounds.get(part)!;
+  const bounds = partBounds(part);
   return Math.min(2.8, Math.max(0.6, Math.max(bounds.max.x - bounds.min.x, bounds.max.z - bounds.min.z) * 0.7));
 }
 
@@ -84,9 +89,9 @@ export function findLooseBlocker(loose: LooseParts, screw: Screw, scale: number,
     const { position, rotation } = loosePartPose(part, motion, now);
     if (position[1] <= OFF_MAP) continue;
     root.quaternion.set(...rotation).normalize();
-    root.position.set(...PART_PIVOTS[part]).applyQuaternion(root.quaternion).negate().add(worldPosition.set(...position));
+    root.position.set(...partPivot(part)).applyQuaternion(root.quaternion).negate().add(worldPosition.set(...position));
     root.updateMatrixWorld();
-    if (!probe.intersectsBox(bounds.copy(localBounds.get(part)!).applyMatrix4(root.matrixWorld))) continue;
+    if (!probe.intersectsBox(bounds.copy(partBounds(part)).applyMatrix4(root.matrixWorld))) continue;
     if (findScrewObstructions(screw, scale, { root, part }).length) return part;
   }
 }
