@@ -107,11 +107,11 @@ function snowRevealRun() {
   return { run, target };
 }
 
-test("all 300 screws release 158 objects, with twelve whole-triple color quotas", () => {
+test("all 300 screws release 166 objects, with twelve whole-triple color quotas", () => {
   assert.equal(DEMO_LEVEL.length, 300);
   assert.equal(new Set(DEMO_LEVEL.map((screw) => screw.id)).size, DEMO_LEVEL.length);
   assert.equal(DEMO_LEVEL.filter((screw) => screw.attachedTo).length, DEMO_LEVEL.length);
-  assert.equal(PART_IDS.length, 158);
+  assert.equal(PART_IDS.length, 166);
   assert.equal(SCREW_COLOR_ORDER.length, 12);
   const counts = SCREW_COLOR_ORDER.map((color) => DEMO_LEVEL.filter((screw) => screw.color === color).length);
   assert.equal(counts.filter((count) => count === 24).length, 8);
@@ -525,14 +525,16 @@ test("the loose vase lands on the loose table and drops again when its support p
   physics.advance(2150);
   const restingY = pose(vase, 2150).position[1];
   assert.ok(Math.abs(restingY - pose(table, 2150).position[1] - 0.27) < 0.05);
-  physics.advance(3999);
+  const clearsAt = 1000 + LOOSE_LIFETIME_MS;
+  physics.advance(clearsAt - 1);
   assert.equal(physics.read()[table]!.poof, undefined);
-  physics.advance(4200);
-  assert.equal(physics.read()[table]!.poof?.at, 1000 + LOOSE_LIFETIME_MS);
-  assert.ok(pose(vase, 4200).position[1] < restingY - 0.10, "A sleeping part wakes when its loose support expires");
-  assert.equal(physics.dismiss(vase, 4200), true);
-  assert.equal(physics.dismiss(vase, 4201), false);
-  assert.equal(isLooseVisible(physics.read()[vase]!, 4201, pose(vase, 4201).position[1]), false);
+  const afterDrop = clearsAt + 200;
+  physics.advance(afterDrop);
+  assert.equal(physics.read()[table]!.poof?.at, clearsAt);
+  assert.ok(pose(vase, afterDrop).position[1] < restingY - 0.10, "A sleeping part wakes when its loose support expires");
+  assert.equal(physics.dismiss(vase, afterDrop), true);
+  assert.equal(physics.dismiss(vase, afterDrop + 1), false);
+  assert.equal(isLooseVisible(physics.read()[vase]!, afterDrop + 1, pose(vase, afterDrop + 1).position[1]), false);
 });
 
 test("normal roof collisions slide snow, roll the ornament and let a pitched panel tumble", (t) => {
@@ -547,7 +549,7 @@ test("normal roof collisions slide snow, roll the ornament and let a pitched pan
   };
   const panel = "roof-right-front-eave", snow = "snow-right-front", bauble = "roof-bauble";
   const roof = motions(panel, [snow, "roof-lights-right"]);
-  const roofPose = roof(3700);
+  const roofPose = roof(2850);
   assert.ok(roofPose.position[1] < PART_PIVOTS[panel][1] - 0.2);
   assert.ok(Math.abs(roofPose.rotation[2]) > 0.12);
   const strip = motions(snow, ["roof-lights-right"]);
@@ -568,18 +570,19 @@ test("the sideboard blocks extraction while loose and clears on the exact smoke 
   const physics = createPartPhysics();
   t.after(physics.free);
   physics.release("sideboard", 1000);
-  physics.advance(3999);
-  assert.equal(findLooseBlocker(physics.read(), screw, SCREW_SCALE, 3999), "sideboard");
-  physics.advance(4000);
-  assert.equal(physics.read().sideboard?.poof?.at, 4000);
-  assert.deepEqual(physics.read().sideboard?.poof?.position, loosePartPose("sideboard", physics.read().sideboard!, 4000).position);
-  assert.equal(findLooseBlocker(physics.read(), screw, SCREW_SCALE, 4000), undefined);
+  const clearsAt = 3000; // Released at 1000 and auto-cleared two seconds later.
+  physics.advance(clearsAt - 1);
+  assert.equal(findLooseBlocker(physics.read(), screw, SCREW_SCALE, clearsAt - 1), "sideboard");
+  physics.advance(clearsAt);
+  assert.equal(physics.read().sideboard?.poof?.at, clearsAt);
+  assert.deepEqual(physics.read().sideboard?.poof?.position, loosePartPose("sideboard", physics.read().sideboard!, clearsAt).position);
+  assert.equal(findLooseBlocker(physics.read(), screw, SCREW_SCALE, clearsAt), undefined);
 });
 
 test("the natural opening stays below ten percent across eighty views and requires matching-color reveals", () => {
   const initial = generatePuzzle(123).state;
   const exposed = findExposedScrews(initial);
-  assert.equal(exposed.length, 26);
+  assert.equal(exposed.length, 29);
   assert.ok(exposed.length / initial.screws.length < 0.1);
   assert.deepEqual(new Set(exposed), new Set(initial.screws.filter((screw) => !screw.obstructedBy?.length && !screw.solutionAfter?.length).map((screw) => screw.id)));
   for (const owner of ["wall-front-upper-1", "partition-upper-left", "bed"] as const) {

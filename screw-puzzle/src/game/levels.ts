@@ -1,8 +1,10 @@
 import { BATHROOM_IDS, CEILING_IDS, DINING_CHAIRS, FLOOR_BEAMS, FRAME_POSTS, GARLANDS, GROUND_IDS, INTERIOR_DOORS, PARTITION_IDS, PLINTH_IDS, ROOF_IDS, ROOF_SECTIONS, SCREW_COLOR_ORDER, SNOW_ROOFS, TILE_IDS, WALL_SECTIONS } from "./types.ts";
 import type { PartId, Screw } from "./types.ts";
-import { HOUSE, PART_PIVOTS, ROOF_PITCH, resizeFurniturePoint } from "../scene/houseModel.ts";
+import { HOUSE, PART_PIVOTS, ROOF_PITCH, resizeFurniturePoint, stairTread } from "../scene/houseModel.ts";
 import { findScrewObstructions } from "../scene/obstructions.ts";
 import { BATHROOM } from "../scene/bathroom.ts";
+import { CANDY_CANES, candyPoint, WINDOW_WREATHS, windowWreathPoint } from "../scene/christmas.ts";
+import { FURNISHING_MOUNTS, WINDOW_BLINDS } from "../scene/furnishings.ts";
 export { ROOF_PITCH } from "../scene/houseModel.ts";
 export const ROOF_RUN = HOUSE.roofRun;
 export const ROOF_RISE = HOUSE.roofRise;
@@ -50,7 +52,10 @@ for (const item of BATHROOM) {
   const after = [...ROOF_IDS, ...CEILING_IDS, "interior-door-upper-right-front" as const, ...(item.after ?? [])];
   for (const screw of item.screws) place(screw.position, screw.normal, item.id, after);
 }
-for (const step of [1, 7, 11]) place([step % 4 === 1 ? -0.2 : 0.2, -1.485 + step * 0.15, 1.25 - step * 0.18], [0, 1, 0], "stairs", upperRoom);
+for (const step of [1, 7, 11]) {
+  const [x, top, z] = stairTread(step);
+  place([x + (step === 1 ? -0.14 : 0.14), top + 0.015, z], [0, 1, 0], "stairs", upperRoom);
+}
 for (const side of [-1, 1]) {
   const part = side === -1 ? "floor-left" : "floor-right";
   const after: PartId[] = [...upperRoom, ...(side === -1 ? ["bed", "wardrobe"] as const : ["desk", ...BATHROOM_IDS] as const)];
@@ -77,7 +82,9 @@ for (const section of WALL_SECTIONS) {
   const after: PartId[] = [...floors, ...PARTITION_IDS];
   if (section.face === "front") {
     const outer = section.column !== 2, sign = section.column === 1 ? -1 : 1;
-    const fixings = outer ? [[sign * 2.15, upper ? 1.67 : -0.3], [sign * 2.05, upper ? 0.5 : -1.28]] :
+    const blind = WINDOW_BLINDS.find(({ story, x }) => story === section.story && Math.sign(x) === sign)!;
+    // The outer jamb is solid just past the glass, underneath the blind.
+    const fixings = outer ? [[blind.x + sign * 0.45, blind.y + 0.29], [sign * 2.05, upper ? 0.5 : -1.28]] :
       [[-0.74, upper ? 1.65 : -0.25], [0.74, upper ? 0.55 : -1.3]];
     for (const [along, y] of fixings) place([along, y, 1.82], [0, 0, -1], section.id, after);
   } else if (section.face === "back") {
@@ -120,6 +127,10 @@ for (const part of GROUND_IDS) {
     // The floor faces the walls along these two outside edges of each room.
     if (x * dx > 0) place([Math.sign(x) * 2.32, -1.62, z + dz], [Math.sign(x), 0, 0], part, after);
     else {
+      if (part === "ground-sw" && dx === 0 && dz === 0) {
+        place([-1.46, -1.585, 1.38], [0, 1, 0], part, after);
+        continue;
+      }
       const along = x * dx < 0 && dz === 0.55 ? Math.sign(x) * 0.55 : x + dx;
       place([along, -1.585, z + dz], [0, 1, 0], part, after);
     }
@@ -127,7 +138,7 @@ for (const part of GROUND_IDS) {
 }
 for (const [index, part] of PLINTH_IDS.entries()) {
   const [x, , z] = PART_PIVOTS[part];
-  for (const [dx, dz] of [[-0.75, -0.55], [0.75, 0.55]]) place([x + dx, -1.705, z + dz], [0, 1, 0], part, [GROUND_IDS[index]]);
+  place([x - 0.75, -1.705, z - 0.55], [0, 1, 0], part, [GROUND_IDS[index]]);
   place([Math.sign(x) * 2.53, -1.765, z], [Math.sign(x), 0, 0], part, [GROUND_IDS[index]]);
 }
 for (const { id, x, z, story } of FRAME_POSTS) {
@@ -149,8 +160,8 @@ for (const garland of GARLANDS) {
 }
 for (const [part, sign] of [["icicles-front", 1], ["icicles-back", -1]] as const) place([0, 1.9, sign * 2.69], [0, 0, sign], part);
 for (const [part, axis, sign] of [["snowbank-front", "z", 1], ["snowbank-back", "z", -1], ["snowbank-left", "x", -1], ["snowbank-right", "x", 1]] as const) for (const along of [-1, 1]) place(axis === "z" ? [along * 3, -1.6, sign * 4.37] : [sign * 4.37, -1.6, along * 1.6], axis === "z" ? [0, 0, sign] : [sign, 0, 0], part);
-for (const [part, x, y] of [["wreath-upper-left", -1.5, 1.15], ["wreath-upper-right", 1.5, 1.15], ["wreath-lower-left", -1.5, -0.65], ["wreath-lower-right", 1.5, -0.65]] as const) place([x, y + 0.57, 2.54], [0, 0, 1], part);
-place([-0.48, -0.25, 2.53], [0, 0, 1], "door-bow");
+for (const [part, x, y] of WINDOW_WREATHS) place(windowWreathPoint(x, y, [0, 0.57, 0.25]), [0, 0, 1], part);
+place([0.08, -1.48, 2.145], [0, 0, 1], "door");
 for (const side of [-1, 1]) {
   const radialX = side * 0.4 / 0.765, radialZ = Math.sqrt(1 - radialX * radialX), length = Math.hypot(1, 0.85 / 1.5);
   const normal: Vector = [radialX / length, (0.85 / 1.5) / length, radialZ / length];
@@ -160,7 +171,7 @@ place([-3.2, 1.11, 2.91], [0, 0.3786328457, 0.9255469562], "christmas-tree");
 place([-3.2, 1.49, 3.10], [0, 0, 1], "tree-star");
 for (const [part, x, z] of [["gift-left", -3.2, 3.65], ["gift-right", 3.05, -0.65]] as const) place([x, -1.1, z + 0.37], [0, 0, 1], part);
 place([3.42, -0.22, -1.30], [0, 0, 1], "holiday-lantern");
-for (const [part, side] of [["candy-left", -1], ["candy-right", 1]] as const) place([side * 0.6, -0.55, 2.63], [0, 0, 1], part);
+for (const [part, side] of CANDY_CANES) place(candyPoint(side, [0, 0.78, 0.13]), [0, 0, 1], part);
 for (const x of [-0.55, 0.55]) place([x, -1.235, 2.5], [0, 1, 0], "porch-snow");
 place([-0.8, 4.67, 0.6], [0, 1, 0], "chimney-snow");
 for (const [part, side] of [["roof-lights-left", -1], ["roof-lights-right", 1]] as const) roof(side, 1.35, 2.1, part, 0.54);
@@ -175,6 +186,8 @@ for (const part of ["present-bed", "present-desk", "present-sofa", "present-tabl
     solutionAfter: part === "present-bed" || part === "present-desk" ? upperRoom : lowerRoom });
 }
 const lighterTiles = new Set<PartId>(["tile-nw", "tile-n", "tile-ne", "tile-w", "tile-e", "tile-sw", "tile-se"]);
+// Move five rim fixings and four plinth fixings into the interior furnishing layers.
+const tilesWithoutRimFixing = new Set<PartId>(["tile-nw", "tile-n", "tile-ne", "tile-w", "tile-e"]);
 for (const part of TILE_IDS) {
   const [x, , z] = PART_PIVOTS[part];
   const after: PartId[] = PLINTH_IDS.filter((plinth) => {
@@ -187,6 +200,7 @@ for (const part of TILE_IDS) {
     if (lighterTiles.has(part) && dx === (Math.sign(x) || 1) && dz === (Math.sign(z) || 1)) continue;
     place([x + dx, -1.855, z + dz], [0, 1, 0], part, after);
   }
+  if (tilesWithoutRimFixing.has(part)) continue;
   if (z !== 0) place([x + 0.7, -2.01, z + Math.sign(z) * 1.395], [0, 0, Math.sign(z)], part, after);
   else if (x !== 0) place([x + Math.sign(x) * 1.395, -2.01, 0.7], [Math.sign(x), 0, 0], part, after);
   else place([0, -1.855, 0], [0, 1, 0], part, after);
@@ -209,6 +223,9 @@ for (const { id, bay, side, story, bottom, z } of INTERIOR_DOORS) {
 }
 const [baubleX, baubleY, baubleZ] = PART_PIVOTS["roof-bauble"];
 place([baubleX, baubleY + 0.238, baubleZ], [0, 1, 0], "roof-bauble");
+for (const { id, story, position, normal } of FURNISHING_MOUNTS) {
+  place(position, normal, id, story === "upper" ? [...ROOF_IDS, ...CEILING_IDS] : floors);
+}
 export const DEMO_LEVEL: Screw[] = placements.map((placement, index) => ({ ...placement, solutionAfter: placement.solutionAfter ? [...placement.solutionAfter] : undefined,
   obstructedBy: findScrewObstructions(placement, SCREW_SCALE), id: `screw-${index + 1}`,
   // Quotas are whole triples; actual positions receive verified randomized colors.

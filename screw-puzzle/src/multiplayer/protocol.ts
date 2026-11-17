@@ -2,7 +2,7 @@ import type { CollectionState, GameState, MatchBox, MoveEvent, PartId, ScrewColo
 import type { LooseParts } from "../scene/loosePhysics.ts";
 
 // Both peers use the same ordered screw IDs and part geometry.
-export const ROOM_LEVEL_VERSION = 8;
+export const ROOM_LEVEL_VERSION = 12;
 export const ROOM_PHYSICS_DELAY_MS = 62.5;
 export const ROOM_VERSION_MESSAGE = "The room and game versions differ. Refresh the game, or wait for the server update to finish.";
 export const COMPLETED_LIFELINE_MS = 320;

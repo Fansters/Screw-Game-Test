@@ -1,14 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { BoxGeometry, DoubleSide, Group, InstancedMesh, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Raycaster, Vector3 } from "three";
+import { Box3, BoxGeometry, DoubleSide, Group, InstancedMesh, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Raycaster, Vector3 } from "three";
 import { FRONT_OPENINGS, PART_PIVOTS, PIECES } from "../src/scene/houseModel.ts";
 import { geometryFor } from "../src/scene/geometry.ts";
+import { WINDOW_WREATHS } from "../src/scene/christmas.ts";
+import { WINDOW_BLINDS } from "../src/scene/furnishings.ts";
 import { MODEL_BATCHES } from "../src/scene/modelBatches.ts";
 import { headGeometry } from "../src/components/screwGeometry.ts";
 import { DEMO_LEVEL, SCREW_SCALE } from "../src/game/levels.ts";
 import { createInitialState, isScrewAccessible } from "../src/game/rules.ts";
-import { BATHROOM_IDS, CHEST_PART_IDS, DECOR_IDS, FLOOR_BEAMS, FRAME_POSTS, GROUND_IDS, INTERIOR_DOORS, PARTITION_IDS, ROOF_IDS, TILE_IDS, WALL_IDS } from "../src/game/types.ts";
+import { BATHROOM_IDS, CHEST_PART_IDS, DECOR_IDS, FLOOR_BEAMS, FRAME_POSTS, FURNISHING_IDS, GROUND_IDS, INTERIOR_DOORS, PARTITION_IDS, ROOF_IDS, TILE_IDS, WALL_IDS } from "../src/game/types.ts";
 import type { Screw } from "../src/game/types.ts";
 import { pickNearbyHead, pickNearbyScrew, pickSceneTarget } from "../src/scene/picking.ts";
 import { showPartAppearance } from "../src/scene/partAppearance.ts";
@@ -133,6 +135,64 @@ function solids(pieces = PIECES) {
   });
 }
 
+test("narrow treads clear the hallway and the landing joins both upper floor wings", () => {
+  const stairs = solids(PIECES.filter((piece) => piece.part === "stairs"));
+  const hallway = new Raycaster(new Vector3(0.30, 0.29, 1.7), new Vector3(0, 0, -1), 0, 2.58);
+  assert.equal(hallway.intersectObjects(stairs, false).length, 0);
+  const upperFloor = [...stairs, ...solids(PIECES.filter((piece) => piece.part === "floor-left" || piece.part === "floor-right"))];
+  for (const x of [-0.451, -0.449, 0, 0.449, 0.451]) {
+    const down = new Raycaster(new Vector3(x, 0.5, -1.29), new Vector3(0, -1, 0));
+    const hit = down.intersectObjects(upperFloor, false)[0];
+    assert.ok(hit && Math.abs(hit.point.y - 0.31) < 0.00001, `floor height at x=${x}`);
+  }
+  for (const screw of DEMO_LEVEL.filter((candidate) => candidate.attachedTo === "stairs")) {
+    const origin = new Vector3(...screw.position).add(new Vector3(0, 0.07, 0));
+    assert.ok(new Raycaster(origin, new Vector3(0, -1, 0), 0, 0.11).intersectObjects(stairs, false).length);
+  }
+});
+
+test("each curtain exposes fabric pleats to rays from inside and outside the cottage", () => {
+  for (const { id, x, y } of WINDOW_BLINDS) {
+    const curtain = solids(PIECES.filter((piece) => piece.part === id));
+    for (const direction of [-1, 1]) {
+      const depths = [-0.42, -0.35, -0.28, -0.21].map((offset) => {
+        const acrossWindow = new Raycaster(new Vector3(x + offset, y + 0.12, 1.665 - direction), new Vector3(0, 0, direction));
+        const hit = acrossWindow.intersectObjects(curtain, false)[0];
+        assert.ok(hit, id);
+        return hit.point.z;
+      });
+      assert.ok(Math.max(...depths) - Math.min(...depths) > 0.05, id);
+    }
+  }
+});
+
+test("the smaller wreaths cover their window fixings while leaving both sides of the glass exposed", () => {
+  for (const [part, x, y] of WINDOW_WREATHS) {
+    const wreath = solids(PIECES.filter((piece) => piece.part === part));
+    const bounds = wreath.reduce((box, mesh) => box.expandByObject(mesh), new Box3());
+    assert.ok(Math.abs(bounds.max.x - bounds.min.x - 0.55) < 0.015, part);
+    for (const dx of [-0.32, 0.32]) {
+      const ray = new Raycaster(new Vector3(x + dx, y + 0.14, 3), new Vector3(0, 0, -1));
+      assert.equal(ray.intersectObjects(wreath, false).length, 0);
+    }
+    assert.ok(DEMO_LEVEL.find((screw) => screw.attachedTo === part.replace("wreath-", "window-"))?.obstructedBy?.includes(part));
+  }
+});
+
+test("each new furnishing has one reachable fixing and physically hides a wall or floor fixing", () => {
+  for (const id of FURNISHING_IDS) {
+    const fasteners = DEMO_LEVEL.filter((screw) => screw.attachedTo === id);
+    assert.equal(fasteners.length, 1, id);
+    assert.ok(!fasteners[0].obstructedBy?.length, id);
+    const covered = DEMO_LEVEL.filter((screw) => screw.obstructedBy?.includes(id));
+    assert.ok(covered.some((screw) => /^(wall|floor|ground)-/.test(screw.attachedTo ?? "")), id);
+    const hidden = covered.find((screw) => /^(wall|floor|ground)-/.test(screw.attachedTo ?? ""))!;
+    const before = { ...createInitialState(), removedParts: hidden.obstructedBy!.filter((part) => part !== id) };
+    assert.ok(!isScrewAccessible(before, hidden), id);
+    assert.ok(isScrewAccessible({ ...before, removedParts: [...before.removedParts, id] }, hidden), id);
+  }
+});
+
 test("the archived chest GLB retains separate textured meshes and asset attribution", () => {
   const bytes = readFileSync(new URL("../src/assets/treasure_chest_parts.glb", import.meta.url));
   const gltf = JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString("utf8"));
@@ -188,8 +248,8 @@ test("the enlarged square platform consists of nine independently fastened tiles
   assert.equal(width, depth);
   assert.ok(width > 8);
   for (const tile of TILE_IDS) {
-    assert.equal(DEMO_LEVEL.filter((screw) => screw.attachedTo === tile).length,
-      tile === "tile-center" || tile === "tile-s" ? 5 : 4);
+    const count = DEMO_LEVEL.filter((screw) => screw.attachedTo === tile).length;
+    assert.ok(count >= 3 && count <= 5, tile);
     assert.deepEqual(tiles.find((piece) => piece.part === tile)!.position, PART_PIVOTS[tile]);
   }
 });

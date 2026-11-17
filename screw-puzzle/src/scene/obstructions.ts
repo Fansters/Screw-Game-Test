@@ -24,7 +24,7 @@ export function findScrewObstructions(screw: { position: [number, number, number
     live.root.updateWorldMatrix(true, false);
     for (const solid of solids.filter((solid) => solid.part === live.part)) {
       // The named group maps original model coordinates into the falling pose.
-      // Keep convex proxies even though rendering merges same-color geometry.
+      // Keep individual pieces even though rendering merges same-color geometry.
       const mesh = new Mesh(solid.mesh.geometry, material);
       mesh.matrixWorld.multiplyMatrices(live.root.matrixWorld, solid.mesh.matrixWorld);
       colliders.push({ mesh, part: live.part, normalMatrix: new Matrix3().getNormalMatrix(mesh.matrixWorld) });

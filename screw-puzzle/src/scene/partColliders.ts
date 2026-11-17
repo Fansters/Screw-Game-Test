@@ -18,10 +18,14 @@ function collisionPieces(part: PartId, pieces: Piece[]): Piece[] {
     size: [main.size[0], 0.59, main.size[2]] }];
   if (part.startsWith("snow-") || part === "roof-bauble" || part === "porch-snow") return [main];
   if (part.startsWith("roof-") && !part.startsWith("roof-lights-")) return [main];
-  if (part === "candy-left" || part === "candy-right") return [
-    { ...main, position: [main.position[0], -0.50, main.position[2]], size: [0.12, 1.60, 0.12] },
-    ...pieces.slice(8).filter((_, index) => index % 2 === 0),
-  ];
+  if (part === "candy-left" || part === "candy-right") {
+    const shaft = pieces.filter((piece) => piece.kind === "cylinder");
+    const last = shaft.at(-1)!;
+    const height = last.position[1] - main.position[1] + main.size[1];
+    return [{ ...main, position: [main.position[0], (main.position[1] + last.position[1]) / 2, main.position[2]],
+      size: [main.size[0], height, main.size[2]] },
+    ...pieces.filter((piece) => piece.kind === "ico").filter((_, index) => index % 2 === 0)];
+  }
 
   const ranked = pieces.map((piece) => {
     const geometry = geometryFor(piece);
@@ -41,13 +45,15 @@ function makeShape(piece: Piece): Shape {
   const rotation = new Quaternion().setFromEuler(new Euler(...(piece.rotation ?? [0, 0, 0])));
   const size = piece.size;
   switch (piece.kind) {
-    case "box": return { kind: "box", offset, rotation, size };
+    case "box":
+    case "curtain": return { kind: "box", offset, rotation, size };
     case "snow-slab": return { kind: "rounded", offset, rotation, size };
     case "cylinder":
     case "cone":
       if (Math.abs(size[0] - size[2]) <= 0.003) return { kind: piece.kind, offset, rotation, size };
       break;
     case "snow-drift":
+    case "ico-detail":
     case "ico": {
       if (Math.max(...size) - Math.min(...size) < 0.01) return { kind: "ball", offset, rotation, size };
       const [x, y, z] = size;

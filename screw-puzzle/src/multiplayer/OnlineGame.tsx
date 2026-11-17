@@ -10,6 +10,7 @@ import TransferOverlay from "../components/TransferOverlay";
 import { useGameAudio } from "../components/useGameAudio";
 import { DEMO_LEVEL } from "../game/levels";
 import { canOpenBonusBox } from "../game/rules";
+import { recordLevelClear } from "../game/campaign";
 import type { PartId } from "../game/types";
 import type { CameraView } from "../scene/camera";
 import { useRoom } from "./useRoom";
@@ -56,6 +57,7 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   const pingMode = canPing && pingScene === scene;
   const removed = snapshot?.game.removed.length ?? 0;
   const matched = room.matched;
+  const won = game?.status === "won";
   const cameraArrived = useCallback((view: CameraView, round: number) => setArrival({ view, round }), []);
   const sceneReady = useCallback((round: number) => {
     lastReady.current = `${id}:${round}`;
@@ -68,6 +70,9 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     if (id && connected && lastReady.current === scene) send({ type: "ready", round });
   }, [id, connected, scene, round, send]);
+  useEffect(() => {
+    if (won) recordLevelClear("cottage");
+  }, [won, scene]);
   useEffect(() => {
     const previous = lastSound.current;
     if (scene === previous.scene && removed > previous.count) play("remove");
@@ -163,7 +168,8 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
         {[...snapshot.players].sort((a, b) => a.number - b.number).map((seat) =>
           <li key={seat.id}>Player {seat.number}{seat.id === player && " (you)"} <strong>{seat.collected}</strong></li>)}
       </ul>
-      <GameOverlay mode={result} onStart={start} onRestart={leader && connected ? () => setConfirmation("reset") : undefined} />
+      <GameOverlay mode={result} elapsedMs={snapshot.elapsedMs} timeLabel="Team time"
+        onStart={start} onRestart={leader && connected ? () => setConfirmation("reset") : undefined} />
     </>}
     {pingScrew && <span className="room-ping" role="status">{room.ping?.own ? "You" : "Your partner"} pinged a {pingScrew.color} screw</span>}
     {confirmation && (confirmation === "leave" || leader) && <ResetDialog action={confirmation}

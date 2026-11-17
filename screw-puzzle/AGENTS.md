@@ -63,6 +63,7 @@ It is fine to suggest a dependency, but explain the benefit and ask before addin
 8. **No destructive actions without approval.** Do not delete project files, reset Git history, replace the app architecture, or introduce an unrelated template.
 9. **Make changes that fit the request.** Do not refactor unrelated files or modify a lockfile unless dependencies change.
 10. **Be candid about verification.** Never say code was tested, built, or viewed unless the relevant command/check actually succeeded.
+11. **Update the displayed version.** Increment `GAME_VERSION` in `src/components/HelpDialog.tsx` for each shipped game update. Use the next patch version by default.
 
 When asked for code changes: briefly state the plan, make the smallest useful change, run available validation, then summarize what changed, how to test it, and the next logical step. Ask a question only when an ambiguity materially blocks correct implementation.
 

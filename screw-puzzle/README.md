@@ -16,11 +16,13 @@ Use Vite's printed local URL. Tests and the room server use Node's native TypeSc
 
 ## Playing
 
-After the scene loads, green **Start** flies the camera from the floating title to the house in 1.25 seconds. All screws, including concealed ones, are resident before Start; shaders are warmed and a complete frame rendered first. Screws become visible as geometry falls away, without spawning.
+After the scene loads, green **Start** opens the level picker. Select **Christmas Cottage** to fly from the title to the house in 1.25 seconds. The game saves completed levels in the browser. The **Titanic** entry requires a Cottage clear and shows **Coming soon** until its puzzle is available. The **Levels** button after a solo win returns to the picker. All screws are resident before gameplay and become visible as geometry falls away.
 
 Drag to orbit on desktop and touchscreens. Scroll over a spot to zoom toward it, or pinch around it on a touchscreen. Right-drag or move two fingers together to pan. Zooming back out to the overview recenters on the house. Rotation stops on release. Screws are 15% larger and a 44 CSS-pixel assisted touch target with front-face and occlusion checks. Portrait and landscape layouts account for safe areas and dynamic viewport height.
 
 The HUD retains two matching boxes, five waiting circles, the removal count, a stopwatch, and a 48px **Reset / Quit** arrow. The stopwatch appears after Start, begins only on the first accepted removal, and stops at logical win/loss. Invalid clicks, blocked attempts, camera gestures and cosmetic animation backlogs do not add solve time.
+
+In solo play, the trophy button opens the ten fastest wins stored in the current browser. Each time is measured from the first accepted screw to the win and saved automatically.
 
 The lightning button at bottom center slides in a third matching box while the five waiting slots keep their positions. There are three lifelines per round and one can be active at a time. The bonus favors a color already waiting and transfers matching screws into the box. It stays open until the third match.
 
@@ -36,15 +38,15 @@ Desktop fine-pointer layouts use a purple/gold screwdriver cursor. Its grip and 
 
 ## Natural difficulty and screw placement
 
-The cottage has Christmas snow, lights, wreaths, candy canes, a tree, gifts, and a candle lantern trimmed with holly and ribbon. Loose parts clear in a puff of smoke three seconds after release. Tap one to clear it sooner and let pieces above it drop.
+The cottage has Christmas snow, lights, wreaths, candy canes, a tree, gifts, and a candle lantern trimmed with holly and ribbon. Loose parts clear in a puff of smoke two seconds after release. Tap one to clear it sooner and let pieces above it drop.
 
-The level has **300** screws across **158** parts. Counts follow object size. Small fixtures such as the towel and mirror have one screw, the sink and toilet have two, and the shower enclosure has three. Large floors and outdoor tiles have four or five.
+The level has **300** screws across **166** parts. Counts follow object size. Small fixtures such as the towel and mirror have one screw, the sink and toilet have two, and the shower enclosure has three. Large floors and outdoor tiles have up to five.
 
 Wall heads are mounted on interior jambs, corners, and edges hidden by adjacent panels. Eight ground-floor fixings face sideways behind lower walls. Ridge timbers detach with their corresponding roof panels. The 12 roof panels each have a surface fixing and a forward-facing edge fixing; neighboring roof courses naturally obscure some of those edges. Furniture fixings vary between upper corners and side faces. Positions are fixed between rounds; colors change.
 
-Seven removable interior partitions separate the upstairs bedroom, study and bathroom from the stair hall and downstairs kitchen, living and dining areas. Eight independently fastened doors close the hall openings on both stories. Their screws face the hall. Clearing each loose door opens the doorway and the view into the room. Cross walls block sightlines between rooms, and three removable attic ceiling panels sit beneath the roof.
+Seven removable interior partitions separate the upstairs bedroom, study and bathroom from the stair hall and downstairs kitchen, living and dining areas. Eight independently fastened doors close the hall openings on both stories. Their screws face the hall. Clearing each loose door opens the doorway and the view into the room. Paintings, carpets and window curtains cover individual interior wall and floor fixings. Cross walls block sightlines between rooms, and three removable attic ceiling panels sit beneath the roof.
 
-The 80-view orbit audit finds **26 initially exposed removable screws out of 300 (8.7%)**. Both starting colors have only one or two exposed matches, so neither box can finish without revealing another fixing.
+The 80-view orbit audit finds **29 initially exposed removable screws out of 300 (9.7%)**. Both starting colors have only one or two exposed matches, so neither box can finish without revealing another fixing.
 
 ## Colors and verified randomization
 
@@ -56,9 +58,9 @@ Color quotas are 24 or 27 screws. All 100 targets, including the distinct initia
 
 ## How the objects are made
 
-The house and decorations are authored in TypeScript with Three.js primitives and rendered with React Three Fiber. The bathroom uses rounded ceramic bodies, mesh rings for the toilet and basin, and folded shower curtain panels. Each piece has a shape, transform, color and removable owner. The procedural parts batch into 459 meshes, and screws use three instanced meshes. DPR is capped at 1.25 on phones/coarse pointers and 1.5 elsewhere.
+The house and decorations are authored in TypeScript with Three.js primitives and rendered with React Three Fiber. The bathroom uses rounded ceramic bodies, mesh rings for the toilet and basin, and folded shower curtain panels. The window curtains use extruded pleats for visible folds on both faces. Each piece has a shape, transform, color and removable owner. The procedural parts batch 125,564 triangles into 493 meshes, and screws use three instanced meshes. DPR is capped at 1.25 on phones/coarse pointers and 1.5 elsewhere.
 
-All 158 removable parts use Rapier. A round keeps one physics world. Attached parts stay fixed until their last screw releases them, and loose parts can collide with each other and the remaining cottage. The simulation uses simpler compound colliders for the detailed meshes, runs at 60 fixed steps per second, and lets settled parts sleep. Loose parts can still be cleared early by tapping them, or expire with smoke after three seconds.
+All 166 removable parts use Rapier. A round keeps one physics world. Attached parts stay fixed until their last screw releases them, and loose parts can collide with each other and the remaining cottage. The simulation uses simpler compound colliders for the detailed meshes, runs at 60 fixed steps per second, and lets settled parts sleep. Loose parts can still be cleared early by tapping them, or expire with smoke after two seconds.
 
 ## Archived treasure chest
 

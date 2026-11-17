@@ -3,18 +3,23 @@ import type { PartId } from "../game/types.ts";
 import { addBathroom } from "./bathroom.ts";
 import { addChristmasDetails } from "./christmas.ts";
 import { addInteriors } from "./interiors.ts";
+import { addFurnishings } from "./furnishings.ts";
 export type Vector = [number, number, number];
 export type Piece = { position: Vector; size: Vector; color: string; rotation?: Vector; part: PartId;
-  kind: "box" | "cylinder" | "ico" | "gable" | "cone" | "star" | "snow-slab" | "snow-drift" | "ring" };
+  kind: "box" | "cylinder" | "ico" | "ico-detail" | "gable" | "cone" | "curtain" | "star" | "snow-slab" | "snow-drift" | "ring" };
 export const HOUSE = { halfWidth: 2.4, halfDepth: 1.9, ground: -1.6, upper: 0.25, eave: 2, ridge: 3.5, roofRun: 2.7, roofRise: 1.5 };
 export const ROOF_PITCH = Math.atan2(HOUSE.roofRise, HOUSE.roofRun);
+export const STAIR_WIDTH = 0.58;
+export function stairTread(step: number): Vector {
+  return [-0.145, -1.5 + step * 0.15, 1.12 - step * 0.17];
+}
 export const PART_PIVOTS = {
   chimney: [-0.8, 3.55, 0.6],
   "window-upper-left": [-1.5, 1.15, 2], "window-upper-right": [1.5, 1.15, 2],
   "window-lower-left": [-1.5, -0.65, 2], "window-lower-right": [1.5, -0.65, 2],
   door: [0, -0.75, 2], steps: [0, -1.72, 2.35], "planter-left": [-2.9, -1.5, 1.9], "planter-right": [2.9, -1.5, 1.9],
   bed: [-1.45, 0.65, 0.65], wardrobe: [-1.55, 1.1, -1.25], desk: [1.4, 0.8, -1.15],
-  stairs: [0, -0.6, 0], "floor-left": [-1.375, 0.25, 0], "floor-right": [1.375, 0.25, 0],
+  stairs: [-0.145, -0.6, 0], "floor-left": [-1.375, 0.25, 0], "floor-right": [1.375, 0.25, 0],
   sofa: [-1.45, -1.15, 0.65], kitchen: [-1.45, -1.1, -1.25], table: [1.35, -0.9, 0.6], "table-vase": [1.3, -0.32, 0.6],
   "ground-nw": [-1.1625, -1.65, -0.9125], "ground-ne": [1.1625, -1.65, -0.9125], "ground-sw": [-1.1625, -1.65, 0.9125], "ground-se": [1.1625, -1.65, 0.9125],
   "plinth-nw": [-1.2625, -1.82, -1.0125], "plinth-ne": [1.2625, -1.82, -1.0125], "plinth-sw": [-1.2625, -1.82, 1.0125], "plinth-se": [1.2625, -1.82, 1.0125],
@@ -33,7 +38,7 @@ for (const section of WALL_SECTIONS) {
 }
 export const PIECES: Piece[] = [];
 function box(position: Vector, size: Vector, color: string, part: PartId, rotation?: Vector) { PIECES.push({ kind: "box", position, size, color, part, rotation }); }
-function round(kind: "cylinder" | "ico", position: Vector, size: Vector, color: string, part: PartId, rotation?: Vector) { PIECES.push({ kind, position, size, color, part, rotation }); }
+function round(kind: "cylinder" | "ico" | "ico-detail", position: Vector, size: Vector, color: string, part: PartId, rotation?: Vector) { PIECES.push({ kind, position, size, color, part, rotation }); }
 function window(x: number, y: number, part: PartId) {
   box([x, y, 1.99], [0.96, 1.05, 0.12], "#89685b", part);
   box([x, y, 2.07], [0.78, 0.86, 0.06], "#f6d985", part);
@@ -128,7 +133,7 @@ for (const side of [-1, 1]) {
     const height = -1.08 + (index % 3) * 0.10;
     round("ico", [side * 2.9 + dx * 0.23, height, 1.9 + dz * 0.23],
       [0.16, 0.19, 0.16], index % 2 ? "#77ab80" : "#518c6b", part);
-    if (index % 3 === 0) round("ico", [side * 2.9 + dx * 0.30, height + 0.13, 1.9 + dz * 0.30], [0.042, 0.046, 0.042], "#e86c87", part);
+    if (index % 3 === 0) round("ico-detail", [side * 2.9 + dx * 0.30, height + 0.13, 1.9 + dz * 0.30], [0.042, 0.046, 0.042], "#e86c87", part);
   }
   round("ico", [side * 2.9, -0.93, 1.9], [0.25, 0.25, 0.25], "#669b70", part);
 }
@@ -154,12 +159,12 @@ round("cylinder", [1.95, 1.5, -1.4], [0.21, 0.21, 0.21], "#f8d89c", "desk");
 addBathroom(PIECES, PART_PIVOTS);
 // A real thirteen-tread stair connects the two stories.
 for (let step = 0; step < 13; step += 1) {
-  const top = -1.5 + step * 0.15;
-  const z = 1.25 - step * 0.18;
-  box([0, top - 0.06, z], [0.82, 0.12, 0.23], "#b68a60", "stairs");
-  box([-0.43, top + 0.24, z], [0.04, 0.6, 0.04], "#bd9775", "stairs");
+  const [x, top, z] = stairTread(step);
+  box([x, top - 0.06, z], [STAIR_WIDTH, 0.12, 0.21], "#b68a60", "stairs");
+  box([x - STAIR_WIDTH / 2 + 0.022, top + 0.24, z], [0.04, 0.6, 0.04], "#bd9775", "stairs");
 }
-box([0, 0.25, -1.3], [0.9, 0.12, 0.8], "#c6a177", "stairs");
+// The landing meets both upper floor wings even though the treads are narrower.
+box([0, 0.25, -1.3], [0.90, 0.12, 0.80], "#c6a177", "stairs");
 // Ground-floor sofa, kitchen sink/hob, and a dining set.
 box([-1.45, -1.23, 0.65], [1.5, 0.55, 1.25], "#6e9eaa", "sofa");
 box([-1.45, -0.78, 0.03], [1.5, 1.1, 0.16], "#739faa", "sofa");
@@ -210,6 +215,7 @@ for (const x of [1.22, 1.3, 1.38]) {
 }
 addChristmasDetails(PIECES, PART_PIVOTS, ROOF_PITCH);
 addInteriors(PIECES, PART_PIVOTS);
+addFurnishings(PIECES, PART_PIVOTS);
 
 // Group tabletop props and dining chairs with their furniture so their feet
 // and bases stay on the right surfaces when the room is scaled.

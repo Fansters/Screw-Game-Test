@@ -6,7 +6,7 @@ import { PIECES } from "./houseModel.ts";
 import { geometryFor } from "./geometry.ts";
 
 // Preserve independently falling parts, but draw same-color details together.
-// The original convex pieces remain the source for obstruction calculations.
+// The original pieces remain the source for obstruction calculations.
 const groups = new Map<string, { part: PartId; color: string; smooth: boolean; pieces: BufferGeometry[] }>();
 const transform = new Object3D();
 for (const piece of PIECES) {

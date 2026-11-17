@@ -7,6 +7,7 @@ import GameTimer from "./components/GameTimer";
 import DesktopCursor from "./components/DesktopCursor";
 import ResetDialog from "./components/ResetDialog";
 import GameControls from "./components/GameControls";
+import LevelSelect from "./components/LevelSelect";
 import { useGameAudio } from "./components/useGameAudio";
 import OnlineGame from "./multiplayer/OnlineGame";
 import type { CameraView } from "./scene/camera";
@@ -14,6 +15,9 @@ import type { PartId } from "./game/types";
 import { generatePuzzle } from "./game/randomize";
 import { createRun, currentFrame, runReducer } from "./animation/run";
 import { canOpenBonusBox } from "./game/rules";
+import { recordSoloTime } from "./game/leaderboard";
+import { recordLevelClear } from "./game/campaign";
+import type { LevelId } from "./game/campaign";
 import "./App.css";
 
 function freshPuzzle() { const seed = crypto.getRandomValues(new Uint32Array(1))[0]; return generatePuzzle(seed); }
@@ -28,9 +32,11 @@ function SoloGame({ onOnline }: { onOnline: () => void }) {
   const [run, dispatch] = useReducer(runReducer, undefined, initialRun);
   const [arrival, setArrival] = useState<{ view: CameraView; round: number } | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [levelsOpen, setLevelsOpen] = useState(false);
   const { play, muted, enable, toggle } = useGameAudio(run.started);
   const lastSoundMove = useRef({ round: run.round, count: 0 });
   const lastMatch = useRef("");
+  const recordedRound = useRef(-1);
   const cameraArrived = useCallback((view: CameraView, round: number) => setArrival({ view, round }), []);
   const view = run.started ? "house" : "title";
   const cameraReady = arrival?.view === view && arrival.round === run.round;
@@ -66,13 +72,24 @@ function SoloGame({ onOnline }: { onOnline: () => void }) {
     lastMatch.current = key;
     play("match");
   }, [play, frame?.kind, jobId, index]);
+  const { round, timerStartedAt, timerStoppedAt } = run;
+  const won = run.logical.status === "won";
+  useEffect(() => {
+    if (!won || recordedRound.current === round) return;
+    recordedRound.current = round;
+    recordLevelClear("cottage");
+    if (timerStartedAt !== null && timerStoppedAt !== null) recordSoloTime(timerStoppedAt - timerStartedAt);
+  }, [won, round, timerStartedAt, timerStoppedAt]);
 
   function restart() {
     setConfirmReset(false);
+    setLevelsOpen(false);
     const puzzle = freshPuzzle();
     dispatch({ type: "reset", game: puzzle.state, seed: puzzle.seed });
   }
-  function start() {
+  function startLevel(level: LevelId) {
+    if (level !== "cottage") return;
+    setLevelsOpen(false);
     enable();
     dispatch({ type: "start" });
   }
@@ -81,6 +98,7 @@ function SoloGame({ onOnline }: { onOnline: () => void }) {
   }
   const mode = !run.ready ? "loading" : !run.started ? (cameraReady ? "start" : null) : run.logical.status === "lost" && !run.jobs.length ? "lost" :
     run.logical.status === "won" && !run.jobs.length && !run.fallingParts.length ? "won" : null;
+  const chooseLevel = mode === "start" && levelsOpen;
   return <div className="game-layout" onContextMenu={(event) => event.preventDefault()}>
     <GameScene logical={run.logical} fallingParts={run.fallingParts} round={run.round} onFallFinished={finishFall}
       releases={run.releases} onLooseDismiss={(part) => dispatch({ type: "dismiss", part, now: performance.now() })}
@@ -92,9 +110,12 @@ function SoloGame({ onOnline }: { onOnline: () => void }) {
       onBoost={() => dispatch({ type: "boost", now: performance.now() })} />}
     {run.started && <GameTimer key={run.round} startedAt={run.timerStartedAt} stoppedAt={run.timerStoppedAt} removed={removedCount} total={run.logical.screws.length} />}
     <TransferOverlay frame={frame} getOrigin={getOrigin} />
-    <GameOverlay mode={mode} onStart={start} onRestart={restart} />
-    {mode === "start" && <div className="online-entry"><button className="room-button" onClick={onOnline}>Two-player game</button></div>}
-    <GameControls muted={muted} toggle={toggle} onReset={run.started ? () => setConfirmReset(true) : undefined} />
+    <GameOverlay mode={chooseLevel ? null : mode} onStart={() => setLevelsOpen(true)} onRestart={restart}
+      onLevels={() => { restart(); setLevelsOpen(true); }}
+      elapsedMs={timerStartedAt === null || timerStoppedAt === null ? undefined : timerStoppedAt - timerStartedAt} />
+    {chooseLevel && <LevelSelect onBack={() => setLevelsOpen(false)} onSelect={startLevel} />}
+    {mode === "start" && !levelsOpen && <div className="online-entry"><button className="room-button" onClick={onOnline}>Two-player game</button></div>}
+    <GameControls muted={muted} toggle={toggle} showLeaderboard onReset={run.started ? () => setConfirmReset(true) : undefined} />
     {confirmReset && <ResetDialog onCancel={() => setConfirmReset(false)} onConfirm={restart} />}
     <DesktopCursor />
   </div>;

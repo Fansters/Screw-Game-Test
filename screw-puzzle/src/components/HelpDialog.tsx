@@ -1,19 +1,13 @@
 import type { ReactNode, RefObject } from "react";
 import { LIFELINE_COUNT } from "../animation/run";
-import { ACTIVE_BOX_COUNT, MATCH_SIZE, TRAY_CAPACITY } from "../game/rules";
+import { MATCH_SIZE, TRAY_CAPACITY } from "../game/rules";
 
-const GAME_VERSION = "0.1.0";
+const GAME_VERSION = "0.1.3";
 
 const icons = {
-  goal: <path d="M8 4h8v5a4 4 0 0 1-8 0V4ZM8 6H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 1v5m-4 2h8" />,
-  screw: <><circle cx="12" cy="12" r="8" /><path d="m9 9 6 6m0-6-6 6" /></>,
   match: <><rect x="3" y="3" width="18" height="18" rx="4" /><path d="M12 8h.01M8 15h.01M16 15h.01" strokeWidth="3.5" /></>,
-  tray: <><rect x="2.5" y="7" width="19" height="10" rx="3" /><path d="M7 12h.01m5 0h.01m5 0h.01" strokeWidth="3" /></>,
   lifeline: <path d="m13 3-8 11h6l-1 7 9-11h-6l1-7Z" fill="currentColor" strokeWidth="1" />,
-  orbit: <><circle cx="12" cy="12" r="2" /><path d="M19 8a8 8 0 1 0 1 6m0-10v5h-5" /></>,
-  preview: <path d="M8 4H4v4m12-4h4v4M4 16v4h4m12-4v4h-4M9 12h6m-3-3v6" />,
   peek: <><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></>,
-  team: <><path d="M3 20v-2a4 4 0 0 1 4-4h3a4 4 0 0 1 4 4v2m2-6a4 4 0 0 1 5 4v2" /><circle cx="8.5" cy="7.5" r="3.5" /><path d="M16 4a3.5 3.5 0 0 1 0 7" /></>,
 };
 type HelpIconName = keyof typeof icons;
 
@@ -44,34 +38,15 @@ export default function HelpDialog({ dialogRef }: { dialogRef: RefObject<HTMLDia
       </form>
     </header>
     <div className="help-content">
-      <div className="help-goal">
-        <HelpIcon name="goal" />
-        <p><strong>Let’s take this cottage apart!</strong> Get every screw out and clear every matching box to win.</p>
-      </div>
       <div className="help-tips">
-        <HelpTip icon="screw" title="Twist one out">
-          Tap an exposed screw to pull it out. The last screw releases the part. If loose pieces pile up, tap them to clear them in a puff.
-        </HelpTip>
-        <HelpTip icon="match" title="Match a triple">
-          You start with {ACTIVE_BOX_COUNT} colored boxes. Collect {MATCH_SIZE} screws of the same color to clear a box and bring in the next one.
-        </HelpTip>
-        <HelpTip icon="tray" title="Keep a slot free">
-          Screws without a matching box wait in one of the {TRAY_CAPACITY} slots. They hop over when their box opens. If every slot stays full, you lose.
+        <HelpTip icon="match" title="Match and clear">
+          Match {MATCH_SIZE} of a color and clear every screw to win. If all {TRAY_CAPACITY} waiting slots stay full, the round ends.
         </HelpTip>
         <HelpTip icon="lifeline" title="Call in a lifeline">
-          The lightning button opens one extra box, favoring a color in your waiting slots. It closes when full. You have {LIFELINE_COUNT} charges per round.
-        </HelpTip>
-        <HelpTip icon="orbit" title="Find a better angle">
-          Drag to turn the cottage. Scroll or pinch to zoom. Right-drag or use two fingers to slide your view sideways.
-        </HelpTip>
-        <HelpTip icon="preview" title="Preview a part">
-          Hold a screw to outline the part it holds. The preview shows how many screws are still holding it in place.
+          Tap lightning to open an extra box until it fills. You have {LIFELINE_COUNT} lifelines per round.
         </HelpTip>
         <HelpTip icon="peek" title="Peek behind a part">
-          Tap the part itself to see through it. Tap it again to restore it or tap another part to switch. Covered screws still need a clear path.
-        </HelpTip>
-        <HelpTip icon="team" title="Team up">
-          Share the puzzle and control your own camera. Use <strong>Ping screw</strong> to guide your partner. The Game Leader starts and resets the round and uses lifelines.
+          Tap a part to see through it, then tap again to restore it. Covered screws still need a clear path.
         </HelpTip>
       </div>
       <footer className="help-version">Version {GAME_VERSION}</footer>

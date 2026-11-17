@@ -35,6 +35,8 @@ export const FRAME_POSTS = (["nw", "ne", "sw", "se"] as const).flatMap((corner) 
   })));
 export const FLOOR_BEAMS = ["beam-front", "beam-back"] as const;
 export const INTERIOR_PROPS = ["reading-chair", "bedroom-rug", "bookcase", "study-rug", "sideboard", "hall-runner"] as const;
+export const FURNISHING_IDS = ["bedroom-painting", "landing-painting", "dining-painting", "living-carpet", "bedside-runner",
+  "blind-upper-left", "blind-upper-right", "blind-lower-left", "blind-lower-right"] as const;
 export const DINING_CHAIRS = [
   { id: "chair-front", z: 1.5, outward: 1 },
   { id: "chair-back", z: -0.3, outward: -1 },
@@ -49,10 +51,10 @@ export const GARLANDS = (["front", "back", "left", "right"] as const).flatMap((f
   (["lower", "upper"] as const).map((story) => ({ id: `garland-${face}-${story}` as const, face, story })));
 export const DECOR_IDS = [...SNOW_ROOFS.map((part) => part.id), ...GARLANDS.map((part) => part.id),
   "icicles-front", "icicles-back", "snowbank-front", "snowbank-back", "snowbank-left", "snowbank-right",
-  "wreath-upper-left", "wreath-upper-right", "wreath-lower-left", "wreath-lower-right", "door-bow",
+  "wreath-upper-left", "wreath-upper-right", "wreath-lower-left", "wreath-lower-right",
   "christmas-tree", "tree-star", "gift-left", "holiday-lantern", "gift-right", "candy-left", "candy-right", "porch-snow", "chimney-snow",
   "roof-lights-left", "roof-lights-right", "present-bed", "present-desk", "present-sofa", "present-table", "roof-bauble"] as const;
-export const PART_IDS = [...HOUSE_PART_IDS, ...DINING_CHAIRS.map((chair) => chair.id), "table-vase", ...FRAME_POSTS.map((post) => post.id), ...FLOOR_BEAMS, ...GROUND_IDS, ...PLINTH_IDS, ...TILE_IDS, ...DECOR_IDS, ...INTERIOR_PROPS, ...INTERIOR_DOORS.map((door) => door.id)] as const;
+export const PART_IDS = [...HOUSE_PART_IDS, ...DINING_CHAIRS.map((chair) => chair.id), "table-vase", ...FRAME_POSTS.map((post) => post.id), ...FLOOR_BEAMS, ...GROUND_IDS, ...PLINTH_IDS, ...TILE_IDS, ...DECOR_IDS, ...INTERIOR_PROPS, ...INTERIOR_DOORS.map((door) => door.id), ...FURNISHING_IDS] as const;
 export type PartId = typeof PART_IDS[number];
 
 export type Screw = {

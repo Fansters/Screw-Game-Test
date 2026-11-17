@@ -2,6 +2,21 @@ import { GARLANDS, SNOW_ROOFS } from "../game/types.ts";
 import type { PartId } from "../game/types.ts";
 import type { Piece, Vector } from "./houseModel.ts";
 
+export const WINDOW_WREATHS = [
+  ["wreath-upper-left", -1.5, 1.15], ["wreath-upper-right", 1.5, 1.15],
+  ["wreath-lower-left", -1.5, -0.65], ["wreath-lower-right", 1.5, -0.65],
+] as const;
+const WREATH_SCALE = 0.5;
+export function windowWreathPoint(x: number, y: number, [dx, dy, dz]: Vector): Vector {
+  return [x + dx * WREATH_SCALE, y + 0.14 + dy * WREATH_SCALE, 2.23 + dz * WREATH_SCALE];
+}
+
+export const CANDY_CANES = [["candy-left", -1], ["candy-right", 1]] as const;
+const CANDY_SCALE = 0.5;
+export function candyPoint(side: number, [dx, dy, dz]: Vector): Vector {
+  return [side * (0.6 + dx * CANDY_SCALE), -1.3 + dy * CANDY_SCALE, 2.5 + dz * CANDY_SCALE];
+}
+
 // Original procedural props. Every detail belongs to a removable assembly.
 export function addChristmasDetails(pieces: Piece[], pivots: Record<PartId, Vector>, pitch: number) {
   const box = (position: Vector, size: Vector, color: string, part: PartId, rotation?: Vector) => pieces.push({ kind: "box", position, size, color, part, rotation });
@@ -58,7 +73,6 @@ export function addChristmasDetails(pieces: Piece[], pivots: Record<PartId, Vect
       round("ico", broad ? [along, y - 0.1, sign * 2.19] : [sign * 2.69, y - 0.1, along], broad ? [0.26, 0.19, 0.13] : [0.13, 0.19, 0.22], green, garland.id);
       round("ico", broad ? [along, y - 0.15, sign * 2.31] : [sign * 2.81, y - 0.15, along], [0.045, 0.06, 0.045], index % 2 ? gold : red, garland.id);
     }
-    if (garland.face === "front" && garland.story === "lower") for (const x of [-1.5, 1.5]) box([x, -0.1, 2.62], [0.65, 0.35, 0.22], green, garland.id);
   }
   for (const [part, sign] of [["icicles-front", 1], ["icicles-back", -1]] as const) {
     pivots[part] = [0, 1.88, sign * 2.42];
@@ -87,21 +101,20 @@ export function addChristmasDetails(pieces: Piece[], pivots: Record<PartId, Vect
       }
     }
   }
-  for (const [part, x, y] of [["wreath-upper-left", -1.5, 1.15], ["wreath-upper-right", 1.5, 1.15], ["wreath-lower-left", -1.5, -0.65], ["wreath-lower-right", 1.5, -0.65]] as const) {
-    pivots[part] = [x, y, 2.29];
+  for (const [part, x, y] of WINDOW_WREATHS) {
+    const wreathPiece = (kind: "box" | "ico" | "ico-detail", offset: Vector, [width, height, depth]: Vector, color: string) =>
+      pieces.push({ kind, part, color, position: windowWreathPoint(x, y, offset),
+        size: [width * WREATH_SCALE, height * WREATH_SCALE, depth * WREATH_SCALE] });
+    pivots[part] = windowWreathPoint(x, y, [0, 0, 0]);
     for (let index = 0; index < 16; index += 1) {
       const angle = index * Math.PI / 8;
-      round("ico", [x + Math.cos(angle) * 0.37, y + Math.sin(angle) * 0.37, 2.29], [0.18, 0.18, 0.18], green, part);
+      wreathPiece("ico-detail", [Math.cos(angle) * 0.37, Math.sin(angle) * 0.37, 0], [0.18, 0.18, 0.18], green);
     }
-    for (const dx of [-0.14, 0.14]) round("ico", [x + dx, y + 0.46, 2.45], [0.18, 0.12, 0.09], red, part);
-    box([x, y + 0.28, 2.43], [0.11, 0.3, 0.08], red, part);
-    box([x, y + 0.5, 2.48], [0.5, 0.23, 0.1], gold, part);
-    for (const dx of [-0.32, 0.32]) round("ico", [x + dx, y + 0.1, 2.46], [0.065, 0.065, 0.065], gold, part);
+    for (const dx of [-0.14, 0.14]) wreathPiece("ico", [dx, 0.46, 0.16], [0.18, 0.12, 0.09], red);
+    wreathPiece("box", [0, 0.28, 0.14], [0.11, 0.3, 0.08], red);
+    wreathPiece("box", [0, 0.5, 0.19], [0.5, 0.23, 0.1], gold);
+    for (const dx of [-0.32, 0.32]) wreathPiece("ico", [dx, 0.1, 0.17], [0.065, 0.065, 0.065], gold);
   }
-  pivots["door-bow"] = [0, -0.75, 2.45];
-  box([0, -0.75, 2.43], [0.19, 1.88, 0.14], red, "door-bow");
-  box([0, -0.25, 2.43], [1.2, 0.2, 0.14], red, "door-bow");
-  for (const dx of [-0.16, 0.16]) round("ico", [dx, -0.18, 2.56], [0.2, 0.16, 0.1], gold, "door-bow");
 
   pivots["christmas-tree"] = [-3.2, -0.2, 2.8];
   round("cylinder", [-3.2, -1.2, 2.8], [0.14, 1.25, 0.14], "#986b53", "christmas-tree");
@@ -147,12 +160,16 @@ export function addChristmasDetails(pieces: Piece[], pivots: Record<PartId, Vect
     [0.18, 0.086, 0.035], red, lantern, [0, 0, side * 0.3]);
   round("ico", [lx, -0.06, lz + 0.233], [0.065, 0.055, 0.031], red, lantern);
 
-  for (const [part, side] of [["candy-left", -1], ["candy-right", 1]] as const) {
-    pivots[part] = [side * 0.6, -0.45, 2.5];
-    for (let index = 0; index < 8; index += 1) round("cylinder", [side * 0.6, -1.2 + index * 0.2, 2.5], [0.12, 0.205, 0.12], index % 2 ? red : snow, part);
+  for (const [part, side] of CANDY_CANES) {
+    pivots[part] = candyPoint(side, [0, 0.85, 0]);
+    for (let index = 0; index < 8; index += 1) {
+      round("cylinder", candyPoint(side, [0, 0.10 + index * 0.20, 0]),
+        [0.12 * CANDY_SCALE, 0.205 * CANDY_SCALE, 0.12 * CANDY_SCALE], index % 2 ? red : snow, part);
+    }
     for (let index = 0; index < 8; index += 1) {
       const angle = index * Math.PI / 7;
-      round("ico", [side * (0.82 - Math.cos(angle) * 0.22), 0.2 + Math.sin(angle) * 0.22, 2.5], [0.12, 0.12, 0.12], index % 2 ? red : snow, part);
+      round("ico", candyPoint(side, [0.22 - Math.cos(angle) * 0.22, 1.5 + Math.sin(angle) * 0.22, 0]),
+        [0.12 * CANDY_SCALE, 0.12 * CANDY_SCALE, 0.12 * CANDY_SCALE], index % 2 ? red : snow, part);
     }
   }
   pivots["porch-snow"] = [0, -1.48, 2.4];
