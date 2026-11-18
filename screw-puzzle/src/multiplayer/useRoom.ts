@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { RoomCommand, RoomNotice, RoomSnapshot } from "./protocol";
-import type { MatchBox } from "../game/types";
+import type { LevelId, MatchBox } from "../game/types";
 import { BONUS_SLOT } from "../game/rules";
 import { COMPLETED_LIFELINE_MS, PING_COOLDOWN_MS, ROOM_LEVEL_VERSION, ROOM_VERSION_MESSAGE } from "./protocol";
 import { collectionPlayback, emptyPlayback, frameDelay } from "./collectionPlayback";
@@ -194,10 +194,10 @@ export function useRoom() {
     showPing(round, screw, true);
     return true;
   }
-  function open() {
+  function open(level: LevelId = "cottage") {
     setError("");
     setRequest(invite ? { type: "join", room: invite, levelVersion: ROOM_LEVEL_VERSION } :
-      { type: "create", levelVersion: ROOM_LEVEL_VERSION });
+      { type: "create", level, levelVersion: ROOM_LEVEL_VERSION });
   }
   function leave() {
     send({ type: "leave" });

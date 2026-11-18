@@ -235,6 +235,8 @@ More levels and deployment remain deferred. Mobile behavior is now in scope; bro
 
 The Node.js room server uses WebSockets and holds the shared puzzle, matching boxes, waiting slots, lifelines and stopwatch. Each player controls their own camera. Both players can select screws, and only the leader can start, reset or spend a lifeline.
 
+The leader selects an unlocked level when creating a room and can change it in the lobby. Invitations join that selected level regardless of the guest's local unlocks. The server stores the level in every snapshot and uses its screw template and physics world. Changing the level increments the round and waits for both scenes to finish loading before Start.
+
 An invite opens the second seat. Each tab stores its own seat token for refresh and reconnect. A disconnected seat is held for 30 seconds, pausing play and the stopwatch. Explicit departure or seat expiry lets the remaining player continue and transfers leadership if needed.
 
 The server schedules each falling part 62.5 ms ahead and blocks dependent screws until the shared fall duration ends. A ping identifies a screw for the other player's camera. Rooms are temporary and run in one server process.

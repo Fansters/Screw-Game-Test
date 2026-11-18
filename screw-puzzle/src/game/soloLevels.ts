@@ -1,4 +1,4 @@
-import type { LevelId } from "./campaign.ts";
+import type { LevelId } from "./types.ts";
 import { DEMO_LEVEL, SCREW_SCALE } from "./levels.ts";
 import { generatePuzzle, PuzzleColorsUnavailable } from "./randomize.ts";
 import { SCREW_COLOR_ORDER } from "./types.ts";

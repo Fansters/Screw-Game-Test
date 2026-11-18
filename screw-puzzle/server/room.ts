@@ -1,9 +1,10 @@
 import { randomBytes, randomInt } from "node:crypto";
 import { LIFELINE_COUNT } from "../src/animation/run.ts";
 import { FALL_DURATION_MS } from "../src/game/fallTiming.ts";
-import { generatePuzzle } from "../src/game/randomize.ts";
+import { generateSoloPuzzle } from "../src/game/soloLevels.ts";
+import { isLevelId } from "../src/game/types.ts";
 import { BONUS_SLOT, isScrewAccessible, planBonusBox, planScrewRemoval } from "../src/game/rules.ts";
-import type { CollectionState, GameState, MatchBox, MoveEvent, PartId } from "../src/game/types.ts";
+import type { CollectionState, GameState, LevelId, MatchBox, MoveEvent, PartId } from "../src/game/types.ts";
 import type { CollectionMove, RoomCommand, RoomGame, RoomNotice, RoomSnapshot } from "../src/multiplayer/protocol.ts";
 import { PING_COOLDOWN_MS, ROOM_LEVEL_VERSION, ROOM_PHYSICS_DELAY_MS, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
 import { findLooseBlocker } from "../src/scene/loosePhysics.ts";
@@ -21,7 +22,7 @@ type Seat = {
   peer: Peer | null; ready: boolean; reconnectBy: number | null; lastPing: number;
 };
 type Room = {
-  id: string; seats: Seat[]; soloAllowed: boolean; round: number; seed: number; game: GameState;
+  id: string; level: LevelId; seats: Seat[]; soloAllowed: boolean; round: number; seed: number; game: GameState;
   startedAt: number | null; lifelines: number; fallStarts: Map<PartId, number>;
   elapsedMs: number; clockSince: number | null; physics?: PartPhysics; physicsRevision: number;
 };
@@ -49,6 +50,7 @@ function snapshot(room: Room, now: number): RoomSnapshot {
   room.physics?.advance(now);
   return {
     levelVersion: ROOM_LEVEL_VERSION,
+    level: room.level,
     id: room.id, leader: room.seats[0].id, round: room.round, seed: room.seed,
     players: room.seats.map((seat) => ({
       id: seat.id, number: seat.number, collected: seat.collected, ready: seat.ready, connected: Boolean(seat.peer),
@@ -137,6 +139,26 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
       for (const seat of room.seats) if (seat.reconnectBy !== null && seat.reconnectBy <= time) removeSeat(room, seat);
     }
   }
+  function resetRound(room: Room, level = room.level) {
+    const puzzle = generateSoloPuzzle(level, nextSeed());
+    room.physics?.free();
+    room.level = level;
+    room.seed = puzzle.seed;
+    room.game = puzzle.state;
+    room.round += 1;
+    room.startedAt = null;
+    room.lifelines = LIFELINE_COUNT;
+    room.fallStarts.clear();
+    room.physics = undefined;
+    room.physicsRevision = 0;
+    room.elapsedMs = 0;
+    room.clockSince = null;
+    for (const member of room.seats) {
+      member.ready = false;
+      member.collected = 0;
+    }
+    publish(room);
+  }
   function receive(peer: Peer, command: RoomCommand) {
     const time = now();
     if (command.type === "clock") {
@@ -149,9 +171,11 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
       if (command.levelVersion !== ROOM_LEVEL_VERSION) return reject(peer, ROOM_VERSION_MESSAGE);
       expireSeats();
       if (command.type === "create") {
-        const seed = nextSeed();
-        const room: Room = { id: secret(), seats: [], soloAllowed: false, round: 0, seed,
-          game: generatePuzzle(seed).state, startedAt: null, lifelines: LIFELINE_COUNT, fallStarts: new Map(),
+        const level = command.level ?? "cottage";
+        if (!isLevelId(level)) return reject(peer, "Choose an available level.");
+        const puzzle = generateSoloPuzzle(level, nextSeed());
+        const room: Room = { id: secret(), level, seats: [], soloAllowed: false, round: 0, seed: puzzle.seed,
+          game: puzzle.state, startedAt: null, lifelines: LIFELINE_COUNT, fallStarts: new Map(),
           elapsedMs: 0, clockSince: null, physicsRevision: 0 };
         rooms.set(room.id, room);
         attach(peer, room, addSeat(room));
@@ -179,27 +203,18 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
       }
       return;
     }
-    if (command.type === "start" || command.type === "reset" || command.type === "boost") {
+    if (command.type === "start" || command.type === "reset" || command.type === "boost" || command.type === "level") {
       if (seat !== room.seats[0]) return reject(peer, "Only the room leader can do that.");
+    }
+    if (command.type === "level") {
+      if (!isLevelId(command.level)) return reject(peer, "Choose an available level.");
+      if (room.startedAt !== null) return reject(peer, "Choose a level between rounds.");
+      if (room.level !== command.level) resetRound(room, command.level);
+      return;
     }
     if (command.type === "reset") {
       if (room.startedAt === null) return;
-      room.seed = nextSeed();
-      room.game = generatePuzzle(room.seed).state;
-      room.round += 1;
-      room.startedAt = null;
-      room.lifelines = LIFELINE_COUNT;
-      room.fallStarts.clear();
-      room.physics?.free();
-      room.physics = undefined;
-      room.physicsRevision = 0;
-      room.elapsedMs = 0;
-      room.clockSince = null;
-      for (const member of room.seats) {
-        member.ready = false;
-        member.collected = 0;
-      }
-      publish(room);
+      resetRound(room);
       return;
     }
     if (command.type === "start") {
@@ -249,7 +264,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     room.clockSince ??= time;
     for (const event of events) {
       if (event.kind === "detach") {
-        room.physics ??= createPartPhysics(room.game.removedParts);
+        room.physics ??= createPartPhysics(room.game.removedParts, room.level);
         room.fallStarts.set(event.part, time);
         room.physics.release(event.part, time);
       }

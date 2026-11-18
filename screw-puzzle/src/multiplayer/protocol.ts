@@ -1,8 +1,8 @@
-import type { CollectionState, GameState, MatchBox, MoveEvent, PartId, ScrewColor } from "../game/types.ts";
+import type { CollectionState, GameState, LevelId, MatchBox, MoveEvent, PartId, ScrewColor } from "../game/types.ts";
 import type { LooseParts } from "../scene/loosePhysics.ts";
 
 // Both peers use the same ordered screw IDs and part geometry.
-export const ROOM_LEVEL_VERSION = 12;
+export const ROOM_LEVEL_VERSION = 13;
 export const ROOM_PHYSICS_DELAY_MS = 62.5;
 export const ROOM_VERSION_MESSAGE = "The room and game versions differ. Refresh the game, or wait for the server update to finish.";
 export const COMPLETED_LIFELINE_MS = 320;
@@ -15,6 +15,7 @@ export type RoomGame = Pick<GameState, "boxes" | "boxQueue" | "tray" | "clearedC
 };
 export type RoomSnapshot = {
   levelVersion: number;
+  level: LevelId;
   id: string;
   leader: string;
   players: { id: string; number: 1 | 2; collected: number; connected: boolean; ready: boolean }[];
@@ -32,11 +33,12 @@ export type RoomSnapshot = {
   serverTime: number;
 };
 export type RoomCommand =
-  | { type: "create"; levelVersion?: number }
+  | { type: "create"; levelVersion?: number; level?: LevelId }
   | { type: "join"; room: string; token?: string; levelVersion?: number }
   | { type: "clock"; sentAt: number }
   | { type: "leave" }
   | { type: "ready" | "start" | "reset" | "boost"; round: number }
+  | { type: "level"; round: number; level: LevelId }
   | { type: "dismiss"; round: number; part: PartId }
   | { type: "select" | "ping"; round: number; screw: string };
 export type RoomNotice =

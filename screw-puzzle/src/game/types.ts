@@ -1,7 +1,11 @@
 export const SCREW_COLOR_ORDER = ["red", "blue", "yellow", "green", "orange", "purple", "brown", "pink", "grey", "cyan", "black", "lime"] as const;
 export type ScrewColor = typeof SCREW_COLOR_ORDER[number];
 export type GameStatus = "playing" | "won" | "lost";
-export type LevelId = "cottage" | "titanic";
+export const LEVEL_IDS = ["cottage", "titanic"] as const;
+export type LevelId = typeof LEVEL_IDS[number];
+export function isLevelId(value: unknown): value is LevelId {
+  return LEVEL_IDS.some((id) => id === value);
+}
 export const ROOF_SECTIONS = (["left", "right"] as const).flatMap((side) =>
   (["front", "middle", "back"] as const).flatMap((lane, index) =>
     (["eave", "ridge"] as const).map((band) => ({ id: `roof-${side}-${lane}-${band}` as const, side, lane, band, z: 1.4 - index * 1.4 }))));

@@ -5,11 +5,13 @@ import { readSoloSave } from "../game/soloSave";
 import { readSoloTimes } from "../game/leaderboard";
 import { formatRunTime } from "../game/runTime";
 
-export default function LevelSelect({ onBack, onSelect }: { onBack: () => void; onSelect: (level: LevelId) => void }) {
+export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
+  onBack: () => void; onSelect: (level: LevelId) => void; mode?: "solo" | "multiplayer";
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [completed] = useState(readLevelProgress);
   const [details] = useState(() => CAMPAIGN_LEVELS.map(({ id }) => ({
-    save: readSoloSave(id), best: readSoloTimes(id)[0],
+    save: mode === "solo" ? readSoloSave(id) : null, best: mode === "solo" ? readSoloTimes(id)[0] : undefined,
   })));
   useEffect(() => {
     const element = dialog.current;

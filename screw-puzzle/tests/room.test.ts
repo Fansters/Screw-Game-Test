@@ -4,6 +4,8 @@ import { createRoomServer, RECONNECT_MS } from "../server/room.ts";
 import { FALL_DURATION_MS } from "../src/game/fallTiming.ts";
 import { DEMO_LEVEL } from "../src/game/levels.ts";
 import { generatePuzzle } from "../src/game/randomize.ts";
+import { generateSoloPuzzle, soloLevelTemplate } from "../src/game/soloLevels.ts";
+import type { LevelId } from "../src/game/types.ts";
 import { collectionPlayback, emptyPlayback, frameDelay } from "../src/multiplayer/collectionPlayback.ts";
 import type { RoomCommand, RoomNotice } from "../src/multiplayer/protocol.ts";
 import { ROOM_LEVEL_VERSION, ROOM_PHYSICS_DELAY_MS, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
@@ -12,7 +14,7 @@ import { LOOSE_LIFETIME_MS, loosePartPose, mergeLooseParts, SMOKE_DURATION_MS } 
 
 await initPartPhysics();
 
-function fixture(seed?: number) {
+function fixture(seed?: number, level: LevelId = "cottage", start = true) {
   let time = 20_000;
   const server = createRoomServer(() => time, seed === undefined ? undefined : () => seed);
   function makePeer() {
@@ -28,18 +30,98 @@ function fixture(seed?: number) {
   }
   const leader = makePeer();
   const guest = makePeer();
-  leader.send({ type: "create", levelVersion: ROOM_LEVEL_VERSION });
+  leader.send({ type: "create", levelVersion: ROOM_LEVEL_VERSION, level });
   const room = leader.state().id;
   guest.send({ type: "join", room, levelVersion: ROOM_LEVEL_VERSION });
-  leader.send({ type: "ready", round: 0 });
-  leader.send({ type: "start", round: 0 });
-  assert.equal(guest.state().started, false);
-  guest.send({ type: "ready", round: 0 });
-  leader.send({ type: "start", round: 0 });
-  assert.equal(guest.state().started, true);
+  if (start) {
+    leader.send({ type: "ready", round: 0 });
+    leader.send({ type: "start", round: 0 });
+    assert.equal(guest.state().started, false);
+    guest.send({ type: "ready", round: 0 });
+    leader.send({ type: "start", round: 0 });
+    assert.equal(guest.state().started, true);
+  }
   return { leader, guest, room, makePeer, advance: (ms: number) => { time += ms; server.expireSeats(); },
-    tickPhysics: server.tickPhysics };
+    tickPhysics: server.tickPhysics, close: server.close };
 }
+
+test("the leader chooses a shared level and switching waits for both scenes to load", (t) => {
+  const { leader, guest, close, room, makePeer } = fixture(245, "cottage", false);
+  t.after(close);
+  leader.send({ type: "ready", round: 0 });
+  guest.send({ type: "ready", round: 0 });
+  guest.send({ type: "level", round: 0, level: "titanic" });
+  assert.equal(guest.notices.at(-1)?.type, "rejected");
+  assert.equal(leader.state().level, "cottage");
+  leader.send({ type: "level", round: 0, level: "titanic" });
+  assert.equal(guest.state().level, "titanic");
+  assert.equal(guest.state().round, 1);
+  assert.equal(guest.state().game.colors.length, 312);
+  assert.equal(guest.state().canStart, false);
+  assert.ok(guest.state().players.every((seat) => !seat.ready));
+  guest.send({ type: "ready", round: 0 });
+  assert.ok(guest.state().players.every((seat) => !seat.ready));
+  leader.send({ type: "ready", round: 1 });
+  leader.send({ type: "start", round: 1 });
+  assert.equal(guest.state().started, false);
+  guest.send({ type: "ready", round: 1 });
+  leader.send({ type: "start", round: 1 });
+  assert.equal(guest.state().started, true);
+  leader.send({ type: "level", round: 1, level: "cottage" });
+  assert.equal(leader.notices.at(-1)?.type, "rejected");
+  assert.equal(leader.state().level, "titanic");
+  leader.send({ type: "reset", round: 1 });
+  assert.equal(guest.state().level, "titanic");
+  assert.equal(guest.state().round, 2);
+  leader.send({ type: "level", round: 1, level: "cottage" });
+  assert.equal(guest.state().level, "titanic");
+
+  guest.disconnect();
+  const refreshed = makePeer();
+  refreshed.send({ type: "join", room, token: guest.seat().token, levelVersion: ROOM_LEVEL_VERSION });
+  assert.equal(refreshed.state().level, "titanic");
+  assert.deepEqual(refreshed.state(), leader.state());
+  leader.send({ type: "level", round: 2, level: "cottage" });
+  assert.equal(refreshed.state().level, "cottage");
+  assert.equal(refreshed.state().game.colors.length, 300);
+  assert.deepEqual(refreshed.state().looseParts, {});
+});
+
+test("both seats finish Titanic with shared water physics, pings, duplicate protection and reset", (t) => {
+  const { leader, guest, close, advance } = fixture(245, "titanic");
+  t.after(close);
+  const initial = leader.state();
+  assert.equal(initial.level, "titanic");
+  const { solution } = generateSoloPuzzle("titanic", initial.seed);
+  const first = solution[0];
+  leader.send({ type: "ping", round: 0, screw: first });
+  assert.deepEqual(guest.notices.at(-1), { type: "ping", round: 0, screw: first, player: leader.seat().player });
+  for (const [index, screw] of solution.entries()) {
+    const peer = index % 2 ? guest : leader;
+    const count = leader.state().game.removedParts.length;
+    peer.send({ type: "select", round: 0, screw });
+    (index % 2 ? leader : guest).send({ type: "select", round: 0, screw });
+    assert.equal(leader.state().game.removed.length, index + 1);
+    assert.deepEqual(leader.state(), guest.state());
+    const part = leader.state().game.removedParts[count];
+    if (part) {
+      assert.ok(leader.state().looseParts[part], `shared physics for ${part}`);
+      advance(450);
+      peer.send({ type: "dismiss", round: 0, part });
+      if (leader.state().game.status === "playing") assert.ok(leader.state().looseParts[part]?.poof, `shared dismissal for ${part}`);
+    }
+    advance(ROOM_PHYSICS_DELAY_MS + LOOSE_LIFETIME_MS);
+  }
+  assert.equal(guest.state().game.status, "won");
+  assert.equal(guest.state().game.removed.length, soloLevelTemplate("titanic").length);
+  assert.equal(guest.state().clockRunning, false);
+  assert.equal(guest.state().players.reduce((sum, seat) => sum + seat.collected, 0), 312);
+  leader.send({ type: "reset", round: 0 });
+  assert.equal(guest.state().level, "titanic");
+  assert.equal(guest.state().round, 1);
+  assert.equal(guest.state().game.removed.length, 0);
+  assert.deepEqual(guest.state().looseParts, {});
+});
 
 test("both players use one puzzle, while only its leader can spend a lifeline or reset", () => {
   const { leader, guest, room, makePeer } = fixture();

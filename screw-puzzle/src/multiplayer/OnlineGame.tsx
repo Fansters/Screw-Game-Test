@@ -6,12 +6,13 @@ import GameScene from "../components/GameScene";
 import GameTimer from "../components/GameTimer";
 import GameUI from "../components/GameUI";
 import ResetDialog from "../components/ResetDialog";
+import LevelSelect from "../components/LevelSelect";
 import TransferOverlay from "../components/TransferOverlay";
 import { useGameAudio } from "../components/useGameAudio";
-import { DEMO_LEVEL } from "../game/levels";
+import { soloLevelTemplate } from "../game/soloLevels";
 import { canOpenBonusBox } from "../game/rules";
-import { recordLevelClear } from "../game/campaign";
-import type { PartId } from "../game/types";
+import { CAMPAIGN_LEVELS, recordLevelClear } from "../game/campaign";
+import type { LevelId, PartId } from "../game/types";
 import type { CameraView } from "../scene/camera";
 import { useRoom } from "./useRoom";
 import { ROOM_PHYSICS_DELAY_MS } from "./protocol";
@@ -25,11 +26,14 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   const id = snapshot?.id;
   const round = snapshot?.round ?? 0;
   const started = snapshot?.started ?? false;
+  const level = snapshot?.level ?? "cottage";
+  const levelTitle = CAMPAIGN_LEVELS.find(({ id }) => id === level)!.title;
   const leader = snapshot?.leader === player;
   const view = started ? "house" : "title";
   const scene = `${id}:${round}`;
   const [arrival, setArrival] = useState<{ view: CameraView; round: number }>();
   const [confirmation, setConfirmation] = useState<"reset" | "leave" | null>(null);
+  const [levelsOpen, setLevelsOpen] = useState(false);
   const [pingScene, setPingScene] = useState<string | null>(null);
   const [expiredPing, setExpiredPing] = useState(0);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "manual">("idle");
@@ -45,13 +49,14 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
     if (!snapshot) return null;
     const { colors, removed, ...state } = snapshot.game;
     const removedIds = new Set(removed);
-    return { ...state, screws: DEMO_LEVEL.map((screw, index) => ({
+    return { ...state, screws: soloLevelTemplate(snapshot.level).map((screw, index) => ({
       ...screw, color: colors[index], removed: removedIds.has(screw.id),
     })) };
   }, [snapshot]);
   const fallingParts = (Object.keys(snapshot?.fallStarts ?? {}) as PartId[])
     .filter((part) => finished?.scene !== scene || !finished.parts.includes(part));
-  const orbitable = started && cameraReady && game?.status === "playing" && !confirmation;
+  const localReady = snapshot?.players.some((seat) => seat.id === player && seat.ready) ?? false;
+  const orbitable = started && localReady && cameraReady && game?.status === "playing" && !confirmation;
   const playable = orbitable && connected && !snapshot?.paused;
   const canPing = playable && snapshot?.players.length === 2;
   const pingMode = canPing && pingScene === scene;
@@ -71,8 +76,8 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
     if (id && connected && lastReady.current === scene) send({ type: "ready", round });
   }, [id, connected, scene, round, send]);
   useEffect(() => {
-    if (won) recordLevelClear("cottage");
-  }, [won, scene]);
+    if (won) recordLevelClear(level);
+  }, [won, scene, level]);
   useEffect(() => {
     const previous = lastSound.current;
     if (scene === previous.scene && removed > previous.count) play("remove");
@@ -94,7 +99,14 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
 
   function open() {
     enable();
-    room.open();
+    if (room.invite) room.open();
+    else setLevelsOpen(true);
+  }
+  function selectLevel(level: LevelId) {
+    setLevelsOpen(false);
+    enable();
+    if (snapshot) send({ type: "level", round, level });
+    else room.open(level);
   }
   function start() {
     enable();
@@ -128,7 +140,7 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
   const sampledAt = (snapshot?.serverTime ?? 0) - clockOffset;
   const completedLifeline = room.completedLifeline?.round === round ? room.completedLifeline.box : undefined;
   return <div className="game-layout" onContextMenu={(event) => event.preventDefault()}>
-    {game && <GameScene key={id} logical={game} fallingParts={fallingParts} round={round}
+    {game && <GameScene key={scene} level={level} logical={game} fallingParts={fallingParts} round={round}
       onlineParts={onlineParts} looseNow={looseNow} onLooseDismiss={(part) => send({ type: "dismiss", round, part })}
       view={view} playable={playable} orbitable={orbitable} onCameraArrive={cameraArrived} onReady={sceneReady}
       onFallFinished={finishFall} onScrewSelect={select} onBlockedScrew={() => play("blocked")} projectorRef={project}
@@ -137,10 +149,12 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
     {!started && <section className="room-lobby" aria-label="Two-player room">
       <h2>Two-player room</h2>
       {snapshot ? <>
+        <p className="room-level">{levelTitle}</p>
         <p role="status">{snapshot.players.filter((seat) => seat.connected).length} / 2 connected
           {connected ? leader ? " · You’re the leader" : " · Guest" : " · Reconnecting…"}</p>
         {leader && <button className="room-button" onClick={() => void copyInvite()}>{copyState === "copied" ? "Link copied" : "Copy invite link"}</button>}
         {copyState === "manual" && <input aria-label="Invite link" readOnly value={location.href} onFocus={(event) => event.target.select()} />}
+        {leader && <button className="room-button secondary" disabled={!connected} onClick={() => setLevelsOpen(true)}>Change level</button>}
         {leader && <button className="room-button" disabled={!snapshot.canStart || !connected || !cameraReady} onClick={start}>Start together</button>}
         {!leader && <p>Waiting for the leader to start.</p>}
       </> : <button className="room-button" onClick={open} disabled={room.connecting}>
@@ -149,6 +163,8 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
       {room.error && <p role="status">{room.error}</p>}
       {!snapshot && <button className="room-button secondary" onClick={leave}>Back to solo</button>}
     </section>}
+    {levelsOpen && !started && (!snapshot || leader) &&
+      <LevelSelect mode="multiplayer" onBack={() => setLevelsOpen(false)} onSelect={selectLevel} />}
     {started && snapshot && game && <>
       <span className="room-status" role="status">
         {!connected ? room.error || "Reconnecting…" : snapshot.paused ? "Partner reconnecting…" : leader ? "Game Leader" : "Guest"}
@@ -168,8 +184,9 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
         {[...snapshot.players].sort((a, b) => a.number - b.number).map((seat) =>
           <li key={seat.id}>Player {seat.number}{seat.id === player && " (you)"} <strong>{seat.collected}</strong></li>)}
       </ul>
-      <GameOverlay mode={result} elapsedMs={snapshot.elapsedMs} timeLabel="Team time"
-        onStart={start} onRestart={leader && connected ? () => setConfirmation("reset") : undefined} />
+      <GameOverlay mode={result} elapsedMs={snapshot.elapsedMs} timeLabel="Team time" levelTitle={levelTitle}
+        onStart={start} onRestart={leader && connected ? () => setConfirmation("reset") : undefined}
+        onLevels={leader && connected ? () => { reset(); setLevelsOpen(true); } : undefined} />
     </>}
     {pingScrew && <span className="room-ping" role="status">{room.ping?.own ? "You" : "Your partner"} pinged a {pingScrew.color} screw</span>}
     {confirmation && (confirmation === "leave" || leader) && <ResetDialog action={confirmation}

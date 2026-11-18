@@ -16,7 +16,9 @@ Use Vite's printed local URL. Tests and the room server use Node's native TypeSc
 
 ## Playing
 
-After the scene loads, green **Start** opens the solo level picker. Clear **Christmas Cottage** to unlock **Titanic**. Level clears are stored in the browser. The **Levels** button after a solo win returns to the picker. All screws are resident before gameplay and become visible as geometry falls away. The two-player menu opens the Cottage room mode.
+After the scene loads, green **Start** opens the solo level picker. Clear **Christmas Cottage** to unlock **Titanic**. Level clears are stored in the browser. The **Levels** button after a solo win returns to the picker. All screws are resident before gameplay and become visible as geometry falls away.
+
+In the two-player menu, **Create game** opens the same level picker. The leader chooses from their unlocked levels, and guests join that selection through the invitation link. Both players load the selected level before **Start together** becomes available. The leader can **Change level** in the lobby, or return to **Levels** after a win. Reset starts a fresh round of the room's selected level. Each player keeps their own camera while screws, boxes, lifelines, timer and falling objects stay synchronized.
 
 Drag to orbit on desktop and touchscreens. Scroll over a spot to zoom toward it, or pinch around it on a touchscreen. Right-drag or move two fingers together to pan. Zooming back out to the overview recenters on the house. Rotation stops on release. Screws are 15% larger and a 44 CSS-pixel assisted touch target with front-face and occlusion checks. Portrait and landscape layouts account for safe areas and dynamic viewport height.
 

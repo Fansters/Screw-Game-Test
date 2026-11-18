@@ -1,5 +1,4 @@
 import { Box3, Object3D, Quaternion, Vector3 } from "three";
-import { PART_IDS } from "../game/types.ts";
 import type { PartId, Screw } from "../game/types.ts";
 import { geometryFor } from "./geometry.ts";
 import { LEVEL_MODELS, partLevel, partPivot } from "./levelModels.ts";
@@ -29,7 +28,7 @@ export function mergeLooseParts(previous: LooseParts, incoming: LooseParts): Loo
   }));
 }
 
-const partIds = new Set<string>(PART_IDS);
+const partIds = new Set<string>(Object.values(LEVEL_MODELS).flatMap(({ parts }) => [...parts]));
 export function isLevelPart(id: unknown): id is PartId {
   return typeof id === "string" && partIds.has(id);
 }
