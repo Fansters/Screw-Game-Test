@@ -3,17 +3,20 @@
 > Repository instructions for Codex. Keep this file in the **repository root**.
 > This is a living document: the project owner may edit any decision below.
 
-## Current release rules (0.1.11; supersede older counts and reset behavior below)
+## Current release rules (0.1.13; supersede older counts and reset behavior below)
 
-- Playable campaign: Christmas Cottage (Level 1), Lakeside Camp (Level 2), and Route 66 Gas Stop (Level 3), **240 screws each**. New levels must stay between 200 and 240, using whole triples. Titanic source is archived and cannot be selected or created on the room server.
-- All three campaign levels are immediately selectable in solo and co-op, with no completion gate. Loose objects begin their automatic poof exactly 1,000 ms after their last screw releases them; manual dismissal can still clear them sooner.
+- Playable campaign: Christmas Cottage (Level 1), Lakeside Camp (Level 2), Route 66 Gas Stop (Level 3), and Construction Crew (Level 4). Cottage and camp have **240 screws each**; Route 66 has **216** and Construction Crew has **204**. New levels must stay between 200 and 240, using whole triples. Titanic source is archived and cannot be selected or created on the room server.
+- All four campaign levels are immediately selectable in solo and co-op, with no completion gate. Loose objects begin their automatic poof exactly 1,000 ms after their last screw releases them; manual dismissal can still clear them sooner.
 - Preserve all removable owners when reducing fixings. Keep meaningful cover chains, interior/edge/side/underside positions, and verified geometric viewing paths. Cottage opening: 23/240; campsite: 27/240.
 - Reset confirms **Reset / Keep playing**, then starts a fresh round of the same level directly. Co-op reset is leader-only and waits for both scenes to become ready; old-round events are ignored.
 - A separate exit icon confirms **Home / Level select / Keep playing**. Solo exits save progress; co-op exits leave the room and the remaining player can continue.
-- Current-layout checkpoints and local rankings use v2 keys. Retain previous clear records for completion badges; never replay old move IDs on the new layouts.
-- Room layout/protocol version is 17. Publish matching frontend and room-server revisions together.
+- Current-layout checkpoints and local rankings use v2 keys for cottage/camp and v3 for Route 66. Retain previous clear records for completion badges; never replay old move IDs on the new layouts.
+- Room layout/protocol version is 19. Publish matching frontend and room-server revisions together.
+- Prioritize natural spacing and comfortable picking over exact screw totals or a fixed opening-exposure percentage. Levels may differ in difficulty and initially visible heads. Remove redundant fixings rather than crowding them; keep the 200–240 range and whole color triples.
 - Route 66 has 138 detachable owners. Follow the supplied warm desert gas-station scene, with natural covers and side/interior/underside fixings. Regenerate static clearance/exposure with `node tools/audit_desert.ts` after geometry or fixing edits. Tests compare this data against actual meshes and check complete viewing paths.
 - At four waiting screws, pulse all five borders red from logical inventory; use static red for reduced motion. Show the current campaign level bottom right on every device, with co-op scores above it.
+
+- Construction Crew follows the supplied unfinished-building/crane/bulldozer diorama. It has 146 removable owners and 204 well-spaced screws. Regenerate its static clearance/exposure with `node tools/audit_construction.ts`; verify spacing, actual viewing paths, seeded winning routes, physics, solo resume and co-op. Its open-site color proof can switch to another accessible branch when the current branch cannot use an active color; older levels retain their generation inputs.
 
 ## 1. Project mission
 

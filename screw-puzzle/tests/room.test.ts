@@ -413,7 +413,7 @@ test("both seats select, refresh, solve and restart Route 66 with one shared lev
   const { leader, guest, room, makePeer, close, advance } = fixture(245, "desert");
   t.after(close);
   const initial = leader.state();
-  assert.equal(initial.game.colors.length, 240);
+  assert.equal(initial.game.colors.length, 216);
   const { solution } = generateSoloPuzzle("desert", initial.seed);
   const token = guest.seat().token;
   guest.disconnect();
@@ -427,10 +427,36 @@ test("both seats select, refresh, solve and restart Route 66 with one shared lev
     advance(LOOSE_LIFETIME_MS + ROOM_PHYSICS_DELAY_MS + 10);
   }
   assert.equal(refreshed.state().game.status, "won");
-  assert.equal(refreshed.state().players.reduce((n, player) => n + player.collected, 0), 240);
+  assert.equal(refreshed.state().players.reduce((n, player) => n + player.collected, 0), 216);
   leader.send({ type: "reset", round: 0 });
   assert.equal(refreshed.state().started, true);
   assert.equal(refreshed.state().level, "desert");
+  assert.equal(refreshed.state().game.removed.length, 0);
+  assert.equal(refreshed.state().paused, true);
+});
+
+test("both seats select, refresh, solve and restart Construction Crew with one shared level", (t) => {
+  const { leader, guest, room, makePeer, close, advance } = fixture(245, "construction");
+  t.after(close);
+  const initial = leader.state();
+  assert.equal(initial.game.colors.length, 204);
+  const { solution } = generateSoloPuzzle("construction", initial.seed);
+  const token = guest.seat().token;
+  guest.disconnect();
+  const refreshed = makePeer();
+  refreshed.send({ type: "join", room, token, levelVersion: ROOM_LEVEL_VERSION });
+  assert.equal(refreshed.state().level, "construction");
+  for (const [index, screw] of solution.entries()) {
+    (index % 2 ? refreshed : leader).send({ type: "select", round: 0, screw });
+    assert.equal(leader.state().game.removed.length, index + 1, screw);
+    assert.deepEqual(leader.state(), refreshed.state());
+    advance(LOOSE_LIFETIME_MS + ROOM_PHYSICS_DELAY_MS + 10);
+  }
+  assert.equal(refreshed.state().game.status, "won");
+  assert.equal(refreshed.state().players.reduce((n, player) => n + player.collected, 0), 204);
+  leader.send({ type: "reset", round: 0 });
+  assert.equal(refreshed.state().started, true);
+  assert.equal(refreshed.state().level, "construction");
   assert.equal(refreshed.state().game.removed.length, 0);
   assert.equal(refreshed.state().paused, true);
 });

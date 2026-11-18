@@ -32,6 +32,9 @@ test("solo records validate saved data, rank the fastest ten, and recover from a
   recordSoloTime(24_000, "campsite");
   assert.equal(readSoloTimes("campsite")[0].elapsedMs, 24_000);
   assert.equal(readSoloTimes("cottage")[0].elapsedMs, 1500);
+  recordSoloTime(93_000, "construction");
+  assert.equal(readSoloTimes("construction")[0].elapsedMs, 93_000);
+  assert.equal(readSoloTimes("campsite")[0].elapsedMs, 24_000);
   saved.set(SOLO_TIMES_KEY, "{malformed");
   assert.equal(readSoloTimes()[0].elapsedMs, 1500);
 });

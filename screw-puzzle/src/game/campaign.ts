@@ -6,6 +6,7 @@ export const CAMPAIGN_LEVELS = [
   { id: "cottage", title: "Christmas Cottage", available: true },
   { id: "campsite", title: "Lakeside Camp", available: true },
   { id: "desert", title: "Route 66 Gas Stop", available: true },
+  { id: "construction", title: "Construction Crew", available: true },
 ] as const;
 
 const cleared = new Set<LevelId>();

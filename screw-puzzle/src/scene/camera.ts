@@ -9,18 +9,21 @@ export const CAMERA_POSES = {
 } satisfies Record<CameraView, { position: [number, number, number]; target: [number, number, number] }>;
 
 export const PLAY_CAMERA_POSES = {
+  construction: { position: [11.5, 10.5, 18], target: [0, 1.7, 0] },
   desert: { position: [-8.0, 9.6, 18.4], target: [0, 1.25, 0] },
   cottage: CAMERA_POSES.house,
   titanic: { position: [10.0, 10.2, 20.0], target: [0.5, 0.65, 0] },
   campsite: { position: [11.8, 10.4, 16.7], target: [0, 1.1, 0] },
 } satisfies Record<LevelId, typeof CAMERA_POSES.house>;
 const centers = {
+  construction: new Vector3(...PLAY_CAMERA_POSES.construction.target),
   desert: new Vector3(...PLAY_CAMERA_POSES.desert.target),
   cottage: new Vector3(...PLAY_CAMERA_POSES.cottage.target),
   titanic: new Vector3(...PLAY_CAMERA_POSES.titanic.target),
   campsite: new Vector3(...PLAY_CAMERA_POSES.campsite.target),
 };
 const overviewDistances = {
+  construction: centers.construction.distanceTo(new Vector3(...PLAY_CAMERA_POSES.construction.position)),
   desert: centers.desert.distanceTo(new Vector3(...PLAY_CAMERA_POSES.desert.position)),
   cottage: centers.cottage.distanceTo(new Vector3(...PLAY_CAMERA_POSES.cottage.position)),
   titanic: centers.titanic.distanceTo(new Vector3(...PLAY_CAMERA_POSES.titanic.position)),

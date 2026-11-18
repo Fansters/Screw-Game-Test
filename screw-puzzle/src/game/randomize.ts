@@ -62,7 +62,7 @@ export class PuzzleColorsUnavailable extends Error {}
 // Construct a solution first; color it using only the two currently active boxes.
 // This gives true spatial mixing and a proof of solvability instead of blind shuffling.
 export function generatePuzzle(seed: number, template: readonly Screw[] = DEMO_LEVEL, preferLayeredPeel = false,
-  exposedHeads?: ReadonlySet<string>): GeneratedPuzzle {
+  exposedHeads?: ReadonlySet<string>, adaptPeelToColors = false): GeneratedPuzzle {
   const opening = exposedHeads ?? new Set(template.filter((screw) => !screw.obstructedBy?.length && !screw.solutionAfter?.length).map((screw) => screw.id));
   const counts = ownerCounts(template);
   const blockers = new Set(template.flatMap((screw) => [...(screw.solutionAfter ?? []), ...(screw.obstructedBy ?? [])]));
@@ -99,20 +99,42 @@ export function generatePuzzle(seed: number, template: readonly Screw[] = DEMO_L
     const partColors = new Map<PartId, ScrewColor[]>();
     const openingCounts = new Map<ScrewColor, number>();
     let valid = true;
-    for (const screw of order) {
+    const peeled = new Set<PartId>();
+    const left = new Map(counts);
+    const colorOptions = (screw: Screw) => {
       const seen = screw.attachedTo ? partColors.get(screw.attachedTo) ?? [] : [];
       const total = screw.attachedTo ? counts.get(screw.attachedTo)! : 0;
       // Mix the first two fixings, before the endgame can exhaust an alternative color.
       const mustDiffer = total > 1 && seen.length === 1;
-      const options = boxes.map((box, index) => ({ box, index })).filter(({ box }) => box &&
+      return boxes.map((box, index) => ({ box, index })).filter(({ box }) => box &&
         (!mustDiffer || box.color !== seen[0]) &&
         (!opening.has(screw.id) || !targets.slice(0, 2).includes(box.color) || (openingCounts.get(box.color) ?? 0) < 2));
+    };
+    for (let step = 0; step < order.length; step += 1) {
+      let screw = order[step], options = colorOptions(screw);
+      // Open scenes offer many independent branches. If this branch cannot use
+      // either active color, follow another physically reachable reveal first.
+      // Earlier levels keep their original deterministic generation inputs.
+      if (adaptPeelToColors && !options.length) {
+        const next = order.findIndex((candidate, index) => index > step && colorOptions(candidate).length > 0 &&
+          [...(candidate.solutionAfter ?? []), ...(candidate.obstructedBy ?? [])].every(part => peeled.has(part)));
+        if (next !== -1) {
+          [screw] = order.splice(next, 1);
+          order.splice(step, 0, screw);
+          options = colorOptions(screw);
+        }
+      }
       if (!options.length) { valid = false; break; }
       const { box, index } = options[Math.floor(random() * options.length)];
       const color = box!.color;
       colors.set(screw.id, color);
       if (opening.has(screw.id)) openingCounts.set(color, (openingCounts.get(color) ?? 0) + 1);
-      if (screw.attachedTo) partColors.set(screw.attachedTo, [...seen, color]);
+      if (screw.attachedTo) {
+        partColors.set(screw.attachedTo, [...(partColors.get(screw.attachedTo) ?? []), color]);
+        const remaining = left.get(screw.attachedTo)! - 1;
+        left.set(screw.attachedTo, remaining);
+        if (!remaining) peeled.add(screw.attachedTo);
+      }
       box!.count += 1;
       if (box!.count === 3) {
         boxes[index] = null;

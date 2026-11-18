@@ -1,5 +1,7 @@
 import { DESERT_BLOCKERS, DESERT_EXPOSED_IDS } from "../scene/desertAudit.ts";
 import { DESERT_MOUNTS } from "../scene/desertModel.ts";
+import { CONSTRUCTION_BLOCKERS, CONSTRUCTION_EXPOSED_IDS } from "../scene/constructionAudit.ts";
+import { CONSTRUCTION_MOUNTS } from "../scene/constructionModel.ts";
 import { budgetFasteners } from "./fastenerBudget.ts";
 import type { LevelId } from "./types.ts";
 import { DEMO_LEVEL, SCREW_SCALE } from "./levels.ts";
@@ -15,10 +17,17 @@ import { createInitialState } from "./rules.ts";
 let titanic: Screw[] | undefined;
 let campsite: Screw[] | undefined;
 let desert: Screw[] | undefined;
+let construction: Screw[] | undefined;
+const constructionOpening = new Set<string>(CONSTRUCTION_EXPOSED_IDS);
 const desertOpening = new Set<string>(DESERT_EXPOSED_IDS);
 let campsiteOpening: ReadonlySet<string> | undefined;
 export function soloLevelTemplate(level: LevelId): readonly Screw[] {
   if (level === "cottage") return DEMO_LEVEL;
+  if (level === "construction") return construction ??= CONSTRUCTION_MOUNTS.map((mount, index) => ({
+    ...mount, id: `construction-${index + 1}`, removed: false,
+    color: SCREW_COLOR_ORDER[Math.floor(index / 3) % SCREW_COLOR_ORDER.length],
+    obstructedBy: [...CONSTRUCTION_BLOCKERS[index]],
+  }));
   if (level === "desert") return desert ??= DESERT_MOUNTS.map((mount, index) => ({
     ...mount, id: `desert-${index + 1}`, removed: false,
     color: SCREW_COLOR_ORDER[Math.floor(index / 3) % SCREW_COLOR_ORDER.length],
@@ -39,16 +48,16 @@ export function soloLevelTemplate(level: LevelId): readonly Screw[] {
   }));
 }
 
-function generateLayeredPuzzle(seed: number, template: readonly Screw[], opening?: ReadonlySet<string>) {
+function generateLayeredPuzzle(seed: number, template: readonly Screw[], opening?: ReadonlySet<string>, adaptPeelToColors = false) {
   for (const candidate of [seed, (seed ^ 0x9e3779b9) >>> 0]) {
     try {
-      return generatePuzzle(candidate, template, true, opening);
+      return generatePuzzle(candidate, template, true, opening, adaptPeelToColors);
     } catch (error) {
       if (!(error instanceof PuzzleColorsUnavailable)) throw error;
     }
   }
   // A verified layout is the last resort if the randomized assignments are exhausted.
-  return generatePuzzle(245, template, true, opening);
+  return generatePuzzle(245, template, true, opening, adaptPeelToColors);
 }
 
 // Seed-only v1 checkpoints need the original generation inputs to reproduce
@@ -65,6 +74,7 @@ for (let bay = 1; bay <= 8; bay += 1) {
 export function generateSoloPuzzle(level: LevelId, seed: number, legacyTitanicLayout = false) {
   const template = soloLevelTemplate(level);
   if (level === "cottage") return generatePuzzle(seed, template);
+  if (level === "construction") return generateLayeredPuzzle(seed, template, constructionOpening, true);
   if (level === "desert") {
     return generateLayeredPuzzle(seed, template, desertOpening);
   }

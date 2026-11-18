@@ -79,9 +79,6 @@ export const DESERT_BLOCKERS: readonly (readonly DesertPartId[])[] = [
     "desert-car-chassis"
   ],
   [
-    "desert-car-chassis"
-  ],
-  [
     "desert-road-barrier"
   ],
   [
@@ -98,16 +95,7 @@ export const DESERT_BLOCKERS: readonly (readonly DesertPartId[])[] = [
     "desert-column--0.47"
   ],
   [
-    "desert-column--0.47"
-  ],
-  [
     "desert-pump-0"
-  ],
-  [
-    "desert-pump-0"
-  ],
-  [
-    "desert-pump-1"
   ],
   [
     "desert-pump-1"
@@ -116,16 +104,7 @@ export const DESERT_BLOCKERS: readonly (readonly DesertPartId[])[] = [
     "desert-air-conditioner"
   ],
   [
-    "desert-air-conditioner"
-  ],
-  [
     "desert-radio-tower"
-  ],
-  [
-    "desert-radio-tower"
-  ],
-  [
-    "desert-canopy-0"
   ],
   [
     "desert-canopy-0"
@@ -177,9 +156,7 @@ export const DESERT_BLOCKERS: readonly (readonly DesertPartId[])[] = [
   [
     "desert-open-sign"
   ],
-  [
-    "desert-open-sign"
-  ],
+  [],
   [
     "desert-shop-facade"
   ],
@@ -212,9 +189,6 @@ export const DESERT_BLOCKERS: readonly (readonly DesertPartId[])[] = [
     "desert-fan-guard"
   ],
   [
-    "desert-fan-guard"
-  ],
-  [
     "desert-shop-roof-0"
   ],
   [],
@@ -229,27 +203,12 @@ export const DESERT_BLOCKERS: readonly (readonly DesertPartId[])[] = [
     "desert-gas-sign"
   ],
   [
-    "desert-gas-sign"
-  ],
-  [
-    "desert-gas-sign"
-  ],
-  [
     "desert-canopy-0"
-  ],
-  [
-    "desert-canopy-0"
-  ],
-  [
-    "desert-canopy-1"
   ],
   [
     "desert-canopy-1"
   ],
   [],
-  [
-    "desert-gas-badge"
-  ],
   [
     "desert-gas-badge"
   ],
@@ -260,18 +219,12 @@ export const DESERT_BLOCKERS: readonly (readonly DesertPartId[])[] = [
   [
     "desert-pump-face-0"
   ],
-  [
-    "desert-pump-globe-0"
-  ],
   [],
   [
     "desert-pump-globe-1"
   ],
   [
     "desert-pump-face-1"
-  ],
-  [
-    "desert-pump-globe-1"
   ],
   [],
   [],
@@ -366,26 +319,10 @@ export const DESERT_BLOCKERS: readonly (readonly DesertPartId[])[] = [
     "desert-mesa-1-0"
   ],
   [
-    "desert-mesa-1-0"
-  ],
-  [
-    "desert-mesa-1-1"
-  ],
-  [
-    "desert-mesa-1-0",
     "desert-mesa-1-1"
   ],
   [
     "desert-mesa-1-1"
-  ],
-  [
-    "desert-mesa-1-1"
-  ],
-  [
-    "desert-mesa-2-0"
-  ],
-  [
-    "desert-mesa-2-0"
   ],
   [
     "desert-mesa-2-0"
@@ -549,9 +486,6 @@ export const DESERT_BLOCKERS: readonly (readonly DesertPartId[])[] = [
     "desert-road-0"
   ],
   [
-    "desert-road-0"
-  ],
-  [
     "desert-road-1"
   ],
   [
@@ -560,9 +494,6 @@ export const DESERT_BLOCKERS: readonly (readonly DesertPartId[])[] = [
   [
     "desert-road-2",
     "desert-road-barrier"
-  ],
-  [
-    "desert-road-2"
   ],
   [
     "desert-road-2"
@@ -622,16 +553,10 @@ export const DESERT_BLOCKERS: readonly (readonly DesertPartId[])[] = [
     "desert-shop-floor-1"
   ],
   [
-    "desert-pump-1"
-  ],
-  [
     "desert-car-chassis"
   ],
   [
     "desert-car-chassis"
-  ],
-  [
-    "desert-road-barrier"
   ],
   [
     "desert-sand-0-0"
@@ -650,4 +575,4 @@ export const DESERT_BLOCKERS: readonly (readonly DesertPartId[])[] = [
     "desert-sand-1-1"
   ]
 ];
-export const DESERT_EXPOSED_IDS = ["desert-60","desert-79","desert-83","desert-85","desert-94","desert-97","desert-101","desert-105","desert-106","desert-107","desert-108","desert-109","desert-110","desert-114","desert-115","desert-116","desert-118","desert-120","desert-122","desert-123","desert-139","desert-142","desert-154","desert-155","desert-161","desert-163","desert-169","desert-178","desert-180","desert-182","desert-185","desert-186","desert-197"] as const;
+export const DESERT_EXPOSED_IDS = ["desert-53","desert-55","desert-72","desert-75","desert-77","desert-82","desert-84","desert-87","desert-90","desert-91","desert-92","desert-93","desert-94","desert-95","desert-99","desert-100","desert-101","desert-103","desert-105","desert-107","desert-108","desert-124","desert-127","desert-134","desert-135","desert-141","desert-143","desert-149","desert-158","desert-160","desert-162","desert-165","desert-166","desert-177"] as const;

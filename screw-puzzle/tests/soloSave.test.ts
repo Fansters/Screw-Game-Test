@@ -48,6 +48,20 @@ test("solo checkpoints restore the same puzzle, tray, bonus box and playing time
   clearSoloSave("desert");
   assert.equal(readSoloSave("desert"), null);
 
+  const construction = generateSoloPuzzle("construction", 245);
+  const constructionMoves = construction.solution.slice(0, 5);
+  writeSoloSave("construction", { seed: construction.seed, moves: constructionMoves, elapsedMs: 12345 });
+  const constructionRestored = restoreSoloSave("construction", readSoloSave("construction")!)!;
+  assert.deepEqual(constructionRestored.game, constructionMoves.reduce(removeScrew, construction.state));
+  assert.equal(constructionRestored.checkpoint.elapsedBefore, 12345);
+  clearSoloSave("construction");
+  assert.equal(readSoloSave("construction"), null);
+
+  assert.equal(soloSaveKey("desert"), "screw-it:solo-save:desert:v3");
+  storage.set("screw-it:solo-save:desert:v2", JSON.stringify({ seed: 245, moves: ["desert-240"], elapsedMs: 12000 }));
+  assert.equal(readSoloSave("desert"), null);
+  assert.ok(storage.has("screw-it:solo-save:desert:v2"));
+
   // Checkpoints from the previous screw layout must never replay against new IDs.
   storage.set("screw-it:solo-save:cottage:v1", JSON.stringify({ seed: 245, moves: ["screw-299"], elapsedMs: 12000 }));
   assert.equal(readSoloSave("cottage"), null);

@@ -335,7 +335,7 @@ for(const tile of ground){
  for(const [index,point] of covers.slice(0,3).entries())screw(tile.part,[point[0]+(index%2)*.09,.084,point[2]]);
  if(!covers.length)screw(tile.part,[tile.x,.084,tile.z]);
 }
-// Spend the remaining fasteners on structural surfaces, never extra exposed trinkets.
+// Structural fixing candidates are refined by the comfortable-spacing layout below.
 for(const part of walls){const first=DESERT_MOUNTS.find(m=>m.attachedTo===part)!;screw(part,[first.position[0],first.position[1]-.42,first.position[2]],first.normal,roofs);}
 for(const [i,part] of roofs.entries())screw(part,[-2.94+i*1.55,2.795,-1.15]);
 for(const [i,part] of canopy.entries())screw(part,[-.84+i*2.36,2.82,.75],[-1,0,0]);
@@ -440,6 +440,53 @@ for(const m of DESERT_MOUNTS){
  if(m.attachedTo==="desert-route-sign")m.position[0]-=1.10;
 }
 DESERT_MOUNTS.find(m=>m.attachedTo==="desert-boulder-0")!.position[0]-=.27;
+
+// The front-facing shelf bolts are viewed through the cleared shop frontage.
+// This guides the solution proof only; live picking still uses real geometry.
+for(const mount of DESERT_MOUNTS){
+ if(mount.attachedTo.startsWith("desert-store-shelf-") && mount.normal[2] > .9)mount.solutionAfter=[...roofs,facade,window];
+}
+
+// Comfortable head spacing takes priority over the old 240-screw budget.
+// Remove redundant fixings, preserving at least one on every assembly. Indices
+// refer to the authored fixings of each part, before assigning public screw IDs.
+const redundantFixings: Record<string, readonly number[]> = {
+ "desert-pump-0": [1], "desert-pump-1": [1],
+ "desert-shop-roof-0": [1], "desert-shop-roof-1": [1], "desert-shop-roof-2": [1],
+ "desert-canopy-0": [1], "desert-canopy-1": [1],
+ "desert-column--0.47": [1], "desert-column-3.48": [1],
+ "desert-gas-sign": [1], "desert-air-conditioner": [1],
+ "desert-mesa-0-0": [1], "desert-mesa-0-1": [1], "desert-mesa-0-2": [1],
+ "desert-mesa-1-0": [1], "desert-mesa-1-1": [1],
+ "desert-sidewalk-1": [1], "desert-sidewalk-2": [1], "desert-sidewalk-3": [1, 2],
+ "desert-road-0": [0], "desert-road-2": [2],
+ "desert-sand-2-0": [2], "desert-sand-2-2": [2],
+};
+const fixingIndices = new Map<DesertPartId, number>();
+const spacedMounts = DESERT_MOUNTS.filter((mount) => {
+ const index = fixingIndices.get(mount.attachedTo) ?? 0;
+ fixingIndices.set(mount.attachedTo, index + 1);
+ return !redundantFixings[mount.attachedTo]?.includes(index);
+});
+DESERT_MOUNTS.splice(0, DESERT_MOUNTS.length, ...spacedMounts);
+
+const setMountPositions = (part: DesertPartId, positions: Vector[]) => {
+ const mounts = DESERT_MOUNTS.filter(mount => mount.attachedTo === part);
+ if (mounts.length !== positions.length) throw new Error(`Wrong fixing count for ${part}`);
+ mounts.forEach((mount, index) => { mount.position = positions[index]; });
+};
+// Diagonal corners replace the tightly packed rows beneath rooftop equipment.
+setMountPositions("desert-shop-roof-0", [[-3.30,2.795,-2.85],[-2.65,2.795,-2.35]]);
+setMountPositions("desert-shop-roof-1", [[-1.78,2.795,-3.20],[-1.23,2.795,-2.75]]);
+setMountPositions("desert-shop-roof-2", [[.10,2.795,-1.05],[.55,2.795,-.25]]);
+setMountPositions("desert-mesa-2-0", [[1.61,3.715,-3.38],[2.11,3.715,-3.38]]);
+setMountPositions("desert-mesa-1-1", [[2.32,2.615,-3.20]]);
+setMountPositions("desert-sand-2-0", [[-3.70,.084,2.00],[-2.10,.084,3.10]]);
+setMountPositions("desert-boulder-1", [[-3.60,.07,4.25]]);
+setMountPositions("desert-boulder-2", [[3.25,.07,4.22]]);
+const doorFixings = DESERT_MOUNTS.filter(mount => mount.attachedTo === "desert-shop-door");
+doorFixings[1].position = [-.80,.88,.09];
+
 // The motel's eight-ray neon-style starburst mirrors the reference silhouette.
 const burstShape=new Shape();
 for(let i=0;i<16;i++){const a=Math.PI/2+i*Math.PI/8,r=i%2?.14:.40;if(i===0)burstShape.moveTo(Math.cos(a)*r,Math.sin(a)*r);else burstShape.lineTo(Math.cos(a)*r,Math.sin(a)*r);}burstShape.closePath();
