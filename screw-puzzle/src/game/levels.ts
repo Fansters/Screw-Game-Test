@@ -1,3 +1,4 @@
+import { budgetFasteners } from "./fastenerBudget.ts";
 import { BATHROOM_IDS, CEILING_IDS, DINING_CHAIRS, FLOOR_BEAMS, FRAME_POSTS, GARLANDS, GROUND_IDS, INTERIOR_DOORS, PARTITION_IDS, PLINTH_IDS, ROOF_IDS, ROOF_SECTIONS, SCREW_COLOR_ORDER, SNOW_ROOFS, TILE_IDS, WALL_SECTIONS } from "./types.ts";
 import type { PartId, Screw } from "./types.ts";
 import { HOUSE, PART_PIVOTS, ROOF_PITCH, resizeFurniturePoint, stairTread } from "../scene/houseModel.ts";
@@ -66,7 +67,7 @@ place([-1.8, -0.825, 0.4], [0, 1, 0], "sofa", lowerRoom);
 place([-1.1, -0.825, 1], [0, 1, 0], "sofa", lowerRoom);
 for (const [x, z] of [[-2.05, -1.55], [-0.85, -0.95]]) place([x, -0.485, z], [0, 1, 0], "kitchen", lowerRoom);
 place([-0.635, -1.1, -1.25], [1, 0, 0], "kitchen", lowerRoom);
-place([0.85, -0.535, 0.25], [0, 1, 0], "table", lowerRoom);
+place([0.85, -0.69, 0.6], [0, -1, 0], "table", [...lowerRoom, ...WALL_SECTIONS.filter(({ story }) => story === "lower").map(({ id }) => id)]);
 place([1.8, -0.535, 0.95], [0, 1, 0], "table", lowerRoom);
 place([1.84, -0.72, 1.125], [0, 0, 1], "table", lowerRoom);
 for (const { id, z, outward } of DINING_CHAIRS) {
@@ -105,9 +106,14 @@ for (const section of WALL_SECTIONS) {
 }
 for (const [index, part] of CEILING_IDS.entries()) {
   const z = 1.2 - index * 1.2;
-  place([-1.5, 2.14, z - 0.25], [0, 1, 0], part, ROOF_IDS);
-  place([1.5, 2.14, z + 0.25], [0, 1, 0], part, ROOF_IDS);
-  if (index !== 1) place([0, 2.14, z], [0, 1, 0], part, ROOF_IDS);
+  if (index === 0) {
+    const after: PartId[] = [...ROOF_IDS, "window-upper-left", "window-upper-right", "blind-upper-left", "blind-upper-right"];
+    place([-1.5, 1.985, 1.45], [0, -1, 0], part, after);
+    place([1.5, 1.985, 1.45], [0, -1, 0], part, after);
+  } else {
+    place([-1.5, 2.14, z - .25], [0, 1, 0], part, ROOF_IDS);
+    place([1.5, 2.14, z + .25], [0, 1, 0], part, ROOF_IDS);
+  }
 }
 for (const part of PARTITION_IDS) {
   const upper = part.includes("upper"), side = part.endsWith("left") ? -1 : 1;
@@ -224,9 +230,22 @@ for (const { id, bay, side, story, bottom, z } of INTERIOR_DOORS) {
 const [baubleX, baubleY, baubleZ] = PART_PIVOTS["roof-bauble"];
 place([baubleX, baubleY + 0.238, baubleZ], [0, 1, 0], "roof-bauble");
 for (const { id, story, position, normal } of FURNISHING_MOUNTS) {
-  place(position, normal, id, story === "upper" ? [...ROOF_IDS, ...CEILING_IDS] : floors);
+  const windowCover = id.startsWith("blind-") ? [id.replace("blind-", "window-") as PartId] : null;
+  place(windowCover ? [position[0], position[1] - .165, 1.735] : position, windowCover ? [0, 0, 1] : normal, id, windowCover ?? (story === "upper" ? [...ROOF_IDS, ...CEILING_IDS] : floors));
 }
-export const DEMO_LEVEL: Screw[] = placements.map((placement, index) => ({ ...placement, solutionAfter: placement.solutionAfter ? [...placement.solutionAfter] : undefined,
-  obstructedBy: findScrewObstructions(placement, SCREW_SCALE), id: `screw-${index + 1}`,
+// Keep every assembly, favor covered heads and inward/underside fixings.
+const candidates = placements.map((placement) => ({ ...placement,
+  obstructedBy: findScrewObstructions(placement, SCREW_SCALE),
+}));
+const revealHeads = new Set<Placement>();
+for (const cover of [...FURNISHING_MOUNTS.map(({ id }) => id), "bedroom-rug", "study-rug", "reading-chair", "bookcase", "hall-runner", "sideboard"] as PartId[]) {
+  const hidden = candidates.find((mount) => /^(floor|ground|wall)-/.test(mount.attachedTo) && mount.obstructedBy.includes(cover));
+  if (hidden) revealHeads.add(hidden);
+}
+const budgeted = budgetFasteners(candidates, 240, (mount) => (revealHeads.has(mount) || mount.normal[1] < 0 ? 200 : 0) +
+  (mount.obstructedBy.length ? 100 : 0) + (mount.normal[1] < 0 ? 35 : mount.normal[1] < .9 ? 20 : 0) +
+  (/^(wall-|roof-|ceiling-|partition-|interior-door)/.test(mount.attachedTo) ? 15 : 0));
+export const DEMO_LEVEL: Screw[] = budgeted.map((placement, index) => ({ ...placement, solutionAfter: placement.solutionAfter ? [...placement.solutionAfter] : undefined,
+  id: `screw-${index + 1}`,
   // Quotas are whole triples; actual positions receive verified randomized colors.
   color: SCREW_COLOR_ORDER[Math.floor(index / 3) % SCREW_COLOR_ORDER.length], removed: false }));

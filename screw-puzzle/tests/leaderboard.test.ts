@@ -28,9 +28,9 @@ test("solo records validate saved data, rank the fastest ten, and recover from a
   recordSoloTime(1900);
   assert.deepEqual(readSoloTimes().slice(0, 3).map(({ elapsedMs }) => elapsedMs), [1500, 1900, 2000]);
   assert.equal(JSON.parse(saved.get(SOLO_TIMES_KEY)!).length, 10);
-  assert.equal(readSoloTimes("titanic").length, 0);
-  recordSoloTime(24_000, "titanic");
-  assert.equal(readSoloTimes("titanic")[0].elapsedMs, 24_000);
+  assert.equal(readSoloTimes("campsite").length, 0);
+  recordSoloTime(24_000, "campsite");
+  assert.equal(readSoloTimes("campsite")[0].elapsedMs, 24_000);
   assert.equal(readSoloTimes("cottage")[0].elapsedMs, 1500);
   saved.set(SOLO_TIMES_KEY, "{malformed");
   assert.equal(readSoloTimes()[0].elapsedMs, 1500);

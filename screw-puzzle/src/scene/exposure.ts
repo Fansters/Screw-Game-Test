@@ -1,14 +1,15 @@
 import { DoubleSide, Mesh, MeshBasicMaterial, Raycaster, Vector3 } from "three";
 import type { GameState } from "../game/types.ts";
+import type { LevelId } from "../game/types.ts";
 import { isScrewAccessible } from "../game/rules.ts";
 import { SCREW_SCALE } from "../game/levels.ts";
-import { PIECES } from "./houseModel.ts";
+import { LEVEL_MODELS } from "./levelModels.ts";
 import { geometryFor } from "./geometry.ts";
 
 // An orbit-wide difficulty audit, not a gameplay lock. Colors never affect it.
-export function findExposedScrews(game: GameState): string[] {
+export function findExposedScrews(game: GameState, level: LevelId = "cottage"): string[] {
   const material = new MeshBasicMaterial({ side: DoubleSide });
-  const meshes = PIECES.filter((piece) => !game.removedParts.includes(piece.part)).map((piece) => {
+  const meshes = LEVEL_MODELS[level].pieces.filter((piece) => !game.removedParts.includes(piece.part)).map((piece) => {
     const mesh = new Mesh(geometryFor(piece), material);
     mesh.position.set(...piece.position); mesh.scale.set(...piece.size);
     if (piece.rotation) mesh.rotation.set(...piece.rotation);

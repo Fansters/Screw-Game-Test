@@ -3,9 +3,9 @@ import { SCREW_COLORS } from "../game/colors";
 import { BONUS_SLOT, MATCH_SIZE, TRAY_CAPACITY } from "../game/rules";
 import type { CollectionState, MatchBox } from "../game/types";
 import type { PlaybackFrame } from "../animation/sequence";
-export default function GameUI({ game, frame, lifelines, canBoost, onBoost, ping, completedLifeline }: {
+export default function GameUI({ game, frame, lifelines, canBoost, onBoost, ping, completedLifeline, waitingCount = game.tray.length }: {
   game: CollectionState; frame: PlaybackFrame<CollectionState> | null;
-  lifelines: number; canBoost: boolean; onBoost: () => void; ping?: ReactNode; completedLifeline?: MatchBox;
+  waitingCount?: number; lifelines: number; canBoost: boolean; onBoost: () => void; ping?: ReactNode; completedLifeline?: MatchBox;
 }) {
   const boxes = completedLifeline && !game.boxes[BONUS_SLOT] ? [...game.boxes, completedLifeline] : game.boxes;
   const boosted = Boolean(boxes[BONUS_SLOT]);
@@ -30,7 +30,7 @@ export default function GameUI({ game, frame, lifelines, canBoost, onBoost, ping
           </section>;
         })}
       </div>
-      <ol className="tray" aria-label="Five free screw slots">{Array.from({ length: TRAY_CAPACITY }, (_, index) => {
+      <ol className={`tray${waitingCount >= TRAY_CAPACITY - 1 ? " tray-warning" : ""}`} aria-label="Five free screw slots">{Array.from({ length: TRAY_CAPACITY }, (_, index) => {
         const entry = game.tray[index];
         const appearance = entry ? SCREW_COLORS[entry.color] : null;
         const flying = frame?.kind === "fly" && frame.from?.kind === "tray" && frame.from.index === index;
@@ -41,6 +41,7 @@ export default function GameUI({ game, frame, lifelines, canBoost, onBoost, ping
           </span>
         </li>;
       })}</ol>
+      {waitingCount === TRAY_CAPACITY - 1 && <span className="sr-only" role="status">One free slot remaining</span>}
     </aside>
     <div className="game-dock">
       <button className="lifeline-button icon-button" onClick={onBoost} disabled={!canBoost}

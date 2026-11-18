@@ -16,7 +16,7 @@ import { generateSoloPuzzle } from "./game/soloLevels";
 import { createRun, currentFrame, elapsedRunTime, runReducer } from "./animation/run";
 import { canOpenBonusBox } from "./game/rules";
 import { recordSoloTime } from "./game/leaderboard";
-import { recordLevelClear } from "./game/campaign";
+import { CAMPAIGN_LEVELS, recordLevelClear } from "./game/campaign";
 import type { LevelId } from "./game/campaign";
 import { clearSoloSave, readSoloSave, restoreSoloSave, writeSoloSave } from "./game/soloSave";
 import "./App.css";
@@ -29,15 +29,17 @@ function initialRun() { const puzzle = freshPuzzle(); return createRun(puzzle.st
 
 export default function App() {
   const [online, setOnline] = useState(() => new URLSearchParams(location.search).has("room"));
-  return online ? <OnlineGame onBack={() => setOnline(false)} /> : <SoloGame onOnline={() => setOnline(true)} />;
+  const [showLevels, setShowLevels] = useState(false);
+  return online ? <OnlineGame onBack={(levels) => { setShowLevels(levels); setOnline(false); }} /> :
+    <SoloGame initialLevels={showLevels} onOnline={() => setOnline(true)} />;
 }
 
-function SoloGame({ onOnline }: { onOnline: () => void }) {
+function SoloGame({ onOnline, initialLevels }: { onOnline: () => void; initialLevels: boolean }) {
   const [run, dispatch] = useReducer(runReducer, undefined, initialRun);
   const [level, setLevel] = useState<LevelId>("cottage");
   const [arrival, setArrival] = useState<{ view: CameraView; round: number } | null>(null);
-  const [confirmReset, setConfirmReset] = useState(false);
-  const [levelsOpen, setLevelsOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState<"reset" | "leave" | null>(null);
+  const [levelsOpen, setLevelsOpen] = useState(initialLevels);
   const { play, muted, enable, toggle } = useGameAudio(run.started);
   const lastSoundMove = useRef({ round: run.round, count: 0 });
   const lastMatch = useRef("");
@@ -45,7 +47,7 @@ function SoloGame({ onOnline }: { onOnline: () => void }) {
   const cameraArrived = useCallback((view: CameraView, round: number) => setArrival({ view, round }), []);
   const view = run.started ? "house" : "title";
   const cameraReady = arrival?.view === view && arrival.round === run.round;
-  const playable = run.started && run.ready && cameraReady && run.logical.status === "playing" && !confirmReset;
+  const playable = run.started && run.ready && cameraReady && run.logical.status === "playing" && !confirmation;
   const project = useRef<(id: string) => [number, number]>(() => [0, 0]);
   const getOrigin = useCallback((id: string) => project.current(id), []);
   const sceneReady = useCallback((round: number) => dispatch({ type: "ready", round }), []);
@@ -116,7 +118,7 @@ function SoloGame({ onOnline }: { onOnline: () => void }) {
   }, [running]);
 
   function returnToTitle(openLevels = false) {
-    setConfirmReset(false);
+    setConfirmation(null);
     setLevelsOpen(openLevels);
     setLevel("cottage");
     const puzzle = freshPuzzle();
@@ -124,7 +126,9 @@ function SoloGame({ onOnline }: { onOnline: () => void }) {
   }
   function restart() {
     clearSoloSave(level);
-    returnToTitle();
+    setConfirmation(null);
+    const puzzle = freshPuzzle(level);
+    dispatch({ type: "reset", game: puzzle.state, seed: puzzle.seed, enter: true });
   }
   function startLevel(selected: LevelId) {
     setLevelsOpen(false);
@@ -151,21 +155,23 @@ function SoloGame({ onOnline }: { onOnline: () => void }) {
       releases={run.releases} onLooseDismiss={(part) => dispatch({ type: "dismiss", part, now: performance.now() })}
       view={view} onCameraArrive={cameraArrived} playable={playable} onReady={sceneReady} onScrewSelect={selectScrew}
       onBlockedScrew={() => play("blocked")} projectorRef={project} />
-    {run.started && cameraReady && <GameUI game={run.display} frame={frame}
+    {run.started && cameraReady && <GameUI game={run.display} frame={frame} waitingCount={run.logical.tray.length}
       lifelines={run.lifelines}
       canBoost={playable && bonusJob === null && run.lifelines > 0 && canOpenBonusBox(run.logical)}
       onBoost={() => dispatch({ type: "boost", now: performance.now() })} />}
-    {run.started && run.ready && <GameTimer key={run.round} startedAt={timerStartedAt} stoppedAt={timerStoppedAt}
+    {run.started && run.ready && <GameTimer level={level} key={run.round} startedAt={timerStartedAt} stoppedAt={timerStoppedAt}
       elapsedBefore={elapsedBefore} removed={removedCount} total={run.logical.screws.length} />}
     <TransferOverlay frame={frame} getOrigin={getOrigin} />
     <GameOverlay mode={chooseLevel ? null : mode} onStart={() => setLevelsOpen(true)} onRestart={restart}
-      onLevels={() => returnToTitle(true)} levelTitle={level === "titanic" ? "Titanic" : "The cottage"}
+      onLevels={() => returnToTitle(true)} levelTitle={CAMPAIGN_LEVELS.find(({ id }) => id === level)!.title}
       elapsedMs={elapsedOnWin ?? undefined} />
     {chooseLevel && <LevelSelect onBack={() => setLevelsOpen(false)} onSelect={startLevel} />}
     {mode === "start" && !levelsOpen && <div className="online-entry"><button className="room-button" onClick={onOnline}>Two-player game</button></div>}
-    <GameControls muted={muted} toggle={toggle} leaderboardLevel={level} onReset={run.started ? () => setConfirmReset(true) : undefined} />
-    {confirmReset && <ResetDialog onCancel={() => setConfirmReset(false)} onConfirm={restart}
-      onSave={running ? () => { saveProgress(); returnToTitle(true); } : undefined} />}
+    <GameControls muted={muted} toggle={toggle} leaderboardLevel={level} onReset={run.started ? () => setConfirmation("reset") : undefined}
+      onLeave={run.started ? () => setConfirmation("leave") : undefined} />
+    {confirmation && <ResetDialog action={confirmation} onCancel={() => setConfirmation(null)}
+      onConfirm={confirmation === "reset" ? restart : () => { saveProgress(); returnToTitle(); }}
+      onLevels={confirmation === "leave" ? () => { saveProgress(); returnToTitle(true); } : undefined} />}
     <DesktopCursor />
   </div>;
 }

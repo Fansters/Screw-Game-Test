@@ -3,6 +3,18 @@
 > Repository instructions for Codex. Keep this file in the **repository root**.
 > This is a living document: the project owner may edit any decision below.
 
+## Current release rules (0.1.11; supersede older counts and reset behavior below)
+
+- Playable campaign: Christmas Cottage (Level 1), Lakeside Camp (Level 2), and Route 66 Gas Stop (Level 3), **240 screws each**. New levels must stay between 200 and 240, using whole triples. Titanic source is archived and cannot be selected or created on the room server.
+- All three campaign levels are immediately selectable in solo and co-op, with no completion gate. Loose objects begin their automatic poof exactly 1,000 ms after their last screw releases them; manual dismissal can still clear them sooner.
+- Preserve all removable owners when reducing fixings. Keep meaningful cover chains, interior/edge/side/underside positions, and verified geometric viewing paths. Cottage opening: 23/240; campsite: 27/240.
+- Reset confirms **Reset / Keep playing**, then starts a fresh round of the same level directly. Co-op reset is leader-only and waits for both scenes to become ready; old-round events are ignored.
+- A separate exit icon confirms **Home / Level select / Keep playing**. Solo exits save progress; co-op exits leave the room and the remaining player can continue.
+- Current-layout checkpoints and local rankings use v2 keys. Retain previous clear records for completion badges; never replay old move IDs on the new layouts.
+- Room layout/protocol version is 17. Publish matching frontend and room-server revisions together.
+- Route 66 has 138 detachable owners. Follow the supplied warm desert gas-station scene, with natural covers and side/interior/underside fixings. Regenerate static clearance/exposure with `node tools/audit_desert.ts` after geometry or fixing edits. Tests compare this data against actual meshes and check complete viewing paths.
+- At four waiting screws, pulse all five borders red from logical inventory; use static red for reduced motion. Show the current campaign level bottom right on every device, with co-op scores above it.
+
 ## 1. Project mission
 
 Build a **small, fun, single-player 3D screw-removal puzzle that runs in a web browser**. Players orbit a house, select colored screws, fill two active matching boxes, and use five waiting slots for colors without an active box.
@@ -97,6 +109,7 @@ Current sources of truth: `src/game/types.ts`, `levels.ts`, `rules.ts`, `randomi
 
 ## 5. 3D and interaction conventions
 
+- On phones and tablets, collapse the corner controls under a hamburger that transforms into a cross. Stagger the controls downward on opening and upward in reverse order on closing. Honor reduced-motion preferences and keep hidden controls out of touch and keyboard navigation.
 - Use `<Canvas>` from React Three Fiber for the scene.
 - Favor compact, roughly cube- or sphere-shaped level volumes that fit a phone screen comfortably. Preserve recognizable features when adapting long subjects like ships.
 - Use Three.js `OrbitControls` with **`enableDamping={false}`** so motion stops immediately on release. Preserve tablet touch rotation tuning in `CameraRig.tsx`.
@@ -235,7 +248,9 @@ More levels and deployment remain deferred. Mobile behavior is now in scope; bro
 
 The Node.js room server uses WebSockets and holds the shared puzzle, matching boxes, waiting slots, lifelines and stopwatch. Each player controls their own camera. Both players can select screws, and only the leader can start, reset or spend a lifeline.
 
-The leader selects an unlocked level when creating a room and can change it in the lobby. Invitations join that selected level regardless of the guest's local unlocks. The server stores the level in every snapshot and uses its screw template and physics world. Changing the level increments the round and waits for both scenes to finish loading before Start.
+The leader selects any level when creating a room and can change it in the lobby. Invitations join that selected level regardless of the guest's local unlocks. The server stores the level in every snapshot and uses its screw template and physics world. Changing the level increments the round and waits for both scenes to finish loading before Start.
+
+The campaign proceeds through Christmas Cottage and Lakeside Camp. Lakeside Camp has 240 screws and 197 removable assemblies. Its campsite combines terrain, tent, camper, picnic furniture, forest and lake. Keep its fixings varied across side faces, edges, interiors and undersides. Verify physical viewing paths alongside the color solution when changing layers.
 
 An invite opens the second seat. Each tab stores its own seat token for refresh and reconnect. A disconnected seat is held for 30 seconds, pausing play and the stopwatch. Explicit departure or seat expiry lets the remaining player continue and transfers leadership if needed.
 

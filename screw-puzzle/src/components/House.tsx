@@ -76,6 +76,8 @@ export default function House({ level, removedParts, fallingParts, fadedPart, ou
       faded={part === fadedPart} outlined={part === outlinedPart} readPhysics={readPhysics} looseNow={looseNow} onFallFinished={onFallFinished}>
       {batchesByPart.get(part)!.map((batch) => <mesh key={`${batch.color}:${batch.smooth}`} geometry={batch.geometry}>
         <meshStandardMaterial color={batch.color} roughness={part.startsWith("ship-water-") ? 0.24 : 0.8}
+          emissive={part.startsWith("desert-") && batch.color === "#ffc546" ? "#eaa22d" : part === "camp-campfire" ? "#d96212" : /^camp-(lantern-|stump-lantern)/.test(part) && batch.color === "#f9d47a" ? "#b78424" : "#000000"}
+          emissiveIntensity={.25}
           flatShading={!batch.smooth} vertexColors={batch.smooth} />
       </mesh>)}
     </FallingPart>)}

@@ -1,3 +1,6 @@
+import { DESERT_BLOCKERS, DESERT_EXPOSED_IDS } from "../scene/desertAudit.ts";
+import { DESERT_MOUNTS } from "../scene/desertModel.ts";
+import { budgetFasteners } from "./fastenerBudget.ts";
 import type { LevelId } from "./types.ts";
 import { DEMO_LEVEL, SCREW_SCALE } from "./levels.ts";
 import { generatePuzzle, PuzzleColorsUnavailable } from "./randomize.ts";
@@ -5,10 +8,30 @@ import { SCREW_COLOR_ORDER } from "./types.ts";
 import type { Screw } from "./types.ts";
 import { findScrewObstructions } from "../scene/obstructions.ts";
 import { TITANIC_MOUNTS } from "../scene/titanicModel.ts";
+import { CAMPSITE_MOUNTS } from "../scene/campsiteModel.ts";
+import { findExposedScrews } from "../scene/exposure.ts";
+import { createInitialState } from "./rules.ts";
 
 let titanic: Screw[] | undefined;
+let campsite: Screw[] | undefined;
+let desert: Screw[] | undefined;
+const desertOpening = new Set<string>(DESERT_EXPOSED_IDS);
+let campsiteOpening: ReadonlySet<string> | undefined;
 export function soloLevelTemplate(level: LevelId): readonly Screw[] {
   if (level === "cottage") return DEMO_LEVEL;
+  if (level === "desert") return desert ??= DESERT_MOUNTS.map((mount, index) => ({
+    ...mount, id: `desert-${index + 1}`, removed: false,
+    color: SCREW_COLOR_ORDER[Math.floor(index / 3) % SCREW_COLOR_ORDER.length],
+    obstructedBy: [...DESERT_BLOCKERS[index]],
+  }));
+  if (level === "campsite") return campsite ??= budgetFasteners(CAMPSITE_MOUNTS.map((mount) => ({
+    ...mount, obstructedBy: findScrewObstructions(mount, SCREW_SCALE),
+  })), 240, (mount) => (mount.obstructedBy.length ? 100 : 0) +
+    (mount.normal[1] < 0 ? 35 : mount.normal[1] < .9 ? 20 : 0) +
+    (/^camp-(tent-|van-|meadow|foundation|dock-deck|boat)/.test(mount.attachedTo) ? 15 : 0)).map((mount, index) => ({
+    ...mount, id: `campsite-${index + 1}`, removed: false,
+    color: SCREW_COLOR_ORDER[Math.floor(index / 3) % SCREW_COLOR_ORDER.length],
+  }));
   return titanic ??= TITANIC_MOUNTS.map((mount, index) => ({
     ...mount, id: `titanic-${index + 1}`, removed: false,
     color: SCREW_COLOR_ORDER[Math.floor(index / 3) % SCREW_COLOR_ORDER.length],
@@ -16,16 +39,16 @@ export function soloLevelTemplate(level: LevelId): readonly Screw[] {
   }));
 }
 
-function generateTitanicPuzzle(seed: number, template: readonly Screw[]) {
+function generateLayeredPuzzle(seed: number, template: readonly Screw[], opening?: ReadonlySet<string>) {
   for (const candidate of [seed, (seed ^ 0x9e3779b9) >>> 0]) {
     try {
-      return generatePuzzle(candidate, template, true);
+      return generatePuzzle(candidate, template, true, opening);
     } catch (error) {
       if (!(error instanceof PuzzleColorsUnavailable)) throw error;
     }
   }
   // A verified layout is the last resort if the randomized assignments are exhausted.
-  return generatePuzzle(245, template, true);
+  return generatePuzzle(245, template, true, opening);
 }
 
 // Seed-only v1 checkpoints need the original generation inputs to reproduce
@@ -42,7 +65,14 @@ for (let bay = 1; bay <= 8; bay += 1) {
 export function generateSoloPuzzle(level: LevelId, seed: number, legacyTitanicLayout = false) {
   const template = soloLevelTemplate(level);
   if (level === "cottage") return generatePuzzle(seed, template);
-  if (!legacyTitanicLayout) return generateTitanicPuzzle(seed, template);
+  if (level === "desert") {
+    return generateLayeredPuzzle(seed, template, desertOpening);
+  }
+  if (level === "campsite") {
+    campsiteOpening ??= new Set(findExposedScrews(createInitialState(template), "campsite"));
+    return generateLayeredPuzzle(seed, template, campsiteOpening);
+  }
+  if (!legacyTitanicLayout) return generateLayeredPuzzle(seed, template);
   const original = template.map((screw) => {
     const fixing = originalWaterFixings.get(screw.id);
     if (fixing) return { ...screw, ...fixing };
@@ -50,7 +80,7 @@ export function generateSoloPuzzle(level: LevelId, seed: number, legacyTitanicLa
       ...screw, obstructedBy: screw.obstructedBy?.filter((part) => !part.startsWith("ship-lifeboat-")),
     } : screw;
   });
-  const puzzle = generateTitanicPuzzle(seed, original);
+  const puzzle = generateLayeredPuzzle(seed, original);
   const screws = puzzle.state.screws.map(({ color }, index) => ({ ...template[index], color }));
   return { ...puzzle, state: { ...puzzle.state, screws } };
 }

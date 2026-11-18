@@ -4,7 +4,8 @@ export type { LevelId } from "./types.ts";
 
 export const CAMPAIGN_LEVELS = [
   { id: "cottage", title: "Christmas Cottage", available: true },
-  { id: "titanic", title: "Titanic", available: true },
+  { id: "campsite", title: "Lakeside Camp", available: true },
+  { id: "desert", title: "Route 66 Gas Stop", available: true },
 ] as const;
 
 const cleared = new Set<LevelId>();
@@ -22,12 +23,16 @@ export function readLevelProgress(): ReadonlySet<LevelId> {
       if (window.localStorage.getItem(clearKey(id)) === "1") completed.add(id);
     }
   } catch { /* Keep progress for the current visit. */ }
+  // Earlier layouts' times still prove progression, but are not ranked against 240-screw runs.
+  try {
+    const previous: unknown = JSON.parse(window.localStorage.getItem("screw-it:solo-times:cottage:v1") ?? "[]");
+    if (Array.isArray(previous) && previous.some((time) => time && typeof time.elapsedMs === "number" && time.elapsedMs > 0)) completed.add("cottage");
+  } catch { /* Old progress is optional. */ }
   // Personal times from before the level picker also prove a Cottage win.
   if (!completed.has("cottage") && readSoloTimes().length > 0) completed.add("cottage");
   return completed;
 }
 
-export function levelStatus(index: number, completed: ReadonlySet<LevelId>) {
-  if (!CAMPAIGN_LEVELS.slice(0, index).every(({ id }) => completed.has(id))) return "locked";
+export function levelStatus(index: number) {
   return CAMPAIGN_LEVELS[index]?.available ? "playable" : "coming-soon";
 }

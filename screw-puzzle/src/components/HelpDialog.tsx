@@ -2,7 +2,7 @@ import type { ReactNode, RefObject } from "react";
 import { LIFELINE_COUNT } from "../animation/run";
 import { MATCH_SIZE, TRAY_CAPACITY } from "../game/rules";
 
-const GAME_VERSION = "0.1.7";
+const GAME_VERSION = "0.1.11";
 
 const icons = {
   match: <><rect x="3" y="3" width="18" height="18" rx="4" /><path d="M12 8h.01M8 15h.01M16 15h.01" strokeWidth="3.5" /></>,

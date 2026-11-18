@@ -39,7 +39,7 @@ function canStart(room: Room) {
     room.seats.every((seat) => seat.peer && seat.ready);
 }
 function paused(room: Room) {
-  return room.seats.some((seat) => !seat.peer);
+  return room.seats.some((seat) => !seat.peer || (room.startedAt !== null && !seat.ready));
 }
 function stopClock(room: Room, now: number) {
   if (room.clockSince === null) return;
@@ -139,14 +139,14 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
       for (const seat of room.seats) if (seat.reconnectBy !== null && seat.reconnectBy <= time) removeSeat(room, seat);
     }
   }
-  function resetRound(room: Room, level = room.level) {
+  function resetRound(room: Room, level = room.level, restart = false) {
     const puzzle = generateSoloPuzzle(level, nextSeed());
     room.physics?.free();
     room.level = level;
     room.seed = puzzle.seed;
     room.game = puzzle.state;
     room.round += 1;
-    room.startedAt = null;
+    room.startedAt = restart ? now() : null;
     room.lifelines = LIFELINE_COUNT;
     room.fallStarts.clear();
     room.physics = undefined;
@@ -214,7 +214,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     }
     if (command.type === "reset") {
       if (room.startedAt === null) return;
-      resetRound(room);
+      resetRound(room, room.level, !command.lobby);
       return;
     }
     if (command.type === "start") {

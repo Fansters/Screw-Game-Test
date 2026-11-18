@@ -61,8 +61,9 @@ export class PuzzleColorsUnavailable extends Error {}
 
 // Construct a solution first; color it using only the two currently active boxes.
 // This gives true spatial mixing and a proof of solvability instead of blind shuffling.
-export function generatePuzzle(seed: number, template: readonly Screw[] = DEMO_LEVEL, preferLayeredPeel = false): GeneratedPuzzle {
-  const opening = new Set(template.filter((screw) => !screw.obstructedBy?.length && !screw.solutionAfter?.length).map((screw) => screw.id));
+export function generatePuzzle(seed: number, template: readonly Screw[] = DEMO_LEVEL, preferLayeredPeel = false,
+  exposedHeads?: ReadonlySet<string>): GeneratedPuzzle {
+  const opening = exposedHeads ?? new Set(template.filter((screw) => !screw.obstructedBy?.length && !screw.solutionAfter?.length).map((screw) => screw.id));
   const counts = ownerCounts(template);
   const blockers = new Set(template.flatMap((screw) => [...(screw.solutionAfter ?? []), ...(screw.obstructedBy ?? [])]));
   const exposedSingles = new Map(template.filter((screw) => opening.has(screw.id) && counts.get(screw.attachedTo) === 1)

@@ -6,7 +6,7 @@ import type { Vector } from "./houseModel.ts";
 import { findScrewObstructions } from "./obstructions.ts";
 import { SCREW_PULL_DISTANCE } from "./screwDimensions.ts";
 
-export const LOOSE_LIFETIME_MS = 2000;
+export const LOOSE_LIFETIME_MS = 1000;
 export const SMOKE_DURATION_MS = 560;
 export const OFF_MAP = -5.5;
 export const POSE_HISTORY_MS = 250;

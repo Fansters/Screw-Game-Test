@@ -2,7 +2,7 @@ import type { CollectionState, GameState, LevelId, MatchBox, MoveEvent, PartId, 
 import type { LooseParts } from "../scene/loosePhysics.ts";
 
 // Both peers use the same ordered screw IDs and part geometry.
-export const ROOM_LEVEL_VERSION = 13;
+export const ROOM_LEVEL_VERSION = 17;
 export const ROOM_PHYSICS_DELAY_MS = 62.5;
 export const ROOM_VERSION_MESSAGE = "The room and game versions differ. Refresh the game, or wait for the server update to finish.";
 export const COMPLETED_LIFELINE_MS = 320;
@@ -37,7 +37,8 @@ export type RoomCommand =
   | { type: "join"; room: string; token?: string; levelVersion?: number }
   | { type: "clock"; sentAt: number }
   | { type: "leave" }
-  | { type: "ready" | "start" | "reset" | "boost"; round: number }
+  | { type: "ready" | "start" | "boost"; round: number }
+  | { type: "reset"; round: number; lobby?: boolean }
   | { type: "level"; round: number; level: LevelId }
   | { type: "dismiss"; round: number; part: PartId }
   | { type: "select" | "ping"; round: number; screw: string };

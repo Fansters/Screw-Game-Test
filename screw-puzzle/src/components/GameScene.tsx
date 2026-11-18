@@ -11,6 +11,7 @@ import { pickSceneTarget } from "../scene/picking";
 import { createScrewGestures } from "../scene/screwGestures";
 import { isScrewAccessible } from "../game/rules";
 import House from "./House";
+import CampsiteAmbience from "./CampsiteAmbience";
 import ScrewField from "./ScrewField";
 import FloatingTitle from "./FloatingTitle";
 import CameraRig from "./CameraRig";
@@ -217,11 +218,12 @@ function SceneContents({ level = "cottage", logical, fallingParts, round, playab
     <PerspectiveCamera makeDefault position={TITLE_CAMERA} fov={42} near={0.1} far={65} zoom={Math.min(1, size.width / size.height / (level === "titanic" ? 1.12 : 0.85))} />
     <ambientLight intensity={0.8} /><hemisphereLight args={["#fff5df", "#91aab4", 1.25]} />
     <directionalLight position={[5, 10, 7]} intensity={2.2} /><directionalLight position={[-6, 5, -5]} intensity={1.2} color="#d7eeff" />
-    {(level === "cottage" || view === "title") && <FloatingTitle menu={view === "title"} />}
+    {(level !== "titanic" || view === "title") && <FloatingTitle menu={view === "title"} />}
     <House key={`house-${round}`} level={level} removedParts={logical.removedParts} fallingParts={fallingParts}
       outlinedPart={outlinedPart} fadedPart={fadedPart} readPhysics={() => physicsFrame.current} looseNow={looseNow}
       onFallFinished={(part) => onFallFinished(part, round)} />
     <ScrewField key={`screws-${round}`} game={logical} wiggleRef={wiggle} />
+    {level === "campsite" && <CampsiteAmbience removedParts={logical.removedParts} />}
     {pingScrew && <PingMarker key={pingSequence} screw={pingScrew} />}
     <CameraRig level={level} view={view} round={round} playable={orbitable ?? playable} onArrive={onCameraArrive} />
   </>;

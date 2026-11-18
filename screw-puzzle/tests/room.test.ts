@@ -50,13 +50,13 @@ test("the leader chooses a shared level and switching waits for both scenes to l
   t.after(close);
   leader.send({ type: "ready", round: 0 });
   guest.send({ type: "ready", round: 0 });
-  guest.send({ type: "level", round: 0, level: "titanic" });
+  guest.send({ type: "level", round: 0, level: "campsite" });
   assert.equal(guest.notices.at(-1)?.type, "rejected");
   assert.equal(leader.state().level, "cottage");
-  leader.send({ type: "level", round: 0, level: "titanic" });
-  assert.equal(guest.state().level, "titanic");
+  leader.send({ type: "level", round: 0, level: "campsite" });
+  assert.equal(guest.state().level, "campsite");
   assert.equal(guest.state().round, 1);
-  assert.equal(guest.state().game.colors.length, 312);
+  assert.equal(guest.state().game.colors.length, 240);
   assert.equal(guest.state().canStart, false);
   assert.ok(guest.state().players.every((seat) => !seat.ready));
   guest.send({ type: "ready", round: 0 });
@@ -69,30 +69,30 @@ test("the leader chooses a shared level and switching waits for both scenes to l
   assert.equal(guest.state().started, true);
   leader.send({ type: "level", round: 1, level: "cottage" });
   assert.equal(leader.notices.at(-1)?.type, "rejected");
-  assert.equal(leader.state().level, "titanic");
-  leader.send({ type: "reset", round: 1 });
-  assert.equal(guest.state().level, "titanic");
+  assert.equal(leader.state().level, "campsite");
+  leader.send({ type: "reset", round: 1, lobby: true });
+  assert.equal(guest.state().level, "campsite");
   assert.equal(guest.state().round, 2);
   leader.send({ type: "level", round: 1, level: "cottage" });
-  assert.equal(guest.state().level, "titanic");
+  assert.equal(guest.state().level, "campsite");
 
   guest.disconnect();
   const refreshed = makePeer();
   refreshed.send({ type: "join", room, token: guest.seat().token, levelVersion: ROOM_LEVEL_VERSION });
-  assert.equal(refreshed.state().level, "titanic");
+  assert.equal(refreshed.state().level, "campsite");
   assert.deepEqual(refreshed.state(), leader.state());
   leader.send({ type: "level", round: 2, level: "cottage" });
   assert.equal(refreshed.state().level, "cottage");
-  assert.equal(refreshed.state().game.colors.length, 300);
+  assert.equal(refreshed.state().game.colors.length, 240);
   assert.deepEqual(refreshed.state().looseParts, {});
 });
 
-test("both seats finish Titanic with shared water physics, pings, duplicate protection and reset", (t) => {
-  const { leader, guest, close, advance } = fixture(245, "titanic");
+test("both seats finish the campsite with shared physics, pings, duplicate protection and reset", (t) => {
+  const { leader, guest, close, advance } = fixture(245, "campsite");
   t.after(close);
   const initial = leader.state();
-  assert.equal(initial.level, "titanic");
-  const { solution } = generateSoloPuzzle("titanic", initial.seed);
+  assert.equal(initial.level, "campsite");
+  const { solution } = generateSoloPuzzle("campsite", initial.seed);
   const first = solution[0];
   leader.send({ type: "ping", round: 0, screw: first });
   assert.deepEqual(guest.notices.at(-1), { type: "ping", round: 0, screw: first, player: leader.seat().player });
@@ -113,14 +113,33 @@ test("both seats finish Titanic with shared water physics, pings, duplicate prot
     advance(ROOM_PHYSICS_DELAY_MS + LOOSE_LIFETIME_MS);
   }
   assert.equal(guest.state().game.status, "won");
-  assert.equal(guest.state().game.removed.length, soloLevelTemplate("titanic").length);
+  assert.equal(guest.state().game.removed.length, soloLevelTemplate("campsite").length);
   assert.equal(guest.state().clockRunning, false);
-  assert.equal(guest.state().players.reduce((sum, seat) => sum + seat.collected, 0), 312);
+  assert.equal(guest.state().players.reduce((sum, seat) => sum + seat.collected, 0), 240);
   leader.send({ type: "reset", round: 0 });
-  assert.equal(guest.state().level, "titanic");
+  assert.equal(guest.state().level, "campsite");
   assert.equal(guest.state().round, 1);
   assert.equal(guest.state().game.removed.length, 0);
   assert.deepEqual(guest.state().looseParts, {});
+});
+
+test("both players finish the campsite and can select a different level afterward", (t) => {
+  const { leader, guest, close, advance } = fixture(245, "campsite");
+  t.after(close);
+  assert.equal(leader.state().level, "campsite");
+  const { solution } = generateSoloPuzzle("campsite", leader.state().seed);
+  for (const [index, screw] of solution.entries()) {
+    (index % 2 ? guest : leader).send({ type: "select", round: 0, screw });
+    assert.equal(guest.state().game.removed.length, index + 1, screw);
+    advance(LOOSE_LIFETIME_MS + ROOM_PHYSICS_DELAY_MS + 10);
+  }
+  assert.equal(guest.state().game.status, "won");
+  assert.equal(leader.state().game.removed.length, 240);
+  assert.deepEqual(leader.state(), guest.state());
+  leader.send({ type: "reset", round: 0, lobby: true });
+  leader.send({ type: "level", round: 1, level: "campsite" });
+  assert.equal(guest.state().level, "campsite");
+  assert.equal(guest.state().game.colors.length, 240);
 });
 
 test("both players use one puzzle, while only its leader can spend a lifeline or reset", () => {
@@ -351,4 +370,67 @@ test("both seats interpolate the same compact pose stream, including after a rec
   refreshed.send({ type: "join", room, token: invite.token, levelVersion: ROOM_LEVEL_VERSION });
   assert.equal(refreshed.seat().snapshot.looseParts[part], undefined);
   assert.ok(refreshed.seat().snapshot.game.removedParts.includes(part));
+});
+
+test("reset restarts in place, waits for both scenes, and rejects old round inputs", (t) => {
+  const { leader, guest, close } = fixture(245, "campsite");
+  t.after(close);
+  leader.send({ type: "boost", round: 0 });
+  leader.send({ type: "reset", round: 0 });
+  assert.equal(guest.state().started, true);
+  assert.equal(guest.state().paused, true);
+  assert.equal(guest.state().round, 1);
+  assert.equal(guest.state().level, "campsite");
+  assert.equal(guest.state().game.colors.length, 240);
+  assert.equal(guest.state().lifelines, 3);
+  assert.equal(guest.state().elapsedMs, 0);
+  const first = generateSoloPuzzle("campsite", leader.state().seed).solution[0];
+  leader.send({ type: "select", round: 0, screw: first });
+  leader.send({ type: "select", round: 1, screw: first });
+  assert.equal(guest.state().game.removed.length, 0);
+  leader.send({ type: "ready", round: 1 });
+  leader.send({ type: "select", round: 1, screw: first });
+  assert.equal(guest.state().game.removed.length, 0);
+  guest.send({ type: "ready", round: 1 });
+  assert.equal(guest.state().paused, false);
+  guest.send({ type: "select", round: 1, screw: first });
+  assert.equal(guest.state().game.removed.length, 1);
+  assert.deepEqual(leader.state(), guest.state());
+});
+
+test("the archived ship cannot be created or selected in a room", (t) => {
+  const { leader, close, makePeer } = fixture(245, "cottage", false);
+  t.after(close);
+  const other = makePeer();
+  other.send({ type: "create", levelVersion: ROOM_LEVEL_VERSION, level: "titanic" });
+  assert.equal(other.notices.at(-1)?.type, "rejected");
+  leader.send({ type: "level", round: 0, level: "titanic" });
+  assert.equal(leader.notices.at(-1)?.type, "rejected");
+  assert.equal(leader.state().level, "cottage");
+});
+
+test("both seats select, refresh, solve and restart Route 66 with one shared level", (t) => {
+  const { leader, guest, room, makePeer, close, advance } = fixture(245, "desert");
+  t.after(close);
+  const initial = leader.state();
+  assert.equal(initial.game.colors.length, 240);
+  const { solution } = generateSoloPuzzle("desert", initial.seed);
+  const token = guest.seat().token;
+  guest.disconnect();
+  const refreshed = makePeer();
+  refreshed.send({ type: "join", room, token, levelVersion: ROOM_LEVEL_VERSION });
+  assert.equal(refreshed.state().level, "desert");
+  for (const [index, screw] of solution.entries()) {
+    (index % 2 ? refreshed : leader).send({ type: "select", round: 0, screw });
+    assert.equal(leader.state().game.removed.length, index + 1, screw);
+    assert.deepEqual(leader.state(), refreshed.state());
+    advance(LOOSE_LIFETIME_MS + ROOM_PHYSICS_DELAY_MS + 10);
+  }
+  assert.equal(refreshed.state().game.status, "won");
+  assert.equal(refreshed.state().players.reduce((n, player) => n + player.collected, 0), 240);
+  leader.send({ type: "reset", round: 0 });
+  assert.equal(refreshed.state().started, true);
+  assert.equal(refreshed.state().level, "desert");
+  assert.equal(refreshed.state().game.removed.length, 0);
+  assert.equal(refreshed.state().paused, true);
 });

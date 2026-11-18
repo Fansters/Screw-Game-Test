@@ -37,6 +37,7 @@ function parseCommand(data: string): RoomCommand | null {
     case "ping":
     case "select":
       if (!("round" in value) || typeof value.round !== "number" || !Number.isSafeInteger(value.round)) break;
+      if (value.type === "reset") return { type: "reset", round: value.round, lobby: "lobby" in value && value.lobby === true };
       if (value.type === "level") {
         if ("level" in value && isLevelId(value.level)) return { type: "level", round: value.round, level: value.level };
         break;
@@ -46,7 +47,7 @@ function parseCommand(data: string): RoomCommand | null {
         break;
       }
       if (value.type !== "ping" && value.type !== "select") return { type: value.type, round: value.round };
-      if ("screw" in value && typeof value.screw === "string" && /^(screw|titanic)-\d{1,6}$/.test(value.screw)) {
+      if ("screw" in value && typeof value.screw === "string" && /^(screw|titanic|campsite|desert)-\d{1,6}$/.test(value.screw)) {
         return { type: value.type, round: value.round, screw: value.screw };
       }
   }

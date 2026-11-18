@@ -27,7 +27,7 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
     </header>
     <ol className="level-list">
       {CAMPAIGN_LEVELS.map(({ id, title }, index) => {
-        const status = levelStatus(index, completed);
+        const status = levelStatus(index);
         const playable = status === "playable";
         const { save, best } = details[index];
         const removed = save?.moves.filter((move) => move !== "boost").length ?? 0;
@@ -38,13 +38,12 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
             <span className="level-card-copy">
               <strong>{title}</strong>
               <span id={`level-${id}-status`}>
-                {status === "locked" ? `Clear level ${index} to unlock` :
-                  status === "coming-soon" ? "Coming soon" : save ? `Resume · ${removed} ${removed === 1 ? "screw" : "screws"} removed` :
+                {status === "coming-soon" ? "Coming soon" : save ? `Resume · ${removed} ${removed === 1 ? "screw" : "screws"} removed` :
                     completed.has(id) ? "Cleared · Play again" : "Ready to play"}
               </span>
               {playable && best && <span>Best {formatRunTime(best.elapsedMs, true)}</span>}
             </span>
-            <span className={`level-indicator ${playable ? "play" : status === "locked" ? "locked" : "pending"}`} aria-hidden="true" />
+            <span className={`level-indicator ${playable ? "play" : "pending"}`} aria-hidden="true" />
           </button>
         </li>;
       })}

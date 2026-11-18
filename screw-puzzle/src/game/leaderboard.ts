@@ -1,6 +1,6 @@
 import type { LevelId } from "./campaign.ts";
 
-const timesKey = (level: LevelId) => `screw-it:solo-times:${level}:v1`;
+const timesKey = (level: LevelId) => `screw-it:solo-times:${level}:v2`;
 export const SOLO_TIMES_KEY = timesKey("cottage");
 export const SOLO_TIMES_LIMIT = 10;
 

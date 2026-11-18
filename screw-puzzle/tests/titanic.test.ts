@@ -80,11 +80,11 @@ test("Titanic arms a separate physics world and releases water and a lifeboat", 
     physics.release("ship-water-bow", 1000);
     physics.advance(1250);
     assert.ok(physics.read()["ship-water-bow"]!.frames.at(-1)![2] < physics.read()["ship-water-bow"]!.frames[0][2]);
-    physics.advance(3050);
+    physics.advance(2050);
     const parts = physics.read();
     assert.equal(parts["planter-right"], undefined);
-    assert.equal(parts["ship-lifeboat-port-2"]?.poof?.at, 3000);
-    assert.equal(parts["ship-water-bow"]?.poof?.at, 3000);
+    assert.equal(parts["ship-lifeboat-port-2"]?.poof?.at, 2000);
+    assert.equal(parts["ship-water-bow"]?.poof?.at, 2000);
   } finally {
     physics.free();
   }

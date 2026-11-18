@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { levelStatus, readLevelProgress, recordLevelClear } from "../src/game/campaign.ts";
+import { CAMPAIGN_LEVELS, levelStatus, readLevelProgress, recordLevelClear } from "../src/game/campaign.ts";
 import { SOLO_TIMES_KEY } from "../src/game/leaderboard.ts";
 
-test("the level order gates Titanic and reads progress from Cottage wins and older personal times", (t) => {
+test("all three levels are playable immediately while completed runs retain their progress", (t) => {
   const saved = new Map<string, string>();
   Object.defineProperty(globalThis, "window", { configurable: true, value: {
     localStorage: {
@@ -12,12 +12,19 @@ test("the level order gates Titanic and reads progress from Cottage wins and old
     },
   } });
   t.after(() => Reflect.deleteProperty(globalThis, "window"));
-  assert.equal(levelStatus(0, readLevelProgress()), "playable");
-  assert.equal(levelStatus(1, readLevelProgress()), "locked");
+  assert.deepEqual(CAMPAIGN_LEVELS.map(({ id }) => id), ["cottage", "campsite", "desert"]);
+  assert.equal(levelStatus(0), "playable");
+  assert.equal(levelStatus(1), "playable");
+  assert.equal(levelStatus(2), "playable");
+  assert.equal(readLevelProgress().size, 0);
   saved.set(SOLO_TIMES_KEY, JSON.stringify([{ elapsedMs: 45678, completedAt: 12345 }]));
-  assert.equal(levelStatus(1, readLevelProgress()), "playable");
+  assert.equal(levelStatus(1), "playable");
+  assert.equal(levelStatus(2), "playable");
+  assert.ok(readLevelProgress().has("cottage"));
+  recordLevelClear("campsite");
+  assert.equal(levelStatus(2), "playable");
   saved.delete(SOLO_TIMES_KEY);
   recordLevelClear("cottage");
   assert.equal(saved.get("screw-it:cleared:cottage"), "1");
-  assert.equal(levelStatus(1, readLevelProgress()), "playable");
+  assert.equal(levelStatus(1), "playable");
 });

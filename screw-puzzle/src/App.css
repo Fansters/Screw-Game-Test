@@ -3,8 +3,27 @@
 .scene { position: absolute; inset: max(env(safe-area-inset-top), clamp(0px, calc(700px - 100dvh), 140px)) 0 env(safe-area-inset-bottom); background: transparent; }
 .scene canvas { cursor: grab; touch-action: none; }
 .part-preview { position: fixed; z-index: 7; translate: -50% -100%; width: max-content; padding: 6px 11px; border: 2px solid #ff244b; border-radius: 10px; background: #fff8ea; color: #9a243f; text-align: center; font-size: 13px; pointer-events: none; }
-.game-controls { position: absolute; z-index: 12; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); display: flex; gap: 7px; }
-.game-controls .icon-button { width: 44px; border-radius: 50%; }
+.game-controls { position: absolute; z-index: 12; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); display: flex; gap: 7px; pointer-events: none; }
+.game-controls .icon-button { width: 44px; border-radius: 50%; pointer-events: auto; }
+.control-actions { display: flex; gap: 7px; }
+.game-controls .controls-toggle { display: none; }
+.controls-toggle path { transform-box: fill-box; transform-origin: center; transition: transform 220ms ease, opacity 150ms ease; }
+.game-controls.expanded .controls-toggle path:first-child { transform: translateY(7px) rotate(45deg); }
+.game-controls.expanded .controls-toggle path:nth-child(2) { opacity: 0; transform: scaleX(.3); }
+.game-controls.expanded .controls-toggle path:last-child { transform: translateY(-7px) rotate(-45deg); }
+@media (max-width: 1024px), (pointer: coarse) {
+  .game-controls { flex-direction: column; }
+  .game-controls .controls-toggle { display: grid; }
+  .control-actions { flex-direction: column; }
+  .control-item { opacity: 0; transform: translateY(-17px) scale(.84); visibility: hidden; pointer-events: none;
+    transition: opacity 170ms ease, transform 220ms cubic-bezier(.2,.7,.25,1), visibility 0s linear;
+    transition-delay: calc(var(--control-reverse) * 38ms), calc(var(--control-reverse) * 38ms), calc(var(--control-reverse) * 38ms + 220ms); }
+  .expanded .control-item { opacity: 1; transform: none; visibility: visible; pointer-events: auto;
+    transition-delay: calc(var(--control-index) * 45ms), calc(var(--control-index) * 45ms), 0s; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .controls-toggle path, .control-item { transition: none; }
+}
 .game-controls .icon-button:disabled { opacity: .55; }
 .game-controls .icon-button:hover:not(:disabled) { background: #8c62bc; }
 .icon-button .mute-slash { paint-order: stroke; filter: drop-shadow(1px 1px #7651a8) drop-shadow(-1px -1px #7651a8); }
@@ -221,3 +240,13 @@
 @media (min-width: 1000px) {
   .room-status { top: max(24px, env(safe-area-inset-top)); }
 }
+
+/* Warn from authoritative inventory, even while earlier transfers are animating. */
+.tray-warning .free-socket { border-color: #ef354b; animation: tray-danger 950ms ease-in-out infinite; }
+@keyframes tray-danger {
+  0%, 100% { border-color: #f35a64; box-shadow: inset 0 3px #0002, 0 0 0 1px #ee294b40; }
+  50% { border-color: #d8133b; box-shadow: inset 0 3px #0002, 0 0 0 5px #ee294b32, 0 0 15px #ed305b70; }
+}
+.level-indicator-hud { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); z-index: 10; color: #7651a8; font-size: 16px; font-weight: 900; text-shadow: 0 2px #fff8ea; pointer-events: none; }
+.player-counts { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 38px); }
+@media (prefers-reduced-motion: reduce) { .tray-warning .free-socket { animation: none; box-shadow: 0 0 0 3px #ee294b35; } }

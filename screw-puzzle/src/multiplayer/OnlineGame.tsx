@@ -19,7 +19,7 @@ import { ROOM_PHYSICS_DELAY_MS } from "./protocol";
 
 const wallClock = { now: Date.now };
 
-export default function OnlineGame({ onBack }: { onBack: () => void }) {
+export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => void }) {
   const room = useRoom();
   const { snapshot, player, connected, send, clockOffset, frame, onlineParts } = room;
   const looseNow = useCallback(() => Date.now() + clockOffset - ROOM_PHYSICS_DELAY_MS, [clockOffset]);
@@ -112,19 +112,19 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
     enable();
     send({ type: "start", round });
   }
-  function leave() {
+  function leave(levels = false) {
     room.leave();
-    onBack();
+    onBack(levels);
   }
   function select(screw: string) {
     if (!playable) return;
     enable();
     send({ type: "select", round, screw });
   }
-  function reset() {
+  function reset(lobby = false) {
     setConfirmation(null);
     setPingScene(null);
-    send({ type: "reset", round });
+    send({ type: "reset", round, lobby });
   }
   async function copyInvite() {
     try {
@@ -161,7 +161,7 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
         {room.connecting ? "Connecting…" : room.invite ? "Join game" : "Create game"}
       </button>}
       {room.error && <p role="status">{room.error}</p>}
-      {!snapshot && <button className="room-button secondary" onClick={leave}>Back to solo</button>}
+      {!snapshot && <button className="room-button secondary" onClick={() => leave()}>Back to solo</button>}
     </section>}
     {levelsOpen && !started && (!snapshot || leader) &&
       <LevelSelect mode="multiplayer" onBack={() => setLevelsOpen(false)} onSelect={selectLevel} />}
@@ -170,7 +170,7 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
         {!connected ? room.error || "Reconnecting…" : snapshot.paused ? "Partner reconnecting…" : leader ? "Game Leader" : "Guest"}
       </span>
       {cameraReady && <>
-        <GameUI game={frame?.game ?? game} frame={frame}
+        <GameUI game={frame?.game ?? game} frame={frame} waitingCount={game.tray.length}
           lifelines={snapshot.lifelines} completedLifeline={completedLifeline}
           canBoost={playable && leader && !completedLifeline && !room.bonusAnimating && snapshot.lifelines > 0 && canOpenBonusBox(game)}
           onBoost={() => send({ type: "boost", round })}
@@ -178,7 +178,7 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
             onClick={() => setPingScene(pingMode ? null : scene)}>{pingMode ? "Tap a screw" : "Ping screw"}</button>} />
         <TransferOverlay frame={frame} getOrigin={getOrigin} />
       </>}
-      <GameTimer key={scene} clock={wallClock} startedAt={sampledAt - snapshot.elapsedMs}
+      <GameTimer level={level} key={scene} clock={wallClock} startedAt={sampledAt - snapshot.elapsedMs}
         stoppedAt={snapshot.clockRunning ? room.disconnectedAt : sampledAt} removed={removed} total={game.screws.length} />
       <ul className="player-counts" aria-label="Screws removed by each player">
         {[...snapshot.players].sort((a, b) => a.number - b.number).map((seat) =>
@@ -186,11 +186,12 @@ export default function OnlineGame({ onBack }: { onBack: () => void }) {
       </ul>
       <GameOverlay mode={result} elapsedMs={snapshot.elapsedMs} timeLabel="Team time" levelTitle={levelTitle}
         onStart={start} onRestart={leader && connected ? () => setConfirmation("reset") : undefined}
-        onLevels={leader && connected ? () => { reset(); setLevelsOpen(true); } : undefined} />
+        onLevels={leader && connected ? () => { reset(true); setLevelsOpen(true); } : undefined} />
     </>}
     {pingScrew && <span className="room-ping" role="status">{room.ping?.own ? "You" : "Your partner"} pinged a {pingScrew.color} screw</span>}
     {confirmation && (confirmation === "leave" || leader) && <ResetDialog action={confirmation}
-      onCancel={() => setConfirmation(null)} onConfirm={confirmation === "leave" ? leave : reset} />}
+      onCancel={() => setConfirmation(null)} onConfirm={() => confirmation === "leave" ? leave() : reset()}
+      onLevels={confirmation === "leave" ? () => leave(true) : undefined} />}
     <GameControls muted={muted} toggle={toggle} onReset={started && leader ? () => setConfirmation("reset") : undefined}
       resetDisabled={!connected} onLeave={snapshot ? () => setConfirmation("leave") : undefined} />
     <DesktopCursor />
