@@ -9,7 +9,7 @@ import { GLYPHS } from "./lettering";
 // Original block-letter glyphs create real extruded geometry without a remote font.
 const TITLE_HEIGHT = 6.3;
 
-export default function FloatingTitle({ menu }: { menu: boolean }) {
+export default function FloatingTitle({ menu, height = TITLE_HEIGHT }: { menu: boolean; height?: number }) {
   const root = useRef<Group>(null);
   const geometry = useMemo(() => {
     const pieces: BoxGeometry[] = [];
@@ -33,7 +33,7 @@ export default function FloatingTitle({ menu }: { menu: boolean }) {
   useEffect(() => () => geometry.dispose(), [geometry]);
   useFrame(({ clock, camera }) => {
     if (root.current) {
-      root.current.position.set(0, TITLE_HEIGHT + Math.sin(clock.elapsedTime * 1.7) * 0.055, 0);
+      root.current.position.set(0, (menu ? TITLE_HEIGHT : height) + Math.sin(clock.elapsedTime * 1.7) * 0.055, 0);
       // Keep the title away from the exposed interior when orbiting above the house.
       root.current.visible = menu || camera.position.y / camera.position.length() < 0.8;
     }

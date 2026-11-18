@@ -1,7 +1,7 @@
 export const SCREW_COLOR_ORDER = ["red", "blue", "yellow", "green", "orange", "purple", "brown", "pink", "grey", "cyan", "black", "lime"] as const;
 export type ScrewColor = typeof SCREW_COLOR_ORDER[number];
 export type GameStatus = "playing" | "won" | "lost";
-export const LEVEL_IDS = ["cottage", "campsite", "desert", "construction"] as const;
+export const LEVEL_IDS = ["cottage", "campsite", "desert", "construction", "carnival"] as const;
 // Titanic remains an archived model only; it cannot be selected or hosted.
 export type LevelId = typeof LEVEL_IDS[number] | "titanic";
 export function isLevelId(value: unknown): value is LevelId {
@@ -64,8 +64,9 @@ export const PART_IDS = [...HOUSE_PART_IDS, ...DINING_CHAIRS.map((chair) => chai
 export type TitanicPartId = `ship-${string}`;
 export type DesertPartId = `desert-${string}`;
 export type ConstructionPartId = `site-${string}`;
+export type CarnivalPartId = `fair-${string}`;
 export type CampsitePartId = `camp-${string}`;
-export type PartId = typeof PART_IDS[number] | TitanicPartId | CampsitePartId | DesertPartId | ConstructionPartId;
+export type PartId = typeof PART_IDS[number] | TitanicPartId | CampsitePartId | DesertPartId | ConstructionPartId | CarnivalPartId;
 
 export type Screw = {
   id: string;

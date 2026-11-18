@@ -2,6 +2,8 @@ import { DESERT_BLOCKERS, DESERT_EXPOSED_IDS } from "../scene/desertAudit.ts";
 import { DESERT_MOUNTS } from "../scene/desertModel.ts";
 import { CONSTRUCTION_BLOCKERS, CONSTRUCTION_EXPOSED_IDS } from "../scene/constructionAudit.ts";
 import { CONSTRUCTION_MOUNTS } from "../scene/constructionModel.ts";
+import { CARNIVAL_BLOCKERS, CARNIVAL_EXPOSED_IDS } from "../scene/carnivalAudit.ts";
+import { CARNIVAL_MOUNTS } from "../scene/carnivalModel.ts";
 import { budgetFasteners } from "./fastenerBudget.ts";
 import type { LevelId } from "./types.ts";
 import { DEMO_LEVEL, SCREW_SCALE } from "./levels.ts";
@@ -18,11 +20,18 @@ let titanic: Screw[] | undefined;
 let campsite: Screw[] | undefined;
 let desert: Screw[] | undefined;
 let construction: Screw[] | undefined;
+let carnival: Screw[] | undefined;
+const carnivalOpening = new Set<string>(CARNIVAL_EXPOSED_IDS);
 const constructionOpening = new Set<string>(CONSTRUCTION_EXPOSED_IDS);
 const desertOpening = new Set<string>(DESERT_EXPOSED_IDS);
 let campsiteOpening: ReadonlySet<string> | undefined;
 export function soloLevelTemplate(level: LevelId): readonly Screw[] {
   if (level === "cottage") return DEMO_LEVEL;
+  if (level === "carnival") return carnival ??= CARNIVAL_MOUNTS.map((mount, index) => ({
+    ...mount, id: `carnival-${index + 1}`, removed: false,
+    color: SCREW_COLOR_ORDER[Math.floor(index / 3) % SCREW_COLOR_ORDER.length],
+    obstructedBy: [...CARNIVAL_BLOCKERS[index]],
+  }));
   if (level === "construction") return construction ??= CONSTRUCTION_MOUNTS.map((mount, index) => ({
     ...mount, id: `construction-${index + 1}`, removed: false,
     color: SCREW_COLOR_ORDER[Math.floor(index / 3) % SCREW_COLOR_ORDER.length],
@@ -74,6 +83,7 @@ for (let bay = 1; bay <= 8; bay += 1) {
 export function generateSoloPuzzle(level: LevelId, seed: number, legacyTitanicLayout = false) {
   const template = soloLevelTemplate(level);
   if (level === "cottage") return generatePuzzle(seed, template);
+  if (level === "carnival") return generateLayeredPuzzle(seed, template, carnivalOpening, true);
   if (level === "construction") return generateLayeredPuzzle(seed, template, constructionOpening, true);
   if (level === "desert") {
     return generateLayeredPuzzle(seed, template, desertOpening);
