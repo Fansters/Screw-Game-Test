@@ -262,7 +262,7 @@ function SceneContents({ level = "cottage", logical, fallingParts, round, playab
     <PerspectiveCamera makeDefault position={TITLE_CAMERA} fov={42} near={0.1} far={65} zoom={Math.min(1, size.width / size.height / (level === "titanic" ? 1.12 : 0.85))} />
     <ambientLight intensity={0.8} /><hemisphereLight args={["#fff5df", "#91aab4", 1.25]} />
     <directionalLight position={[5, 10, 7]} intensity={2.2} /><directionalLight position={[-6, 5, -5]} intensity={1.2} color="#d7eeff" />
-    {(level !== "titanic" || view === "title") && <FloatingTitle menu={view === "title"} height={level === "carnival" ? 9.4 : level === "zoo" ? 7.4 : undefined} />}
+    {(level !== "titanic" || view === "title") && <FloatingTitle menu={view === "title"} height={level === "space" ? 8.8 : level === "carnival" ? 9.4 : level === "zoo" ? 7.4 : undefined} />}
     <House key={`house-${round}`} level={level} removedParts={logical.removedParts} fallingParts={fallingParts}
       outlinedPart={outlinedPart} fadedPart={fadedPart} readPhysics={() => physicsFrame.current} looseNow={looseNow}
       onFallFinished={(part) => onFallFinished(part, round)} />
@@ -281,7 +281,7 @@ export default function GameScene(props: GameSceneProps) {
   const hinted = props.playable ? props.logical.screws.find((screw) => screw.id === props.hint && !screw.removed) : undefined;
   const activePreview = props.playable && preview?.round === props.round && !props.logical.removedParts.includes(preview.part) ? preview : null;
   const remaining = activePreview ? props.logical.screws.filter((screw) => screw.attachedTo === activePreview.part && !screw.removed).length : 0;
-  return <section className="scene" aria-label="3D puzzle for Screw it!">
+  return <section className={`scene${props.level === "space" ? " space-scene" : ""}`} aria-label="3D puzzle for Screw it!">
     <Canvas dpr={[1, phone ? 1.25 : 1.5]} camera={{ position: TITLE_CAMERA, fov: 42, near: 0.1, far: 65 }}>
       <Suspense fallback={null}><SceneContents {...props} outlinedPart={activePreview?.part} onPreview={setPreview} hintMarkerRef={hintMarkerRef} /></Suspense>
     </Canvas>

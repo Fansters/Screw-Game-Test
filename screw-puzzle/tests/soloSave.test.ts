@@ -75,6 +75,16 @@ test("solo checkpoints restore the same puzzle, tray, bonus box and playing time
   clearSoloSave("zoo");
   assert.equal(readSoloSave("zoo"), null);
 
+  const space = generateSoloPuzzle("space", 245);
+  const spaceMoves = space.solution.slice(0, 5);
+  writeSoloSave("space", { seed: space.seed, moves: spaceMoves, elapsedMs: 12345 });
+  const spaceRestored = restoreSoloSave("space", readSoloSave("space")!)!;
+  assert.deepEqual(spaceRestored.game, spaceMoves.reduce(removeScrew, space.state));
+  assert.equal(spaceRestored.checkpoint.elapsedBefore, 12345);
+  assert.equal(soloSaveKey("space"), "screw-it:solo-save:space:v2");
+  clearSoloSave("space");
+  assert.equal(readSoloSave("space"), null);
+
   assert.equal(soloSaveKey("desert"), "screw-it:solo-save:desert:v3");
   storage.set("screw-it:solo-save:desert:v2", JSON.stringify({ seed: 245, moves: ["desert-240"], elapsedMs: 12000 }));
   assert.equal(readSoloSave("desert"), null);

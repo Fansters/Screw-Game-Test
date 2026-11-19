@@ -9,6 +9,7 @@ export const CAMPAIGN_LEVELS = [
   { id: "construction", title: "Construction Crew", available: true },
   { id: "carnival", title: "Carnival Fairground", available: true },
   { id: "zoo", title: "Zoo Adventure Park", available: true },
+  { id: "space", title: "Moonbase Odyssey", available: true },
 ] as const;
 
 const cleared = new Set<LevelId>();

@@ -6,6 +6,8 @@ import { CARNIVAL_BLOCKERS, CARNIVAL_EXPOSED_IDS } from "../scene/carnivalAudit.
 import { CARNIVAL_MOUNTS } from "../scene/carnivalModel.ts";
 import { ZOO_BLOCKERS, ZOO_EXPOSED_IDS } from "../scene/zooAudit.ts";
 import { ZOO_MOUNTS } from "../scene/zooModel.ts";
+import { SPACE_BLOCKERS, SPACE_EXPOSED_IDS } from "../scene/spaceAudit.ts";
+import { SPACE_MOUNTS } from "../scene/spaceModel.ts";
 import { budgetFasteners } from "./fastenerBudget.ts";
 import type { LevelId } from "./types.ts";
 import { DEMO_LEVEL, SCREW_SCALE } from "./levels.ts";
@@ -24,6 +26,8 @@ let desert: Screw[] | undefined;
 let construction: Screw[] | undefined;
 let carnival: Screw[] | undefined;
 let zoo: Screw[] | undefined;
+let space: Screw[] | undefined;
+const spaceOpening = new Set<string>(SPACE_EXPOSED_IDS);
 const zooOpening = new Set<string>(ZOO_EXPOSED_IDS);
 const carnivalOpening = new Set<string>(CARNIVAL_EXPOSED_IDS);
 const constructionOpening = new Set<string>(CONSTRUCTION_EXPOSED_IDS);
@@ -31,6 +35,10 @@ const desertOpening = new Set<string>(DESERT_EXPOSED_IDS);
 let campsiteOpening: ReadonlySet<string> | undefined;
 export function soloLevelTemplate(level: LevelId): readonly Screw[] {
   if (level === "cottage") return DEMO_LEVEL;
+  if (level === "space") return space ??= SPACE_MOUNTS.map((mount, index) => ({
+    ...mount, id: `space-${index + 1}`, removed: false,
+    color: SCREW_COLOR_ORDER[Math.floor(index / 3) % SCREW_COLOR_ORDER.length], obstructedBy: [...SPACE_BLOCKERS[index]],
+  }));
   if (level === "zoo") return zoo ??= ZOO_MOUNTS.map((mount, index) => ({
     ...mount, id: `zoo-${index + 1}`, removed: false,
     color: SCREW_COLOR_ORDER[Math.floor(index / 3) % SCREW_COLOR_ORDER.length],
@@ -92,6 +100,7 @@ for (let bay = 1; bay <= 8; bay += 1) {
 export function generateSoloPuzzle(level: LevelId, seed: number, legacyTitanicLayout = false) {
   const template = soloLevelTemplate(level);
   if (level === "cottage") return generatePuzzle(seed, template);
+  if (level === "space") return generateLayeredPuzzle(seed, template, spaceOpening, true);
   if (level === "zoo") return generateLayeredPuzzle(seed, template, zooOpening, true);
   if (level === "carnival") return generateLayeredPuzzle(seed, template, carnivalOpening, true);
   if (level === "construction") return generateLayeredPuzzle(seed, template, constructionOpening, true);

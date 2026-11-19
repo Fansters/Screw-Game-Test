@@ -2,6 +2,8 @@
 .game-layout, .game-layout * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .scene { position: absolute; inset: max(env(safe-area-inset-top), clamp(0px, calc(700px - 100dvh), 140px)) 0 env(safe-area-inset-bottom); background: transparent; }
 .scene canvas { cursor: grab; touch-action: none; }
+.game-layout:has(.space-scene) { background: radial-gradient(ellipse at 15% 10%, #b5a9e9, transparent 65%), linear-gradient(145deg, #8fb9e2, #bfddea 60%, #c8e5dc); }
+.space-scene::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 18% 24%, #fff9 0 1px, transparent 2px), radial-gradient(circle at 75% 21%, #fffc 0 1px, transparent 2px), radial-gradient(circle at 90% 43%, #fff9 0 1px, transparent 2px), radial-gradient(circle at 36% 13%, #fff8 0 1px, transparent 2px); }
 .part-preview { position: fixed; z-index: 7; translate: -50% -100%; width: max-content; padding: 6px 11px; border: 2px solid #ff244b; border-radius: 10px; background: #fff8ea; color: #9a243f; text-align: center; font-size: 13px; pointer-events: none; }
 .game-controls { position: absolute; z-index: 12; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); display: flex; gap: 7px; pointer-events: none; }
 .game-controls .icon-button { width: 44px; border-radius: 50%; pointer-events: auto; }

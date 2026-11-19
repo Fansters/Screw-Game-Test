@@ -557,3 +557,29 @@ test("both seats select, refresh, solve and restart Zoo Adventure Park with one 
   assert.equal(refreshed.state().game.removed.length, 0);
   assert.equal(refreshed.state().paused, true);
 });
+
+test("both seats select, refresh, solve and restart Moonbase Odyssey with one shared level", (t) => {
+  const { leader, guest, room, makePeer, close, advance } = fixture(245, "space");
+  t.after(close);
+  const initial = leader.state();
+  assert.equal(initial.game.colors.length, 225);
+  const { solution } = generateSoloPuzzle("space", initial.seed);
+  const token = guest.seat().token;
+  guest.disconnect();
+  const refreshed = makePeer();
+  refreshed.send({ type: "join", room, token, levelVersion: ROOM_LEVEL_VERSION });
+  assert.equal(refreshed.state().level, "space");
+  for (const [index, screw] of solution.entries()) {
+    (index % 2 ? refreshed : leader).send({ type: "select", round: 0, screw });
+    assert.equal(leader.state().game.removed.length, index + 1, screw);
+    assert.deepEqual(leader.state(), refreshed.state());
+    advance(LOOSE_LIFETIME_MS + ROOM_PHYSICS_DELAY_MS + 10);
+  }
+  assert.equal(refreshed.state().game.status, "won");
+  assert.equal(refreshed.state().players.reduce((n, player) => n + player.collected, 0), 225);
+  leader.send({ type: "reset", round: 0 });
+  assert.equal(refreshed.state().started, true);
+  assert.equal(refreshed.state().level, "space");
+  assert.equal(refreshed.state().game.removed.length, 0);
+  assert.equal(refreshed.state().paused, true);
+});

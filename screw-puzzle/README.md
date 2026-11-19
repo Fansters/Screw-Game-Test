@@ -1,6 +1,6 @@
 # Screw it!
 
-A mobile-first 3D screw puzzle built with React, Three.js, React Three Fiber and Vite. Christmas Cottage (Level 1) has **240 screws and 166 removable assemblies**. Lakeside Camp (Level 2) has **240 screws and 197 removable assemblies**. Route 66 Gas Stop (Level 3) has **216 screws and 138 removable assemblies**. Construction Crew (Level 4) has **204 screws and 146 removable assemblies**. Carnival Fairground (Level 5) has **240 screws and 212 removable assemblies**. Zoo Adventure Park (Level 6) has **231 screws and 220 removable assemblies**. Titanic is retired from solo and co-op selection. All levels use twelve screw colors.
+A mobile-first 3D screw puzzle built with React, Three.js, React Three Fiber and Vite. Christmas Cottage (Level 1) has **240 screws and 166 removable assemblies**. Lakeside Camp (Level 2) has **240 screws and 197 removable assemblies**. Route 66 Gas Stop (Level 3) has **216 screws and 138 removable assemblies**. Construction Crew (Level 4) has **204 screws and 146 removable assemblies**. Carnival Fairground (Level 5) has **240 screws and 212 removable assemblies**. Zoo Adventure Park (Level 6) has **231 screws and 220 removable assemblies**. Moonbase Odyssey (Level 7) has **225 screws and 225 removable assemblies**. Titanic is retired from solo and co-op selection. All levels use twelve screw colors.
 
 ## Run and validate
 
@@ -16,9 +16,9 @@ Use Vite's printed local URL. Tests and the room server use Node's native TypeSc
 
 ## Playing
 
-After the scene loads, green **Start** opens the solo level picker. All six levels are immediately playable; completing earlier levels is optional. Level clears are stored in the browser. The **Levels** button after a solo win returns to the picker. All screws are resident before gameplay and become visible as geometry falls away.
+After the scene loads, green **Start** opens the solo level picker. All seven levels are immediately playable; completing earlier levels is optional. Level clears are stored in the browser. The **Levels** button after a solo win returns to the picker. All screws are resident before gameplay and become visible as geometry falls away.
 
-In the two-player menu, **Create game** opens the same level picker. The leader can choose any level, and guests join that selection through the invitation link. All six levels are available from the first visit. Both players load the selected level before **Start together** becomes available. The leader can **Change level** in the lobby, or return to **Levels** after a win. Reset starts a fresh round of the room's selected level. Each player keeps their own camera while screws, boxes, lifelines, timer and falling objects stay synchronized.
+In the two-player menu, **Create game** opens the same level picker. The leader can choose any level, and guests join that selection through the invitation link. All seven levels are available from the first visit. Both players load the selected level before **Start together** becomes available. The leader can **Change level** in the lobby, or return to **Levels** after a win. Reset starts a fresh round of the room's selected level. Each player keeps their own camera while screws, boxes, lifelines, timer and falling objects stay synchronized.
 
 Phone and tablet layouts collect the round controls under a hamburger button. The icon changes to a cross, the controls slide down in order, and closing reverses their order. Hidden controls are excluded from keyboard and touch input. Reduced-motion preferences disable these transitions.
 
@@ -82,7 +82,7 @@ The construction diorama follows the supplied reference: unfinished brick walls 
 
 The 204 fixings sit on inner walls, joist undersides, frame plates, side panels and naturally covered floor/vehicle surfaces. Spacing tests reject crowded heads. The open scaffold and crane intentionally leave more visible choices than the enclosed cottage. Both opening colors still require a reveal to complete their first triple. The constructor can follow another accessible branch when an active color needs a hidden fixing; every generated route is replayed through the actual rules without lifelines.
 
-All six levels are available immediately in solo and co-op. Construction has independent solo checkpoints and best times, shared co-op physics, and the Level 4 indicator. Run `node tools/audit_construction.ts` after geometry or fixing changes; tests independently compare that static data against the meshes.
+All seven levels are available immediately in solo and co-op. Construction has independent solo checkpoints and best times, shared co-op physics, and the Level 4 indicator. Run `node tools/audit_construction.ts` after geometry or fixing changes; tests independently compare that static data against the meshes.
 
 ## Carnival Fairground (Level 5)
 
@@ -90,7 +90,7 @@ An original procedural fairground follows the supplied reference palette: pink/c
 
 The 240 fasteners secure 212 removable assemblies. Gondola roofs cover body fixings, gondola floors hide seat fasteners, saddles hide horse fixings, and horses conceal carousel platform heads. Games, shelves, kiosk panels and real props cover floor/wall screws. The circular rim, side panels, interior walls and covered paving edges provide varied approach angles. Small components use one fixing; larger frames have widely separated pairs. All parts use Rapier, early tap dismissal and the one-second automatic smoke effect.
 
-Solo checkpoints and best times are separate for Level 5; co-op shares its screws, inventory, scores and falling bodies. All six levels are immediately selectable. Rebuild cached clearance/exposure after edits with `node tools/audit_carnival.ts`. Tests recompute those results and check the double-radius wheel, complete physical viewing paths, spacing, 30 fresh seeded solutions without lifelines, every physics body, save/resume, and a full shared co-op win.
+Solo checkpoints and best times are separate for Level 5; co-op shares its screws, inventory, scores and falling bodies. All seven levels are immediately selectable. Rebuild cached clearance/exposure after edits with `node tools/audit_carnival.ts`. Tests recompute those results and check the double-radius wheel, complete physical viewing paths, spacing, 30 fresh seeded solutions without lifelines, every physics body, save/resume, and a full shared co-op win.
 
 ## Zoo Adventure Park (Level 6)
 
@@ -102,11 +102,27 @@ The 231 screws secure 220 assemblies. Mane/head/body and giraffe head/neck/body 
 
 Level 6 is available immediately in solo and co-op, with independent solo checkpoints/best times and shared room scores, inventory and physics. Run `node tools/audit_zoo.ts` after geometry or fixing edits. Tests recompute the cached results and verify spacing, the detailed animal mesh, natural animal covers, complete physical solutions, 30 varied seeded wins without lifelines, every physics owner, saves and a full shared co-op game.
 
+## Moonbase Odyssey (Level 7)
+
+The lavender lunar base follows the supplied space reference: cream/red rocket on a segmented landing pad, open gantry, tall lattice communications mast, concave antenna dishes, blue gridded solar panels, glass greenhouse, telescope observatory, six-wheel survey rover, colourful cargo, craters, oxygen tanks and crystals. Warm orange bands and cyan/yellow lights contrast with the purple terrain. The planted upper greenhouse hides a furnished lab underneath; its four floor sectors are also removable lab ceilings. The telescope, garden trays, plants, lab furnishings and rover parts have independent owners.
+
+All 225 assemblies have one naturally spaced screw. Fixings include inward habitat faces, deck edges, telescope/rover sides, the lab desk underside, nozzles, cargo lids and different faces of the tunnel joints. Thin transparent panes still block picking and extraction. Curved surfaces use 28×12 spheres instead of the ordinary 20×12 baseline, giving 40% more faces; rounded panels have three bevel segments and dishes/panels have detailed rims, struts and grids. Other levels retain their geometry.
+
+Level 7 is immediately available in solo and co-op, with independent checkpoints/personal bests, shared abilities, physics and per-player counts. Rebuild clearance/exposure using `node tools/audit_space.ts` after changes. Tests check source/cache agreement, comfortable head spacing, all physical viewing paths, 30 varied winning seeds without lifelines, every Rapier assembly, solo saves/times and a full shared co-op solve. Frontend and room server use protocol 23.
+
+## What loads and where memory goes
+
+The current application imports the level modules eagerly. Their procedural source geometries and definitions are constructed when the main game code loads, including the archived ship source. This is different from running every level: React mounts and renders only the selected scene, and each active solo round or multiplayer room creates a physics world for its selected level. The initial title/menu uses the cottage scene before a different level is chosen.
+
+`modelBatches(level)` builds merged render geometry as a level is used, and caches it in JavaScript. Source meshes and these caches can remain resident after visiting another level. The room server likewise shares the source definitions between rooms, while keeping each room's game and physics state separate. Level definitions are not fetched as separate on-demand downloads in this version.
+
+Run `node tools/level_memory.ts` to measure source/render vertex-buffer payloads, triangle counts and batches. These figures exclude JavaScript objects, materials, textures, physics, browser overhead and additional GPU storage, so they are **not total tab RAM**. Measuring one browser's frame rate also does not establish every device's memory limit. A future scaling step is per-level dynamic imports plus explicit cache/resource eviction when leaving a level; that is not implemented in this update.
+
 ## Colors and verified randomization
 
 The 12 colors are red, blue, lemon yellow, green, orange, purple, brown, pink, light grey, cyan, black and lime. Every color uses whole triples, with quotas differing by at most three screws within a level. The shared screw/box/tray palette has at least 3:1 luminance contrast for brown/orange, purple/pink, blue/cyan and black/light grey. Recesses and shafts use the corresponding screw color, with darker recess shading.
 
-Target counts follow each level’s screw total (68 triples in Construction Crew, 80 in Carnival Fairground, and 77 in Zoo Adventure Park). Targets, including the distinct initial pair, are shuffled. `generatePuzzle(seed)` constructs an accessible peel order, assigns colors while simulating two active boxes, and replays the entire winning sequence through the actual rules. That sequence uses zero waiting slots and zero lifelines. Multi-screw assemblies mix at least two colors; single-screw objects naturally have one. A crypto-generated seed starts each new round; seeded generation is reproducible.
+Target counts follow each level’s screw total (68 triples in Construction Crew, 80 in Carnival Fairground, 77 in Zoo Adventure Park, and 75 in Moonbase Odyssey). Targets, including the distinct initial pair, are shuffled. `generatePuzzle(seed)` constructs an accessible peel order, assigns colors while simulating two active boxes, and replays the entire winning sequence through the actual rules. That sequence uses zero waiting slots and zero lifelines. Multi-screw assemblies mix at least two colors; single-screw objects naturally have one. A crypto-generated seed starts each new round; seeded generation is reproducible.
 
 `obstructedBy` comes from actual head/extraction collision samples. `solutionAfter` is only a conservative order for constructing a winning solution, never a gameplay lock. Exposed fixings remain selectable even when another fixing on the same object is covered.
 
