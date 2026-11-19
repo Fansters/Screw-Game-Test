@@ -75,8 +75,8 @@ export default function House({ level, removedParts, fallingParts, fadedPart, ou
     {parts.map((part) => <FallingPart key={part} id={part} hidden={removedParts.includes(part)} active={fallingParts.includes(part)}
       faded={part === fadedPart} outlined={part === outlinedPart} readPhysics={readPhysics} looseNow={looseNow} onFallFinished={onFallFinished}>
       {batchesByPart.get(part)!.map((batch) => <mesh key={`${batch.color}:${batch.smooth}`} geometry={batch.geometry}>
-        <meshStandardMaterial color={batch.color} roughness={part.startsWith("ship-water-") ? 0.24 : 0.8}
-          emissive={part.startsWith("fair-") && batch.color === "#fff3a0" ? "#ffe488" : part.startsWith("desert-") && batch.color === "#ffc546" ? "#eaa22d" : part === "camp-campfire" ? "#d96212" : /^camp-(lantern-|stump-lantern)/.test(part) && batch.color === "#f9d47a" ? "#b78424" : "#000000"}
+        <meshStandardMaterial color={batch.color} roughness={part.startsWith("ship-water-") || /^zoo-(pool-water|stream|cascade)/.test(part) ? 0.24 : 0.8}
+          emissive={part.startsWith("zoo-") && batch.color === "#fff1a0" ? "#ffe488" : part.startsWith("fair-") && batch.color === "#fff3a0" ? "#ffe488" : part.startsWith("desert-") && batch.color === "#ffc546" ? "#eaa22d" : part === "camp-campfire" ? "#d96212" : /^camp-(lantern-|stump-lantern)/.test(part) && batch.color === "#f9d47a" ? "#b78424" : "#000000"}
           emissiveIntensity={.25}
           flatShading={!batch.smooth} vertexColors={batch.smooth} />
       </mesh>)}

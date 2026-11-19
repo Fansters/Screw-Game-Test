@@ -66,6 +66,15 @@ test("solo checkpoints restore the same puzzle, tray, bonus box and playing time
   clearSoloSave("carnival");
   assert.equal(readSoloSave("carnival"), null);
 
+  const zoo = generateSoloPuzzle("zoo", 245);
+  const zooMoves = zoo.solution.slice(0, 5);
+  writeSoloSave("zoo", { seed: zoo.seed, moves: zooMoves, elapsedMs: 12345 });
+  const zooRestored = restoreSoloSave("zoo", readSoloSave("zoo")!)!;
+  assert.deepEqual(zooRestored.game, zooMoves.reduce(removeScrew, zoo.state));
+  assert.equal(zooRestored.checkpoint.elapsedBefore, 12345);
+  clearSoloSave("zoo");
+  assert.equal(readSoloSave("zoo"), null);
+
   assert.equal(soloSaveKey("desert"), "screw-it:solo-save:desert:v3");
   storage.set("screw-it:solo-save:desert:v2", JSON.stringify({ seed: 245, moves: ["desert-240"], elapsedMs: 12000 }));
   assert.equal(readSoloSave("desert"), null);

@@ -47,7 +47,7 @@ function parseCommand(data: string): RoomCommand | null {
         break;
       }
       if (value.type !== "ping" && value.type !== "select") return { type: value.type, round: value.round };
-      if ("screw" in value && typeof value.screw === "string" && /^(screw|titanic|campsite|desert|construction|carnival)-\d{1,6}$/.test(value.screw)) {
+      if ("screw" in value && typeof value.screw === "string" && /^(screw|titanic|campsite|desert|construction|carnival|zoo)-\d{1,6}$/.test(value.screw)) {
         return { type: value.type, round: value.round, screw: value.screw };
       }
   }

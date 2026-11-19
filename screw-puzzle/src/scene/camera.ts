@@ -9,6 +9,7 @@ export const CAMERA_POSES = {
 } satisfies Record<CameraView, { position: [number, number, number]; target: [number, number, number] }>;
 
 export const PLAY_CAMERA_POSES = {
+  zoo: { position: [11.0, 11.4, 20.6], target: [0, 2.0, 0] },
   carnival: { position: [11.8, 12.0, 21.2], target: [0, 3.0, 0] },
   construction: { position: [11.5, 10.5, 18], target: [0, 1.7, 0] },
   desert: { position: [-8.0, 9.6, 18.4], target: [0, 1.25, 0] },
@@ -17,6 +18,7 @@ export const PLAY_CAMERA_POSES = {
   campsite: { position: [11.8, 10.4, 16.7], target: [0, 1.1, 0] },
 } satisfies Record<LevelId, typeof CAMERA_POSES.house>;
 const centers = {
+  zoo: new Vector3(...PLAY_CAMERA_POSES.zoo.target),
   carnival: new Vector3(...PLAY_CAMERA_POSES.carnival.target),
   construction: new Vector3(...PLAY_CAMERA_POSES.construction.target),
   desert: new Vector3(...PLAY_CAMERA_POSES.desert.target),
@@ -25,6 +27,7 @@ const centers = {
   campsite: new Vector3(...PLAY_CAMERA_POSES.campsite.target),
 };
 const overviewDistances = {
+  zoo: centers.zoo.distanceTo(new Vector3(...PLAY_CAMERA_POSES.zoo.position)),
   carnival: centers.carnival.distanceTo(new Vector3(...PLAY_CAMERA_POSES.carnival.position)),
   construction: centers.construction.distanceTo(new Vector3(...PLAY_CAMERA_POSES.construction.position)),
   desert: centers.desert.distanceTo(new Vector3(...PLAY_CAMERA_POSES.desert.position)),
