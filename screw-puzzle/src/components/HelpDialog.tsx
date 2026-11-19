@@ -2,7 +2,7 @@ import type { ReactNode, RefObject } from "react";
 import { LIFELINE_COUNT } from "../animation/run";
 import { MATCH_SIZE, TRAY_CAPACITY } from "../game/rules";
 
-const GAME_VERSION = "0.1.15";
+const GAME_VERSION = "0.1.17";
 
 const icons = {
   match: <><rect x="3" y="3" width="18" height="18" rx="4" /><path d="M12 8h.01M8 15h.01M16 15h.01" strokeWidth="3.5" /></>,
@@ -47,6 +47,12 @@ export default function HelpDialog({ dialogRef }: { dialogRef: RefObject<HTMLDia
         </HelpTip>
         <HelpTip icon="peek" title="Peek behind a part">
           Tap a part to see through it, then tap again to restore it. Covered screws still need a clear path.
+        </HelpTip>
+        <HelpTip icon="match" title="Find a match · 3 uses">
+          The magnifier points to a reachable match. “Show me” moves your camera; you do the unscrewing!
+        </HelpTip>
+        <HelpTip icon="peek" title="Queue Peek · 3 uses">
+          The double-arrow eye previews each box’s next colour if you finish that box first, before waiting screws transfer. It lasts until any box completes. Co-op abilities are leader controlled.
         </HelpTip>
       </div>
       <footer className="help-version">Version {GAME_VERSION}</footer>

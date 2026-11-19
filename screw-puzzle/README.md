@@ -24,13 +24,21 @@ Phone and tablet layouts collect the round controls under a hamburger button. Th
 
 Drag to orbit on desktop and touchscreens. Scroll over a spot to zoom toward it, or pinch around it on a touchscreen. Right-drag or move two fingers together to pan. Zooming back out to the overview recenters on the house. Rotation stops on release. Screws are 15% larger and a 44 CSS-pixel assisted touch target with front-face and occlusion checks. Portrait and landscape layouts account for safe areas and dynamic viewport height.
 
-The HUD retains two matching boxes, five waiting circles, the removal count, a stopwatch, and a 48px **Reset / Quit** arrow. The stopwatch appears after Start, begins only on the first accepted removal, and stops at logical win/loss. Invalid clicks, blocked attempts, camera gestures and cosmetic animation backlogs do not add solve time.
+The HUD retains two matching boxes and five waiting circles above the scene, corner game controls, and a bottom bar for progress, time, level and abilities. The stopwatch appears after Start, begins only on the first accepted removal, and stops at logical win/loss. Invalid clicks, blocked attempts, camera gestures and cosmetic animation backlogs do not add solve time.
 
 In solo play, the trophy button shows the ten fastest wins for the selected level. Switch levels in that dialog to compare personal times. The level cards also show your best time. Scores are stored in the current browser.
 
 Solo rounds autosave in the current browser. Use **Exit** and choose **Home** or **Level select**; both save your solo progress. Select **Resume** on that level's card to continue. Elapsed time resumes when the camera arrives. The save restores the puzzle and matching boxes, waiting slots, remaining lifelines, and cleared parts. Loose parts and animation queues settle when restoring. **Reset** discards the current level's checkpoint.
 
 The lightning button at bottom center slides in a third matching box while the five waiting slots keep their positions. There are three lifelines per round and one can be active at a time. The bonus favors a color already waiting and transfers matching screws into the box. It stays open until the third match.
+
+The magnifier is **Find a Match** (three uses per level). It prefers a reachable screw for the fullest active matching box, including a bonus box. It checks live extraction and an actual head ray from a clear viewing angle before spending a use. A gold/white pulse and pointer mark the target; an edge arrow points toward an offscreen screw. **Show me** smoothly moves only your camera over 0.7 seconds; dragging cancels it. The screw stays in place until you click it. No reachable match means no use spent. This is help finding a legal match, not a guarantee that every continuation will win.
+
+The double-arrow eye is **Queue Peek** (three independent uses). A small colour chip above each standard box shows its first replacement **if you complete that box next**, with other active colours excluded. The two conditional chips may therefore show the same colour. Waiting-slot transfers may immediately complete that replacement again. Previews remain until any box completes, including a bonus box. Both abilities are leader-controlled and shared in co-op; each player can independently use Show me. Charges and active previews survive solo resume and co-op reconnect. A fresh round restores all three ability counters separately.
+
+The bottom game bar groups the screw count, timer and level around a raised purple ability dock. All three abilities remain visible. Tap **Abilities** to slide up a short guide, then tap outside, close, press Escape or use an ability to fold it away. The guide does not pause or block the scene. Co-op player totals and the ping control are also in the bar; phone and short landscape layouts use a compact version with 44px action targets. Reduced-motion settings remove the transitions.
+
+The eye in the corner menu opens free **Readability settings**: optional light/dark screw outlines and two-letter colour codes on heads and boxes. These respect occlusion, use instanced rendering, and never change the game rules. Choices are stored separately on each device; one player's settings don't change their partner's display.
 
 Start enables a quiet, original instrumental loop. A soft click, knock and chime mark removal, obstruction and completion respectively. The music note and speaker toggle music and effects separately. Both are synthesized locally in `src/game/audio.ts`.
 
@@ -62,7 +70,7 @@ Saves and personal times for the 240-screw layouts use new storage keys. Previou
 
 The desert level follows the supplied diorama concept: a cream shop with striped awning, red canopy and fuel pumps, teal vintage car, motel starburst sign, utility poles, sandstone mesa, flowering cacti, barrels, repair supplies and removable road tiles. The hollow shop contains shelves, coolers, a counter and till. Luggage covers car-roof fixings; pump globes conceal face-plate bolts. Sand and sandstone foundations detach too. All 138 assemblies use Rapier and the one-second smoke lifecycle. Its fixings prioritize natural, readable spacing; visible opening counts can vary between levels. Level 3 now uses 216 screws instead of padding its layout to 240.
 
-The current level appears at bottom right, below co-op player counts. At four waiting screws, all five socket borders pulse red. This uses the logical inventory immediately, even while earlier moves animate. The warning clears when space returns; reduced-motion preferences use a steady red border.
+The current level appears at the right of the bottom game bar, with co-op player counts beside the timer and screw counter. At four waiting screws, all five socket borders pulse red. This uses the logical inventory immediately, even while earlier moves animate. The warning clears when space returns; reduced-motion preferences use a steady red border.
 
 The revised Level 3 layout uses v3 save/time keys, preserving older records separately. Cottage and campsite saves and times keep their existing keys.
 

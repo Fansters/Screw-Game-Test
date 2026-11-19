@@ -1,19 +1,21 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useLayoutEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Vector3 } from "three";
 import { CAMERA_POSES, PLAY_CAMERA_POSES, recenterZoomOut, TITLE_CAMERA } from "../scene/camera";
 import type { CameraView } from "../scene/camera";
 import type { LevelId } from "../game/campaign";
-type Flight = { from: Vector3; targetFrom: Vector3; to: Vector3; targetTo: Vector3; elapsed: number; round: number; view: CameraView };
+import type { HintView } from "../scene/matchHint";
+type Flight = { from: Vector3; targetFrom: Vector3; to: Vector3; targetTo: Vector3; elapsed: number; round: number; view: CameraView; hint?: boolean };
 
 // CAMERA SENSITIVITY: lower values rotate less for the same drag.
 const TABLET_TOUCH_ROTATE_SPEED = 0.55;
 const DEFAULT_ROTATE_SPEED = 1;
 const TABLET_MIN_SCREEN_SIDE = 600;
 
-export default function CameraRig({ level, view, round, playable, onArrive }: {
+export default function CameraRig({ level, view, round, playable, onArrive, hintFlight }: {
   level: LevelId; view: CameraView; round: number; playable: boolean; onArrive: (view: CameraView, round: number) => void;
+  hintFlight?: HintView & { sequence: number };
 }) {
   const flight = useRef<Flight | null>(null);
   const initializedCamera = useRef<object | null>(null);
@@ -48,16 +50,20 @@ export default function CameraRig({ level, view, round, playable, onArrive }: {
       previousTarget.copy(orbit.target);
     }
     function setRotateSpeed(event: PointerEvent) {
+      if (flight.current?.hint) flight.current = null;
       // Use the shorter screen side so turning a phone sideways keeps its phone speed.
       const tabletScreen = Math.min(window.screen.width, window.screen.height) >= TABLET_MIN_SCREEN_SIDE;
       orbit.rotateSpeed = event.pointerType === "touch" && tabletScreen ? TABLET_TOUCH_ROTATE_SPEED : DEFAULT_ROTATE_SPEED;
     }
     orbit.addEventListener("change", followZoom);
+    const cancelHint = () => { if (flight.current?.hint) flight.current = null; };
+    orbit.addEventListener("start", cancelHint);
     canvas.addEventListener("pointerdown", setRotateSpeed, true);
     return () => {
       savedTarget.copy(orbit.target);
       canvas.removeEventListener("pointerdown", setRotateSpeed, true);
       orbit.removeEventListener("change", followZoom);
+      orbit.removeEventListener("start", cancelHint);
       orbit.dispose();
       controls.current = null;
     };
@@ -81,19 +87,30 @@ export default function CameraRig({ level, view, round, playable, onArrive }: {
     flight.current = { from: camera.position.clone(), targetFrom: orbit.target.clone(),
       to: new Vector3(...pose.position), targetTo: new Vector3(...pose.target), elapsed: 0, round, view };
   }, [camera, canvas, level, view, round]);
+  const startHintFlight = useEffectEvent(() => {
+    const orbit = controls.current;
+    if (!hintFlight) { if (flight.current?.hint) flight.current = null; return; }
+    if (!orbit || view !== "house" || !playable) return;
+    flight.current = { from: camera.position.clone(), targetFrom: orbit.target.clone(),
+      to: new Vector3(...hintFlight.position), targetTo: new Vector3(...hintFlight.target),
+      elapsed: 0, round, view, hint: true };
+  });
+  useEffect(() => { startHintFlight(); }, [hintFlight]);
   useFrame((_, delta) => {
     const current = flight.current;
     const orbit = controls.current;
     if (!current || !orbit) return;
     current.elapsed += delta;
-    const progress = Math.min(1, current.elapsed / 1.25);
+    if (current.hint && !playable) { flight.current = null; return; }
+    const seconds = current.hint ? window.matchMedia("(prefers-reduced-motion: reduce)").matches ? .001 : .7 : 1.25;
+    const progress = Math.min(1, current.elapsed / seconds);
     const eased = progress * progress * (3 - 2 * progress);
     camera.position.lerpVectors(current.from, current.to, eased);
     orbit.target.lerpVectors(current.targetFrom, current.targetTo, eased);
     orbit.update();
     if (progress === 1) {
       flight.current = null;
-      onArrive(current.view, current.round);
+      if (!current.hint) onArrive(current.view, current.round);
     }
   });
   return null;

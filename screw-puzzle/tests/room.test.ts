@@ -11,8 +11,53 @@ import type { RoomCommand, RoomNotice } from "../src/multiplayer/protocol.ts";
 import { ROOM_LEVEL_VERSION, ROOM_PHYSICS_DELAY_MS, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
 import { initPartPhysics } from "../src/scene/partPhysics.ts";
 import { LOOSE_LIFETIME_MS, loosePartPose, mergeLooseParts, SMOKE_DURATION_MS } from "../src/scene/loosePhysics.ts";
+import { freshAbilities, matchCandidates } from "../src/game/abilities.ts";
 
 await initPartPhysics();
+
+test("co-op abilities are leader-controlled, shared, preserved on reconnect and cleared by round reset", (t) => {
+  const { leader, guest, makePeer, room, advance, close } = fixture(245);
+  t.after(close);
+  const target = matchCandidates(generateSoloPuzzle("cottage", 245).state)[0].id;
+  guest.send({ type: "peek", round: 0 });
+  guest.send({ type: "find", round: 0, screw: target });
+  assert.deepEqual(leader.state().abilities, freshAbilities());
+  assert.equal(guest.notices.at(-1)?.type, "rejected");
+  leader.send({ type: "find", round: 0, screw: "missing" });
+  assert.equal(leader.state().abilities.finds, 3);
+  leader.send({ type: "find", round: 0, screw: target });
+  leader.send({ type: "peek", round: 0 });
+  assert.deepEqual(guest.state().abilities, { finds: 2, peeks: 2, hint: target, peekAt: 0 });
+  assert.equal(guest.state().clockRunning, false);
+  leader.send({ type: "find", round: 0, screw: target });
+  leader.send({ type: "peek", round: 0 });
+  assert.equal(guest.state().abilities.finds, 2); assert.equal(guest.state().abilities.peeks, 2);
+  const token = guest.seat().token;
+  guest.disconnect();
+  const refreshed = makePeer(); refreshed.send({ type: "join", room, token, levelVersion: ROOM_LEVEL_VERSION });
+  assert.deepEqual(refreshed.state().abilities, leader.state().abilities);
+  refreshed.send({ type: "select", round: 0, screw: target });
+  assert.equal(leader.state().abilities.hint, null);
+  assert.equal(leader.state().abilities.finds, 2);
+  assert.equal(leader.state().abilities.peekAt, 0);
+  leader.send({ type: "reset", round: 0 });
+  assert.deepEqual(refreshed.state().abilities, freshAbilities());
+  leader.send({ type: "find", round: 0, screw: target });
+  assert.deepEqual(refreshed.state().abilities, freshAbilities());
+  leader.send({ type: "ready", round: 1 }); refreshed.send({ type: "ready", round: 1 });
+  leader.send({ type: "peek", round: 1 });
+  for (const screw of generateSoloPuzzle("cottage", 245).solution) {
+    advance(1800); refreshed.send({ type: "select", round: 1, screw });
+    if (leader.state().game.clearedCount > 0) break;
+  }
+  assert.ok(leader.state().game.clearedCount > 0);
+  assert.equal(leader.state().abilities.peekAt, null);
+  assert.equal(leader.state().abilities.peeks, 2);
+  leader.send({ type: "leave" });
+  assert.equal(refreshed.state().leader, refreshed.seat().player);
+  refreshed.send({ type: "peek", round: 1 });
+  assert.equal(refreshed.state().abilities.peeks, 1);
+});
 
 function fixture(seed?: number, level: LevelId = "cottage", start = true) {
   let time = 20_000;

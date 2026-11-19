@@ -5,6 +5,7 @@ import type { LevelId } from "../game/campaign";
 import AudioButton from "./AudioButton";
 import HelpDialog from "./HelpDialog";
 import SoloLeaderboard from "./SoloLeaderboard";
+import { updateReadability, useReadability } from "./readability";
 
 export default function GameControls({ muted, toggle, onReset, onLeave, resetDisabled, leaderboardLevel }: {
   muted: Record<AudioChannel, boolean>; toggle: (channel: AudioChannel) => void;
@@ -12,6 +13,8 @@ export default function GameControls({ muted, toggle, onReset, onLeave, resetDis
   leaderboardLevel?: LevelId;
 }) {
   const help = useRef<HTMLDialogElement>(null);
+  const readabilityDialog = useRef<HTMLDialogElement>(null);
+  const readability = useReadability();
   const controls = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
   const compact = useSyncExternalStore(subscribeCompact, isCompact);
@@ -35,6 +38,9 @@ export default function GameControls({ muted, toggle, onReset, onLeave, resetDis
         <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 10h.01M14 15h2v7m-2 0h4" /></svg>
       </button>,
       leaderboardLevel && <SoloLeaderboard key="leaderboard" activeLevel={leaderboardLevel} />,
+      <button key="readability" className="icon-button" onClick={() => readabilityDialog.current?.showModal()} aria-label="Readability settings" title="Readability settings" aria-haspopup="dialog">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 16s4-8 13-8 13 8 13 8-4 8-13 8S3 16 3 16Z" /><circle cx="16" cy="16" r="4" /></svg>
+      </button>,
       <AudioButton key="music" channel="music" muted={muted.music} onToggle={() => toggle("music")} />,
       <AudioButton key="effects" channel="effects" muted={muted.effects} onToggle={() => toggle("effects")} />,
       onReset && <button className="icon-button" disabled={resetDisabled} onClick={onReset} aria-label="Reset level" title="Reset game">
@@ -58,6 +64,14 @@ export default function GameControls({ muted, toggle, onReset, onLeave, resetDis
       </div>
     </div>
     <HelpDialog dialogRef={help} />
+    <dialog ref={readabilityDialog} className="help-dialog readability-dialog" aria-labelledby="readability-title">
+      <header className="help-header"><h2 id="readability-title">See every colour</h2><form method="dialog"><button className="icon-button" aria-label="Close readability settings">×</button></form></header>
+      <div className="help-content">
+        <label><input type="checkbox" checked={readability.outlines} onChange={(event) => updateReadability({ ...readability, outlines: event.target.checked })} /> High-contrast screw outlines</label>
+        <label><input type="checkbox" checked={readability.labels} onChange={(event) => updateReadability({ ...readability, labels: event.target.checked })} /> Colour codes on screws & boxes</label>
+        <p>Free, always. Saved on this device.</p>
+      </div>
+    </dialog>
   </>;
 }
 const compactQuery = window.matchMedia("(max-width: 1024px), (pointer: coarse)");

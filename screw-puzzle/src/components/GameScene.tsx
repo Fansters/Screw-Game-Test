@@ -21,6 +21,11 @@ import type { LooseParts, PartReleases } from "../scene/loosePhysics";
 import { createPartPhysics, initPartPhysics } from "../scene/partPhysics";
 import type { PartPhysics } from "../scene/partPhysics";
 import { findLooseBlocker } from "../scene/loosePhysics";
+import { findHintView, findMatchHint, hintFace, hintRemovable, hintVisible } from "../scene/matchHint";
+import type { HintView } from "../scene/matchHint";
+import { SCREW_COLORS } from "../game/colors";
+
+export type HintControls = { find: () => string | null; show: () => boolean };
 
 type GameSceneProps = { logical: GameState; fallingParts: PartId[]; round: number; playable: boolean;
   level?: LevelId;
@@ -29,6 +34,7 @@ type GameSceneProps = { logical: GameState; fallingParts: PartId[]; round: numbe
   onLooseDismiss: (part: PartId) => void;
   pingMode?: boolean; pingScrew?: Screw; pingSequence?: number; onScrewPing?: (id: string) => void;
   rejectedScrew?: { screw: string; sequence: number } | null;
+  hint?: string | null; hintControlsRef?: MutableRefObject<HintControls>;
   view: CameraView; onCameraArrive: (view: CameraView, round: number) => void;
   onReady: (round: number) => void;
   onFallFinished: (part: PartId, round: number) => void;
@@ -62,10 +68,11 @@ const PREVIEW_HOLD_MS = 420;
 type PartPreview = { part: PartId; round: number; x: number; y: number };
 const localNow = () => performance.now();
 
-function SceneContents({ level = "cottage", logical, fallingParts, round, playable, orbitable, pingMode, pingScrew, pingSequence, onScrewPing, rejectedScrew,
+function SceneContents({ level = "cottage", logical, fallingParts, round, playable, orbitable, pingMode, pingScrew, pingSequence, onScrewPing, rejectedScrew, hint, hintControlsRef,
   releases, onlineParts, looseNow = localNow, onLooseDismiss,
-  view, onCameraArrive, onReady, onFallFinished, onScrewSelect, onBlockedScrew, projectorRef, outlinedPart, onPreview }: GameSceneProps & {
+  view, onCameraArrive, onReady, onFallFinished, onScrewSelect, onBlockedScrew, projectorRef, outlinedPart, onPreview, hintMarkerRef }: GameSceneProps & {
     outlinedPart?: PartId; onPreview: (preview: PartPreview | null) => void;
+    hintMarkerRef: MutableRefObject<HTMLDivElement | null>;
   }) {
   const { camera, gl, scene, size } = useThree();
   const [gestures] = useState(createScrewGestures);
@@ -73,6 +80,43 @@ function SceneContents({ level = "cottage", logical, fallingParts, round, playab
   const wiggle = useRef<(id: string) => void>(() => {});
   const physics = useRef<PartPhysics | null>(null);
   const physicsFrame = useRef<{ parts: LooseParts; now: number }>({ parts: {}, now: 0 });
+  const [hintFlight, setHintFlight] = useState<HintView & { sequence: number; screw: string }>();
+  const lastHintCheck = useRef({ at: -Infinity, id: "", visible: false });
+  useLayoutEffect(() => {
+    if (!hintControlsRef) return;
+    hintControlsRef.current = {
+      find: () => playable ? findMatchHint(scene, camera, logical, physicsFrame.current.parts, physicsFrame.current.now)?.screw ?? null : null,
+      show: () => {
+        const screw = logical.screws.find((screw) => screw.id === hint);
+        if (!playable || !screw || !hintRemovable(logical, screw, physicsFrame.current.parts, physicsFrame.current.now)) return false;
+        const pose = findHintView(scene, camera, logical, screw);
+        if (!pose) return false;
+        setHintFlight((previous) => ({ ...pose, screw: screw.id, sequence: (previous?.sequence ?? 0) + 1 }));
+        return true;
+      },
+    };
+    return () => { hintControlsRef.current = { find: () => null, show: () => false }; };
+  }, [camera, hint, hintControlsRef, logical, playable, scene]);
+  useFrame(({ clock }) => {
+    const marker = hintMarkerRef.current;
+    if (!marker) return;
+    const screw = playable ? logical.screws.find((screw) => screw.id === hint && !screw.removed) : undefined;
+    if (!screw) { marker.hidden = true; return; }
+    if (lastHintCheck.current.id !== screw.id || clock.elapsedTime - lastHintCheck.current.at > .15) {
+      lastHintCheck.current = { at: clock.elapsedTime, id: screw.id, visible: hintRemovable(logical, screw, physicsFrame.current.parts, physicsFrame.current.now) && hintVisible(scene, camera, logical, screw) };
+    }
+    const point = hintFace(screw).project(camera);
+    const outside = Math.abs(point.x) > .88 || Math.abs(point.y) > .72 || point.z > 1;
+    marker.hidden = !outside && !lastHintCheck.current.visible;
+    if (marker.hidden) return;
+    let x = point.x, y = -point.y;
+    if (point.z > 1) { x = -x; y = -y; }
+    if (outside) { const length = Math.max(Math.abs(x) / .86, Math.abs(y) / .68, .001); x /= length; y /= length; }
+    marker.dataset.edge = String(outside);
+    marker.style.left = `${(x + 1) * size.width / 2}px`;
+    marker.style.top = `${(y + 1) * size.height / 2}px`;
+    marker.style.setProperty("--arrow-angle", `${Math.atan2(y * size.height, x * size.width)}rad`);
+  });
   const mountLocalPhysics = useEffectEvent(() => {
     const cleared = logical.removedParts.filter((part) => !releases?.[part]);
     const runtime = createPartPhysics(cleared, level);
@@ -225,18 +269,25 @@ function SceneContents({ level = "cottage", logical, fallingParts, round, playab
     <ScrewField key={`screws-${round}`} game={logical} wiggleRef={wiggle} />
     {level === "campsite" && <CampsiteAmbience removedParts={logical.removedParts} />}
     {pingScrew && <PingMarker key={pingSequence} screw={pingScrew} />}
-    <CameraRig level={level} view={view} round={round} playable={orbitable ?? playable} onArrive={onCameraArrive} />
+    <CameraRig level={level} view={view} round={round} playable={orbitable ?? playable} onArrive={onCameraArrive}
+      hintFlight={hintFlight?.screw === hint ? hintFlight : undefined} />
   </>;
 }
 export default function GameScene(props: GameSceneProps) {
   const phone = useSyncExternalStore(subscribeMobile, isMobile);
   const [preview, setPreview] = useState<PartPreview | null>(null);
+  const hintMarkerRef = useRef<HTMLDivElement | null>(null);
+  const [hintWaiting, setHintWaiting] = useState<string | null>(null);
+  const hinted = props.playable ? props.logical.screws.find((screw) => screw.id === props.hint && !screw.removed) : undefined;
   const activePreview = props.playable && preview?.round === props.round && !props.logical.removedParts.includes(preview.part) ? preview : null;
   const remaining = activePreview ? props.logical.screws.filter((screw) => screw.attachedTo === activePreview.part && !screw.removed).length : 0;
   return <section className="scene" aria-label="3D puzzle for Screw it!">
     <Canvas dpr={[1, phone ? 1.25 : 1.5]} camera={{ position: TITLE_CAMERA, fov: 42, near: 0.1, far: 65 }}>
-      <Suspense fallback={null}><SceneContents {...props} outlinedPart={activePreview?.part} onPreview={setPreview} /></Suspense>
+      <Suspense fallback={null}><SceneContents {...props} outlinedPart={activePreview?.part} onPreview={setPreview} hintMarkerRef={hintMarkerRef} /></Suspense>
     </Canvas>
+    <div ref={hintMarkerRef} hidden className="match-hint-marker" aria-hidden="true"><span className="hint-ring" /><span className="hint-pointer">▼</span><span className="hint-edge">➜</span></div>
+    {hinted && <div className="hint-action"><span role="status">{hintWaiting === hinted.id ? "Parts settling… try again" : `${SCREW_COLORS[hinted.color].label} match found`}</span>
+      <button className="room-button" onClick={() => setHintWaiting(props.hintControlsRef?.current.show() ? null : hinted.id)}>Show me</button></div>}
     {activePreview && <output className="part-preview" style={{
       left: `clamp(115px, ${activePreview.x}px, calc(100vw - 115px))`, top: Math.max(72, activePreview.y - 24),
     }}>

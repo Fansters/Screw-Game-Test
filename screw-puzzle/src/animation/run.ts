@@ -4,26 +4,29 @@ import { BONUS_SLOT, isScrewAccessible, planBonusBox, planScrewRemoval } from ".
 import type { GameState, PartId } from "../game/types.ts";
 import { LOOSE_LIFETIME_MS } from "../scene/loosePhysics.ts";
 import type { PartReleases } from "../scene/loosePhysics.ts";
+import { freshAbilities, matchCandidates, queuePreviews, settleAbilities } from "../game/abilities.ts";
+import type { AbilityState } from "../game/abilities.ts";
 
 export type AnimationJob = { id: number; frames: PlaybackFrame[]; finalState: GameState; readyAt: number };
 export const LIFELINE_COUNT = 3;
 export type RunState = { logical: GameState; display: GameState; ready: boolean; started: boolean; jobs: AnimationJob[];
   fallingParts: PartId[]; releases: PartReleases;
-  lifelines: number; bonusJob: number | null;
+  lifelines: number; bonusJob: number | null; abilities: AbilityState;
   moves: string[]; elapsedBefore: number;
   legacyTitanicLayout?: true;
   frameIndex: number; nextJobId: number; round: number; seed: number; timerStartedAt: number | null; timerStoppedAt: number | null };
-export type RunCheckpoint = Pick<RunState, "moves" | "lifelines" | "elapsedBefore" | "legacyTitanicLayout">;
+export type RunCheckpoint = Pick<RunState, "moves" | "lifelines" | "elapsedBefore" | "legacyTitanicLayout"> & { abilities?: AbilityState };
 export type RunAction = { type: "ready"; round: number } | { type: "start" } | { type: "select"; id: string; now: number; clearedParts?: readonly PartId[] } |
   { type: "fall-finished"; part: PartId; round: number } |
   { type: "dismiss"; part: PartId; now: number } |
   { type: "boost"; now: number } |
+  { type: "find"; screw: string } | { type: "peek" } |
   { type: "begin"; job: number } | { type: "advance"; job: number; index: number } |
   { type: "resume-clock"; now: number; round: number } |
   { type: "reset"; game: GameState; seed: number; enter?: boolean; checkpoint?: RunCheckpoint };
 export function createRun(game: GameState, seed = 0, round = 0): RunState {
   return { logical: game, display: game, ready: false, started: false, jobs: [], fallingParts: [], releases: {},
-    lifelines: LIFELINE_COUNT, bonusJob: null, moves: [], elapsedBefore: 0,
+    lifelines: LIFELINE_COUNT, bonusJob: null, abilities: freshAbilities(), moves: [], elapsedBefore: 0,
     frameIndex: -1, nextJobId: 1, round, seed, timerStartedAt: null, timerStoppedAt: null };
 }
 export function elapsedRunTime(run: RunState, now: number) {
@@ -40,7 +43,7 @@ export function runReducer(run: RunState, action: RunAction): RunState {
   if (action.type === "ready") return action.round === run.round && !run.ready ? { ...run, ready: true } : run;
   if (action.type === "start") return run.started || !run.ready ? run : { ...run, started: true };
   if (action.type === "resume-clock") {
-    return run.round === action.round && run.timerStartedAt === null && run.moves.some((move) => move !== "boost") ?
+    return run.round === action.round && run.timerStartedAt === null && run.logical.screws.some((screw) => screw.removed) ?
       { ...run, timerStartedAt: action.now } : run;
   }
   if (action.type === "dismiss") {
@@ -54,12 +57,22 @@ export function runReducer(run: RunState, action: RunAction): RunState {
     if (action.round !== run.round || !run.fallingParts.includes(action.part)) return run;
     return { ...run, fallingParts: run.fallingParts.filter((part) => part !== action.part) };
   }
+  if (action.type === "find" || action.type === "peek") {
+    if (!run.started || run.logical.status !== "playing") return run;
+    const abilities = settleAbilities(run.abilities, run.logical);
+    if (action.type === "find") {
+      if (abilities.finds === 0 || abilities.hint || !matchCandidates(run.logical).some((screw) => screw.id === action.screw)) return run;
+      return { ...run, abilities: { ...abilities, finds: abilities.finds - 1, hint: action.screw }, moves: [...run.moves, `find:${action.screw}`] };
+    }
+    if (abilities.peeks === 0 || abilities.peekAt !== null || !queuePreviews(run.logical).some(Boolean)) return run;
+    return { ...run, abilities: { ...abilities, peeks: abilities.peeks - 1, peekAt: run.logical.clearedCount }, moves: [...run.moves, "peek"] };
+  }
   if (action.type === "boost") {
     if (!run.started || run.bonusJob !== null || run.lifelines === 0) return run;
     const { finalState, events } = planBonusBox(run.logical);
     if (!events.length) return run;
     const job = { id: run.nextJobId, frames: buildSequence(events), finalState, readyAt: action.now };
-    return { ...run, logical: finalState, jobs: [...run.jobs, job], nextJobId: job.id + 1,
+    return { ...run, logical: finalState, abilities: settleAbilities(run.abilities, finalState), jobs: [...run.jobs, job], nextJobId: job.id + 1,
       lifelines: run.lifelines - 1, bonusJob: job.id, moves: [...run.moves, "boost"] };
   }
   if (action.type === "select") {
@@ -73,7 +86,7 @@ export function runReducer(run: RunState, action: RunAction): RunState {
     const job = { id: run.nextJobId, frames: buildSequence(result.events).filter((frame) => frame.kind !== "unscrew"),
       finalState: result.finalState, readyAt: action.now + SCREW_SPIN_MS };
     const detach = result.events.find((event) => event.kind === "detach");
-    return { ...run, logical: result.finalState, jobs: [...run.jobs, job], nextJobId: run.nextJobId + 1,
+    return { ...run, logical: result.finalState, abilities: settleAbilities(run.abilities, result.finalState), jobs: [...run.jobs, job], nextJobId: run.nextJobId + 1,
       moves: [...run.moves, action.id], fallingParts: detach ? [...run.fallingParts, detach.part] : run.fallingParts,
       releases: detach ? { ...run.releases, [detach.part]: { releasedAt: action.now } } : run.releases,
       timerStartedAt: run.timerStartedAt ?? action.now,

@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useEffectEvent, useReducer, useRef, useState } from "react";
 import GameScene from "./components/GameScene";
+import type { HintControls } from "./components/GameScene";
+import AbilityButtons from "./components/AbilityButtons";
+import { queuePreviews } from "./game/abilities";
 import GameUI from "./components/GameUI";
 import TransferOverlay from "./components/TransferOverlay";
 import GameOverlay from "./components/GameOverlay";
 import GameTimer from "./components/GameTimer";
+import GameBar from "./components/GameBar";
 import DesktopCursor from "./components/DesktopCursor";
 import ResetDialog from "./components/ResetDialog";
 import GameControls from "./components/GameControls";
@@ -40,6 +44,13 @@ function SoloGame({ onOnline, initialLevels }: { onOnline: () => void; initialLe
   const [arrival, setArrival] = useState<{ view: CameraView; round: number } | null>(null);
   const [confirmation, setConfirmation] = useState<"reset" | "leave" | null>(null);
   const [levelsOpen, setLevelsOpen] = useState(initialLevels);
+  const [abilityMessage, setAbilityMessage] = useState("");
+  const hintControlsRef = useRef<HintControls>({ find: () => null, show: () => false });
+  useEffect(() => {
+    if (!abilityMessage) return;
+    const timer = window.setTimeout(() => setAbilityMessage(""), 3200);
+    return () => window.clearTimeout(timer);
+  }, [abilityMessage]);
   const { play, muted, enable, toggle } = useGameAudio(run.started);
   const lastSoundMove = useRef({ round: run.round, count: 0 });
   const lastMatch = useRef("");
@@ -154,13 +165,21 @@ function SoloGame({ onOnline, initialLevels }: { onOnline: () => void; initialLe
     <GameScene level={level} logical={run.logical} fallingParts={run.fallingParts} round={run.round} onFallFinished={finishFall}
       releases={run.releases} onLooseDismiss={(part) => dispatch({ type: "dismiss", part, now: performance.now() })}
       view={view} onCameraArrive={cameraArrived} playable={playable} onReady={sceneReady} onScrewSelect={selectScrew}
-      onBlockedScrew={() => play("blocked")} projectorRef={project} />
-    {run.started && cameraReady && <GameUI game={run.display} frame={frame} waitingCount={run.logical.tray.length}
-      lifelines={run.lifelines}
+      onBlockedScrew={() => play("blocked")} projectorRef={project} hint={run.abilities.hint} hintControlsRef={hintControlsRef} />
+    {run.started && cameraReady && <><GameUI game={run.display} frame={frame} waitingCount={run.logical.tray.length}
+      previews={run.abilities.peekAt !== null ? queuePreviews(run.logical) : undefined} />
+      <GameBar key={run.round} level={level} lifelines={run.lifelines}
+      progress={<GameTimer startedAt={timerStartedAt} stoppedAt={timerStoppedAt}
+        elapsedBefore={elapsedBefore} removed={removedCount} total={run.logical.screws.length} />}
+      abilities={<AbilityButtons abilities={run.abilities} enabled={playable} message={abilityMessage}
+        canPeek={queuePreviews(run.logical).some(Boolean)}
+        onFind={() => {
+          const screw = hintControlsRef.current.find();
+          if (screw) dispatch({ type: "find", screw });
+          else setAbilityMessage("No reachable match yet. Try revealing another part. No use spent!");
+        }} onPeek={() => dispatch({ type: "peek" })} />}
       canBoost={playable && bonusJob === null && run.lifelines > 0 && canOpenBonusBox(run.logical)}
-      onBoost={() => dispatch({ type: "boost", now: performance.now() })} />}
-    {run.started && run.ready && <GameTimer level={level} key={run.round} startedAt={timerStartedAt} stoppedAt={timerStoppedAt}
-      elapsedBefore={elapsedBefore} removed={removedCount} total={run.logical.screws.length} />}
+      onBoost={() => dispatch({ type: "boost", now: performance.now() })} /></>}
     <TransferOverlay frame={frame} getOrigin={getOrigin} />
     <GameOverlay mode={chooseLevel ? null : mode} onStart={() => setLevelsOpen(true)} onRestart={restart}
       onLevels={() => returnToTitle(true)} levelTitle={CAMPAIGN_LEVELS.find(({ id }) => id === level)!.title}

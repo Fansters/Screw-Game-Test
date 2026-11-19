@@ -33,6 +33,8 @@ function parseCommand(data: string): RoomCommand | null {
     case "start":
     case "reset":
     case "boost":
+    case "peek":
+    case "find":
     case "dismiss":
     case "ping":
     case "select":
@@ -46,7 +48,7 @@ function parseCommand(data: string): RoomCommand | null {
         if ("part" in value && isLevelPart(value.part)) return { type: value.type, round: value.round, part: value.part };
         break;
       }
-      if (value.type !== "ping" && value.type !== "select") return { type: value.type, round: value.round };
+      if (value.type !== "ping" && value.type !== "select" && value.type !== "find") return { type: value.type, round: value.round };
       if ("screw" in value && typeof value.screw === "string" && /^(screw|titanic|campsite|desert|construction|carnival|zoo)-\d{1,6}$/.test(value.screw)) {
         return { type: value.type, round: value.round, screw: value.screw };
       }

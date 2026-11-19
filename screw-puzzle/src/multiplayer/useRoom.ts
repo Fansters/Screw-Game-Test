@@ -121,6 +121,7 @@ export function useRoom() {
           setError("");
         } else if (notice.type === "state") {
           if (notice.snapshot.levelVersion !== ROOM_LEVEL_VERSION) return;
+          setError("");
           onlineParts.current = mergeLooseParts(physicsRound === notice.snapshot.round ? onlineParts.current : {}, notice.snapshot.looseParts);
           physicsRound = notice.snapshot.round;
           setSnapshot(notice.snapshot);

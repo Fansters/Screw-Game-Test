@@ -9,6 +9,7 @@ import { SCREW_SCALE } from "../game/levels";
 import { SCREW_PULL_DISTANCE } from "../scene/screwDimensions";
 import { headGeometry, recessGeometry, shaftGeometry } from "./screwGeometry";
 import { SCREW_SPIN_MS } from "../animation/sequence";
+import ScrewReadability from "./ScrewReadability";
 
 const SPIN_SECONDS = SCREW_SPIN_MS / 1000;
 
@@ -100,6 +101,7 @@ export default function ScrewField({ game, wiggleRef }: {
   });
   const metadata = { screwIds: ids };
   return <group>
+    <ScrewReadability game={game} head={head} />
     <instancedMesh ref={head} args={[headGeometry, undefined, count]} userData={metadata} frustumCulled={false}>
       <meshStandardMaterial metalness={0.1} roughness={0.35} />
     </instancedMesh>

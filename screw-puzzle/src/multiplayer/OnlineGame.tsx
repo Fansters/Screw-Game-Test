@@ -3,7 +3,11 @@ import GameControls from "../components/GameControls";
 import DesktopCursor from "../components/DesktopCursor";
 import GameOverlay from "../components/GameOverlay";
 import GameScene from "../components/GameScene";
+import type { HintControls } from "../components/GameScene";
+import AbilityButtons from "../components/AbilityButtons";
+import { queuePreviews } from "../game/abilities";
 import GameTimer from "../components/GameTimer";
+import GameBar from "../components/GameBar";
 import GameUI from "../components/GameUI";
 import ResetDialog from "../components/ResetDialog";
 import LevelSelect from "../components/LevelSelect";
@@ -38,6 +42,13 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
   const [expiredPing, setExpiredPing] = useState(0);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "manual">("idle");
   const [finished, setFinished] = useState<{ scene: string; parts: PartId[] }>();
+  const [abilityMessage, setAbilityMessage] = useState("");
+  const hintControlsRef = useRef<HintControls>({ find: () => null, show: () => false });
+  useEffect(() => {
+    if (!abilityMessage) return;
+    const timer = window.setTimeout(() => setAbilityMessage(""), 3200);
+    return () => window.clearTimeout(timer);
+  }, [abilityMessage]);
   const { play, muted, enable, toggle } = useGameAudio(started);
   const lastSound = useRef({ scene, count: 0, matched: 0 });
   const lastMatch = useRef<typeof frame>(null);
@@ -145,6 +156,7 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
       view={view} playable={playable} orbitable={orbitable} onCameraArrive={cameraArrived} onReady={sceneReady}
       onFallFinished={finishFall} onScrewSelect={select} onBlockedScrew={() => play("blocked")} projectorRef={project}
       pingMode={pingMode} pingScrew={pingScrew} pingSequence={room.ping?.sequence} rejectedScrew={room.blocked}
+      hint={snapshot?.abilities.hint} hintControlsRef={hintControlsRef}
       onScrewPing={(screw) => { if (room.pingScrew(round, screw)) setPingScene(null); }} />}
     {!started && <section className="room-lobby" aria-label="Two-player room">
       <h2>Two-player room</h2>
@@ -171,24 +183,41 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
       </span>
       {cameraReady && <>
         <GameUI game={frame?.game ?? game} frame={frame} waitingCount={game.tray.length}
-          lifelines={snapshot.lifelines} completedLifeline={completedLifeline}
+          completedLifeline={completedLifeline}
+          previews={snapshot.abilities.peekAt !== null ? queuePreviews(game) : undefined} />
+        <GameBar key={scene} level={level} lifelines={snapshot.lifelines} shared
+          progress={<GameTimer clock={wallClock} startedAt={sampledAt - snapshot.elapsedMs}
+            stoppedAt={snapshot.clockRunning ? room.disconnectedAt : sampledAt} removed={removed} total={game.screws.length} />}
+          players={<ul className="player-counts" aria-label="Screws removed by each player">
+            {[...snapshot.players].sort((a, b) => a.number - b.number).map((seat) =>
+              <li key={seat.id} className={seat.id === player ? "own-score" : undefined}
+                aria-label={`Player ${seat.number}${seat.id === player ? ", you" : ""}: ${seat.collected} screws`}>
+                <span>P{seat.number}</span><strong>{seat.collected}</strong>
+              </li>)}
+          </ul>}
+          abilities={<AbilityButtons abilities={snapshot.abilities} enabled={playable && leader} message={abilityMessage}
+            canPeek={queuePreviews(game).some(Boolean)}
+            onFind={() => {
+              const screw = hintControlsRef.current.find();
+              if (screw) send({ type: "find", round, screw });
+              else setAbilityMessage("No reachable match yet. Reveal another part. No use spent!");
+            }} onPeek={() => send({ type: "peek", round })} />}
           canBoost={playable && leader && !completedLifeline && !room.bonusAnimating && snapshot.lifelines > 0 && canOpenBonusBox(game)}
           onBoost={() => send({ type: "boost", round })}
-          ping={snapshot.players.length === 2 && <button className="room-button" aria-pressed={pingMode} disabled={!canPing}
-            onClick={() => setPingScene(pingMode ? null : scene)}>{pingMode ? "Tap a screw" : "Ping screw"}</button>} />
+          ping={snapshot.players.length === 2 && <button className="navbar-ping-button" aria-pressed={pingMode} disabled={!canPing}
+            aria-label={pingMode ? "Tap a screw to ping" : "Ping screw"} title={pingMode ? "Tap a screw" : "Ping screw"}
+            onClick={() => setPingScene(pingMode ? null : scene)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+            <span>{pingMode ? "Tap a screw" : "Ping"}</span>
+          </button>} />
         <TransferOverlay frame={frame} getOrigin={getOrigin} />
       </>}
-      <GameTimer level={level} key={scene} clock={wallClock} startedAt={sampledAt - snapshot.elapsedMs}
-        stoppedAt={snapshot.clockRunning ? room.disconnectedAt : sampledAt} removed={removed} total={game.screws.length} />
-      <ul className="player-counts" aria-label="Screws removed by each player">
-        {[...snapshot.players].sort((a, b) => a.number - b.number).map((seat) =>
-          <li key={seat.id}>Player {seat.number}{seat.id === player && " (you)"} <strong>{seat.collected}</strong></li>)}
-      </ul>
       <GameOverlay mode={result} elapsedMs={snapshot.elapsedMs} timeLabel="Team time" levelTitle={levelTitle}
         onStart={start} onRestart={leader && connected ? () => setConfirmation("reset") : undefined}
         onLevels={leader && connected ? () => { reset(true); setLevelsOpen(true); } : undefined} />
     </>}
     {pingScrew && <span className="room-ping" role="status">{room.ping?.own ? "You" : "Your partner"} pinged a {pingScrew.color} screw</span>}
+    {started && room.error && <span className="room-ping" role="status">{room.error}</span>}
     {confirmation && (confirmation === "leave" || leader) && <ResetDialog action={confirmation}
       onCancel={() => setConfirmation(null)} onConfirm={() => confirmation === "leave" ? leave() : reset()}
       onLevels={confirmation === "leave" ? () => leave(true) : undefined} />}

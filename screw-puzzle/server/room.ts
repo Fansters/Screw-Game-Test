@@ -11,6 +11,8 @@ import { findLooseBlocker } from "../src/scene/loosePhysics.ts";
 import { createPartPhysics } from "../src/scene/partPhysics.ts";
 import type { PartPhysics } from "../src/scene/partPhysics.ts";
 import { SCREW_SCALE } from "../src/game/levels.ts";
+import { freshAbilities, matchCandidates, queuePreviews, settleAbilities } from "../src/game/abilities.ts";
+import type { AbilityState } from "../src/game/abilities.ts";
 
 export const RECONNECT_MS = 30_000;
 const newSeed = () => randomInt(0, 2 ** 32);
@@ -25,6 +27,7 @@ type Room = {
   id: string; level: LevelId; seats: Seat[]; soloAllowed: boolean; round: number; seed: number; game: GameState;
   startedAt: number | null; lifelines: number; fallStarts: Map<PartId, number>;
   elapsedMs: number; clockSince: number | null; physics?: PartPhysics; physicsRevision: number;
+  abilities: AbilityState;
 };
 
 function wireGame({ screws, ...game }: GameState): RoomGame {
@@ -57,6 +60,7 @@ function snapshot(room: Room, now: number): RoomSnapshot {
     })),
     started: room.startedAt !== null, canStart: canStart(room), paused: paused(room), lifelines: room.lifelines,
     game: wireGame(room.game),
+    abilities: room.abilities,
     fallStarts: Object.fromEntries([...room.fallStarts].filter(([, at]) => now - ROOM_PHYSICS_DELAY_MS < at + FALL_DURATION_MS)),
     looseParts: room.physics?.packet() ?? {},
     elapsedMs: room.elapsedMs + (room.clockSince === null ? 0 : now - room.clockSince),
@@ -148,6 +152,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     room.round += 1;
     room.startedAt = restart ? now() : null;
     room.lifelines = LIFELINE_COUNT;
+    room.abilities = freshAbilities();
     room.fallStarts.clear();
     room.physics = undefined;
     room.physicsRevision = 0;
@@ -175,7 +180,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
         if (!isLevelId(level)) return reject(peer, "Choose an available level.");
         const puzzle = generateSoloPuzzle(level, nextSeed());
         const room: Room = { id: secret(), level, seats: [], soloAllowed: false, round: 0, seed: puzzle.seed,
-          game: puzzle.state, startedAt: null, lifelines: LIFELINE_COUNT, fallStarts: new Map(),
+          game: puzzle.state, startedAt: null, lifelines: LIFELINE_COUNT, abilities: freshAbilities(), fallStarts: new Map(),
           elapsedMs: 0, clockSince: null, physicsRevision: 0 };
         rooms.set(room.id, room);
         attach(peer, room, addSeat(room));
@@ -203,7 +208,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
       }
       return;
     }
-    if (command.type === "start" || command.type === "reset" || command.type === "boost" || command.type === "level") {
+    if (command.type === "start" || command.type === "reset" || command.type === "boost" || command.type === "level" || command.type === "find" || command.type === "peek") {
       if (seat !== room.seats[0]) return reject(peer, "Only the room leader can do that.");
     }
     if (command.type === "level") {
@@ -225,6 +230,25 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     }
     if (room.startedAt === null || !seat.ready ||
         paused(room) || room.game.status !== "playing") return;
+    if (command.type === "find") {
+      if (room.abilities.finds === 0 || room.abilities.hint) return;
+      // The leader's scene proposes a head with a verified viewing angle; the
+      // server independently reserves the shared charge and checks live clearance.
+      const screw = matchCandidates(room.game).find((screw) => screw.id === command.screw);
+      room.physics?.advance(time);
+      if (!screw || findLooseBlocker(room.physics?.read() ?? {}, screw, SCREW_SCALE, time - ROOM_PHYSICS_DELAY_MS)) {
+        return reject(peer, "That match changed. No hint use was spent; try again.");
+      }
+      room.abilities = { ...room.abilities, finds: room.abilities.finds - 1, hint: screw.id };
+      publish(room);
+      return;
+    }
+    if (command.type === "peek") {
+      if (room.abilities.peeks === 0 || room.abilities.peekAt !== null || !queuePreviews(room.game).some(Boolean)) return;
+      room.abilities = { ...room.abilities, peeks: room.abilities.peeks - 1, peekAt: room.game.clearedCount };
+      publish(room);
+      return;
+    }
     if (command.type === "dismiss") {
       const startedAt = room.fallStarts.get(command.part);
       if (startedAt !== undefined && time - ROOM_PHYSICS_DELAY_MS < startedAt) return;
@@ -276,6 +300,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     const moves = events.flatMap((event) => event.kind === "detach" ? [] :
       [{ ...event, before: collection(event.before), after: collection(event.after) }]);
     room.game = game;
+    room.abilities = settleAbilities(room.abilities, game);
     if (game.status !== "playing") stopClock(room, now());
     publish(room, moves, matched, completedLifeline);
   }

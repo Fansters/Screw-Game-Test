@@ -2,6 +2,7 @@ import { LIFELINE_COUNT } from "../animation/run.ts";
 import type { LevelId } from "./campaign.ts";
 import { planBonusBox, removeScrew } from "./rules.ts";
 import { generateSoloPuzzle } from "./soloLevels.ts";
+import { ABILITY_USES, freshAbilities, matchCandidates, queuePreviews, settleAbilities } from "./abilities.ts";
 
 type SoloSave = { seed: number; moves: string[]; elapsedMs: number; legacyTitanicLayout?: true };
 const inMemory = new Map<LevelId, SoloSave | null>();
@@ -53,16 +54,29 @@ export function clearSoloSave(level: LevelId) {
 
 export function restoreSoloSave(level: LevelId, save: SoloSave) {
   let game = generateSoloPuzzle(level, save.seed, save.legacyTitanicLayout).state;
-  if (save.moves.length > game.screws.length + LIFELINE_COUNT) return null;
+  if (save.moves.length > game.screws.length + LIFELINE_COUNT + ABILITY_USES * 2) return null;
   let lifelines = LIFELINE_COUNT;
+  let abilities = freshAbilities();
   for (const move of save.moves) {
+    if (move.startsWith("find:")) {
+      const screw = move.slice(5);
+      if (abilities.finds === 0 || abilities.hint || !matchCandidates(game).some((candidate) => candidate.id === screw)) return null;
+      abilities = { ...abilities, finds: abilities.finds - 1, hint: screw };
+      continue;
+    }
+    if (move === "peek") {
+      if (abilities.peeks === 0 || abilities.peekAt !== null || !queuePreviews(game).some(Boolean)) return null;
+      abilities = { ...abilities, peeks: abilities.peeks - 1, peekAt: game.clearedCount };
+      continue;
+    }
     if (move === "boost" && lifelines === 0) return null;
     const next = move === "boost" ? planBonusBox(game).finalState : removeScrew(game, move);
     if (next === game || next.status !== "playing") return null;
     if (move === "boost") lifelines -= 1;
     game = next;
+    abilities = settleAbilities(abilities, game);
   }
   return { game, seed: save.seed, checkpoint: {
-    elapsedBefore: save.elapsedMs, moves: save.moves, lifelines, legacyTitanicLayout: save.legacyTitanicLayout,
+    elapsedBefore: save.elapsedMs, moves: save.moves, lifelines, abilities, legacyTitanicLayout: save.legacyTitanicLayout,
   } };
 }
