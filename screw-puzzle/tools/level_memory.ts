@@ -1,3 +1,4 @@
+import "../src/game/allLevels.ts";
 // CPU/source and render-buffer payload, not total browser/GPU/physics memory.
 // Shared source arrays are counted once; batching creates its own vertex data.
 import { LEVEL_MODELS } from "../src/scene/levelModels.ts";

@@ -2,7 +2,7 @@ import { Euler, Quaternion } from "three";
 import type { ColliderDesc } from "@dimforge/rapier3d-compat";
 import type { PartId } from "../game/types.ts";
 import { geometryFor } from "./geometry.ts";
-import { LEVEL_MODELS, partLevel, partPivot } from "./levelModels.ts";
+import { LEVEL_MODELS, partLevel, partPivot, onLevelRelease } from "./levelModels.ts";
 import type { Piece, Vector } from "./houseModel.ts";
 import { WATER_COLLIDERS } from "./titanicWater.ts";
 
@@ -74,6 +74,10 @@ function makeShape(piece: Piece): Shape {
 }
 
 const shapesByPart = new Map<PartId, Shape[]>();
+onLevelRelease(level => {
+  for (const part of shapesByPart.keys()) if (partLevel(part) === level) shapesByPart.delete(part);
+  if (level === "titanic") WATER_COLLIDERS.clear();
+});
 
 function colliderFor(engine: Engine, shape: Shape): ColliderDesc {
   const [x, y, z] = shape.size;

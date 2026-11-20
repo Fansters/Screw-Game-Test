@@ -1,7 +1,7 @@
 import { DoubleSide, Matrix3, Mesh, MeshBasicMaterial, Raycaster, Vector3 } from "three";
 import type { Object3D } from "three";
 import type { LevelId, PartId } from "../game/types.ts";
-import { LEVEL_MODELS, partLevel } from "./levelModels.ts";
+import { LEVEL_MODELS, partLevel, onLevelRelease } from "./levelModels.ts";
 import { geometryFor } from "./geometry.ts";
 import { SCREW_PULL_DISTANCE } from "./screwDimensions.ts";
 
@@ -18,6 +18,7 @@ function buildSolids(level: LevelId) {
   });
 }
 const solidsByLevel: Partial<Record<LevelId, ReturnType<typeof buildSolids>>> = {};
+onLevelRelease(level => { delete solidsByLevel[level]; });
 
 export function findScrewObstructions(screw: { position: [number, number, number]; normal: [number, number, number]; attachedTo?: PartId }, scale: number,
   live?: { root: Object3D; part: PartId }): PartId[] {

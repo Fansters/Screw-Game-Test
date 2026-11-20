@@ -3,6 +3,9 @@ import GameControls from "../components/GameControls";
 import DesktopCursor from "../components/DesktopCursor";
 import GameOverlay from "../components/GameOverlay";
 import GameScene from "../components/GameScene";
+import HomeScene from "../components/HomeScene";
+import LevelLoading from "../components/LevelLoading";
+import { useLevelAssets } from "../components/useLevelAssets";
 import type { HintControls } from "../components/GameScene";
 import AbilityButtons from "../components/AbilityButtons";
 import { queuePreviews } from "../game/abilities";
@@ -31,6 +34,7 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
   const round = snapshot?.round ?? 0;
   const started = snapshot?.started ?? false;
   const level = snapshot?.level ?? "cottage";
+  const assets = useLevelAssets(snapshot?.level ?? null);
   const levelTitle = CAMPAIGN_LEVELS.find(({ id }) => id === level)!.title;
   const leader = snapshot?.leader === player;
   const view = started ? "house" : "title";
@@ -57,13 +61,13 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
   const getOrigin = useCallback((id: string) => project.current(id), []);
   const cameraReady = arrival?.view === view && arrival.round === round;
   const game = useMemo(() => {
-    if (!snapshot) return null;
+    if (!snapshot || !assets?.ready) return null;
     const { colors, removed, ...state } = snapshot.game;
     const removedIds = new Set(removed);
     return { ...state, screws: soloLevelTemplate(snapshot.level).map((screw, index) => ({
       ...screw, color: colors[index], removed: removedIds.has(screw.id),
     })) };
-  }, [snapshot]);
+  }, [snapshot, assets?.ready]);
   const fallingParts = (Object.keys(snapshot?.fallStarts ?? {}) as PartId[])
     .filter((part) => finished?.scene !== scene || !finished.parts.includes(part));
   const localReady = snapshot?.players.some((seat) => seat.id === player && seat.ready) ?? false;
@@ -151,6 +155,8 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
   const sampledAt = (snapshot?.serverTime ?? 0) - clockOffset;
   const completedLifeline = room.completedLifeline?.round === round ? room.completedLifeline.box : undefined;
   return <div className="game-layout" onContextMenu={(event) => event.preventDefault()}>
+    {!game && <HomeScene />}
+    {snapshot && !assets?.ready && <LevelLoading title={levelTitle} stage={assets?.stage} error={assets?.error} />}
     {game && <GameScene key={scene} level={level} logical={game} fallingParts={fallingParts} round={round}
       onlineParts={onlineParts} looseNow={looseNow} onLooseDismiss={(part) => send({ type: "dismiss", round, part })}
       view={view} playable={playable} orbitable={orbitable} onCameraArrive={cameraArrived} onReady={sceneReady}

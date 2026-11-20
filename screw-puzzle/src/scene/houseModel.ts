@@ -1,5 +1,5 @@
 import type { BufferGeometry } from "three";
-import { DINING_CHAIRS, FLOOR_BEAMS, FRAME_POSTS, GROUND_IDS, PLINTH_IDS, ROOF_SECTIONS, TILE_IDS, WALL_SECTIONS } from "../game/types.ts";
+import { DINING_CHAIRS, FLOOR_BEAMS, FRAME_POSTS, GROUND_IDS, PLINTH_IDS, ROOF_SECTIONS, TILE_IDS, WALL_SECTIONS, PART_IDS } from "../game/types.ts";
 import type { PartId } from "../game/types.ts";
 import { addBathroom } from "./bathroom.ts";
 import { addChristmasDetails } from "./christmas.ts";
@@ -8,13 +8,11 @@ import { addFurnishings } from "./furnishings.ts";
 export type Vector = [number, number, number];
 export type Piece = { position: Vector; size: Vector; color: string; rotation?: Vector; part: PartId; geometry?: BufferGeometry;
   kind: "box" | "cylinder" | "ico" | "ico-detail" | "gable" | "cone" | "curtain" | "star" | "snow-slab" | "snow-drift" | "ring" };
-export const HOUSE = { halfWidth: 2.4, halfDepth: 1.9, ground: -1.6, upper: 0.25, eave: 2, ridge: 3.5, roofRun: 2.7, roofRise: 1.5 };
-export const ROOF_PITCH = Math.atan2(HOUSE.roofRise, HOUSE.roofRun);
-export const STAIR_WIDTH = 0.58;
-export function stairTread(step: number): Vector {
-  return [-0.145, -1.5 + step * 0.15, 1.12 - step * 0.17];
-}
-export const PART_PIVOTS = {
+import { ROOF_PITCH, STAIR_WIDTH, stairTread } from "./houseConfig.ts";
+export { HOUSE, ROOF_PITCH, STAIR_WIDTH, stairTread } from "./houseConfig.ts";
+
+export function createCottageModel() {
+const PART_PIVOTS = {
   chimney: [-0.8, 3.55, 0.6],
   "window-upper-left": [-1.5, 1.15, 2], "window-upper-right": [1.5, 1.15, 2],
   "window-lower-left": [-1.5, -0.65, 2], "window-lower-right": [1.5, -0.65, 2],
@@ -37,7 +35,7 @@ for (const section of WALL_SECTIONS) {
   const y = section.story === "upper" ? 1.1 : -0.7;
   PART_PIVOTS[section.id] = section.face === "front" || section.face === "back" ? [along, y, section.face === "front" ? 1.9 : -1.9] : [section.face === "left" ? -2.4 : 2.4, y, along];
 }
-export const PIECES: Piece[] = [];
+const PIECES: Piece[] = [];
 function box(position: Vector, size: Vector, color: string, part: PartId, rotation?: Vector) { PIECES.push({ kind: "box", position, size, color, part, rotation }); }
 function round(kind: "cylinder" | "ico" | "ico-detail", position: Vector, size: Vector, color: string, part: PartId, rotation?: Vector) { PIECES.push({ kind, position, size, color, part, rotation }); }
 function window(x: number, y: number, part: PartId) {
@@ -56,7 +54,7 @@ for (const [index, part] of TILE_IDS.entries()) {
 for (const part of PLINTH_IDS) box(PART_PIVOTS[part], [2.505, 0.2, 2.005], "#bbb7aa", part);
 for (const part of GROUND_IDS) box(PART_PIVOTS[part], [2.305, 0.1, 1.805], "#cfaa77", part);
 // Partition the front wall around genuine openings, including the siding strips.
-export const FRONT_OPENINGS = [
+const FRONT_OPENINGS = [
   ...[-1.5, 1.5].flatMap((x) => [1.15, -0.65].map((y) => ({ x, y, width: 0.84, height: 0.91 }))),
   { x: 0, y: -0.75, width: 0.94, height: 1.62 },
 ];
@@ -234,7 +232,7 @@ for (const { base, ids } of furnitureFamilies) {
   const [x, , z] = PART_PIVOTS[ids[0]];
   for (const id of ids) furnitureAnchors.set(id, [x, base, z]);
 }
-export function resizeFurniturePoint(part: PartId, point: Vector): Vector {
+function resizeFurniturePoint(part: PartId, point: Vector): Vector {
   const anchor = furnitureAnchors.get(part);
   if (!anchor) return point;
   const [x, y, z] = anchor;
@@ -245,4 +243,7 @@ for (const piece of PIECES) {
   if (!furnitureAnchors.has(piece.part)) continue;
   piece.position = resizeFurniturePoint(piece.part, piece.position);
   piece.size = [piece.size[0] * FURNITURE_SCALE, piece.size[1] * FURNITURE_SCALE, piece.size[2] * FURNITURE_SCALE];
+}
+
+return { model: { pieces: PIECES, pivots: PART_PIVOTS, parts: PART_IDS }, resizeFurniturePoint, FRONT_OPENINGS };
 }

@@ -1,4 +1,4 @@
-import { DEMO_LEVEL } from "./levels.ts";
+import { levelData } from "./levelData.ts";
 import { SCREW_COLOR_ORDER } from "./types.ts";
 import type { BoxTarget, GameState, MoveEvent, Screw, ScrewColor, Socket } from "./types.ts";
 
@@ -12,7 +12,7 @@ export function isScrewAccessible(state: GameState, screw: Screw): boolean {
   return !screw.removed && (screw.obstructedBy ?? []).every((part) => state.removedParts.includes(part));
 }
 
-export function createInitialState(level: readonly Screw[] = DEMO_LEVEL, targetColors?: readonly ScrewColor[]): GameState {
+export function createInitialState(level: readonly Screw[] = levelData("cottage").template, targetColors?: readonly ScrewColor[]): GameState {
   const boxQueue: BoxTarget[] = [];
   const counts = SCREW_COLOR_ORDER.map((color) => level.filter((screw) => screw.color === color).length);
   if (targetColors) targetColors.forEach((color) => boxQueue.push({ id: `box-${boxQueue.length + 1}`, color }));

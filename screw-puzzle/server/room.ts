@@ -1,3 +1,4 @@
+import "../src/game/allLevels.ts";
 import { randomBytes, randomInt } from "node:crypto";
 import { LIFELINE_COUNT } from "../src/animation/run.ts";
 import { FALL_DURATION_MS } from "../src/game/fallTiming.ts";
@@ -10,7 +11,7 @@ import { PING_COOLDOWN_MS, ROOM_LEVEL_VERSION, ROOM_PHYSICS_DELAY_MS, ROOM_VERSI
 import { findLooseBlocker } from "../src/scene/loosePhysics.ts";
 import { createPartPhysics } from "../src/scene/partPhysics.ts";
 import type { PartPhysics } from "../src/scene/partPhysics.ts";
-import { SCREW_SCALE } from "../src/game/levels.ts";
+import { SCREW_SCALE } from "../src/game/screwScale.ts";
 import { freshAbilities, matchCandidates, queuePreviews, settleAbilities } from "../src/game/abilities.ts";
 import type { AbilityState } from "../src/game/abilities.ts";
 

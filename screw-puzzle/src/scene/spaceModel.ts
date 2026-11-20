@@ -1,16 +1,19 @@
-import { CylinderGeometry, Euler, Float32BufferAttribute, LatheGeometry, Matrix4, Quaternion, SphereGeometry, TorusGeometry, Vector2, Vector3 } from "three";
+import { BoxGeometry, CylinderGeometry, Euler, Float32BufferAttribute, LatheGeometry, Matrix4, Quaternion, SphereGeometry, TorusGeometry, Vector2, Vector3 } from "three";
 import type { BufferGeometry } from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { ConvexGeometry } from "three/addons/geometries/ConvexGeometry.js";
 import type { Screw, SpacePartId } from "../game/types.ts";
 import type { Piece, Vector } from "./houseModel.ts";
 
+// Construct only when this level is requested. No live geometry is kept in the module.
+export function createSpaceModel() {
+
 type Mount = Pick<Screw, "position" | "normal" | "solutionAfter"> & { attachedTo: SpacePartId };
 const pieces: Piece[] = [], pivots: Record<SpacePartId, Vector> = {};
-export const SPACE_MOUNTS: Mount[] = [];
-export const SPACE_BASE_SEGMENTS = 20, SPACE_SEGMENTS = 28, SPACE_RINGS = 12;
+const SPACE_MOUNTS: Mount[] = [];
+const SPACE_BASE_SEGMENTS = 20, SPACE_SEGMENTS = 28, SPACE_RINGS = 12;
 // 28 rather than 20 longitude segments gives curved surfaces 40% more faces.
-export const SPACE_CURVED_GEOMETRY = new SphereGeometry(1, SPACE_SEGMENTS, SPACE_RINGS);
+const SPACE_CURVED_GEOMETRY = new SphereGeometry(1, SPACE_SEGMENTS, SPACE_RINGS);
 function smooth(geometry: BufferGeometry) {
   geometry.setAttribute("color", new Float32BufferAttribute(new Float32Array(geometry.getAttribute("position").count * 3).fill(1), 3));
   return geometry;
@@ -19,7 +22,7 @@ smooth(SPACE_CURVED_GEOMETRY);
 const soft = new RoundedBoxGeometry(1, 1, 1, 3, .09), cylinder = smooth(new CylinderGeometry(1, 1, 1, 34));
 const cream = "#f7ead7", white = "#fff6e9", violet = "#8d81b3", slate = "#596582", rock = "#aaa0bd";
 const orange = "#ffc15b", red = "#f76e64", cyan = "#62e5ee", blue = "#4559aa", yellow = "#fff3a3";
-export const SPACE_GLASS_COLOR = "#a7deed";
+const SPACE_GLASS_COLOR = "#a7deed";
 const domeParts: SpacePartId[] = [], hubWalls: SpacePartId[] = [], deckParts: SpacePartId[] = [];
 function owner(name: string, pivot: Vector) { const id: SpacePartId = `space-${name}`; pivots[id] = pivot; return id; }
 function piece(part: SpacePartId, geometry: BufferGeometry, position: Vector, size: Vector, color: string, rotation?: Vector, kind: Piece["kind"] = "box") {
@@ -114,16 +117,20 @@ for (let i = 0; i < 8; i++) {
   box(equipment, [Math.sin(m) * 2.10, 1.95, hubZ + Math.cos(m) * 2.10], [.19, .36, .03], cyan, [0, m, 0]);
   screw(equipment, [Math.sin(m) * 2.11, 1.75, hubZ + Math.cos(m) * 2.11], [Math.sin(m), 0, Math.cos(m)]);
 }
-const doorFrame = owner("airlock-frame", [0, 1.77, 1.0]);
-for (const x of [-.59, .59]) box(doorFrame, [x, 1.72, .99], [.18, 1.79, .30], slate);
-box(doorFrame, [0, 2.57, .99], [1.32, .22, .3], slate);
+const doorFrame = owner("airlock-frame", [0, 1.91, .9]);
+const airlockCore = new BoxGeometry(1, 1, 1);
+// Full-depth jambs join the curved wall edges. The leaves overlap the jambs,
+// lintel, threshold and centre seam slightly, leaving no ray-sized shortcuts.
+for (const x of [-.78, .78]) piece(doorFrame, airlockCore, [x, 1.91, .9], [.36, 2.18, .52], slate);
+piece(doorFrame, airlockCore, [0, 2.86, .9], [1.92, .28, .52], slate);
+piece(doorFrame, airlockCore, [0, .86, .9], [1.24, .08, .52], slate);
 for (const side of [-1, 1]) {
-  const p = owner(`airlock-door-${side}`, [side * .26, 1.7, 1.03]);
-  box(p, pivots[p], [.5, 1.57, .15], cream); box(p, [side * .26, 1.7, 1.12], [.38, 1.35, .035], orange);
-  box(p, [side * .26, 1.75, 1.15], [.26, .8, .02], slate); box(p, [side * .1, 1.75, 1.18], [.045, .48, .025], yellow);
-  screw(p, [side * .26, 1.23, 1.17], [0, 0, 1]);
+  const p = owner(`airlock-door-${side}`, [side * .30, 1.8, 1.01]);
+  piece(p, airlockCore, pivots[p], [.608, 1.844, .19], cream); box(p, [side * .30, 1.8, 1.12], [.48, 1.60, .035], orange);
+  box(p, [side * .30, 1.83, 1.15], [.32, 1.08, .02], slate); box(p, [side * .13, 1.83, 1.18], [.045, .62, .025], yellow);
+  screw(p, [side * .30, 1.23, 1.17], [0, 0, 1]);
 }
-screw(doorFrame, [.59, 2.35, 1.15], [0, 0, 1]);
+screw(doorFrame, [.78, 2.40, 1.17], [0, 0, 1]);
 
 // Plants sit on independent hydroponic trays and floor sectors. Dome frames and
 // glass wedges peel away to expose these interior/sill and underside heads.
@@ -357,7 +364,7 @@ for(const [i,x,z,r] of [[0,-3.77,4.32,1.02],[1,-.22,3.5,.57]] as const) {
   for(let j=0;j<2;j++) {
     const lip=owner(`crater-rim-${i}-${j}`,[x,.14,z]);
     const profile=[new Vector2(r*.50,-.01),new Vector2(r*.64,.10),new Vector2(r*.72,.33),new Vector2(r*.88,.25),new Vector2(r,.03),new Vector2(r*.50,-.01)];
-    piece(lip,new LatheGeometry(profile,20,j*Math.PI,Math.PI-.02),pivots[lip],[1,1,1],rock);
+    piece(lip,new LatheGeometry(profile.reverse(),20,j*Math.PI,Math.PI-.02),pivots[lip],[1,1,1],rock);
     const a=j*Math.PI+Math.PI/2; screw(lip,[x+Math.sin(a)*r*.80,.43,z+Math.cos(a)*r*.80],[Math.sin(a)*.5/r,1,Math.cos(a)*.5/r]);
   }
 }
@@ -414,5 +421,7 @@ for(const p of pieces) if(p.rotation && p.geometry) {
   bake.makeRotationFromEuler(new Euler(...p.rotation)).scale(new Vector3(...p.size));
   p.geometry=p.geometry.clone().applyMatrix4(bake);p.size=[1,1,1];p.rotation=undefined;
 }
-export const SPACE_MODEL={pieces,pivots,parts:Object.keys(pivots) as SpacePartId[],domeParts,hubWalls,deckParts};
-if(import.meta.hot)import.meta.hot.dispose(()=>{for(const g of new Set([...pieces.map(p=>p.geometry),soft,cylinder,SPACE_CURVED_GEOMETRY]))g?.dispose();});
+const SPACE_MODEL={pieces,pivots,parts:Object.keys(pivots) as SpacePartId[],domeParts,hubWalls,deckParts};
+
+return { model: SPACE_MODEL, mounts: SPACE_MOUNTS, SPACE_BASE_SEGMENTS, SPACE_SEGMENTS, SPACE_RINGS, SPACE_CURVED_GEOMETRY };
+}

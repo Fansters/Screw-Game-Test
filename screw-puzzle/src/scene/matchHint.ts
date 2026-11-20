@@ -1,6 +1,6 @@
 import { Vector3 } from "three";
 import type { Camera, Object3D } from "three";
-import { SCREW_SCALE } from "../game/levels.ts";
+import { SCREW_SCALE } from "../game/screwScale.ts";
 import { matchCandidates } from "../game/abilities.ts";
 import { isScrewAccessible } from "../game/rules.ts";
 import type { GameState, Screw } from "../game/types.ts";

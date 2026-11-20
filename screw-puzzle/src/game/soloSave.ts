@@ -1,12 +1,13 @@
 import { LIFELINE_COUNT } from "../animation/run.ts";
 import type { LevelId } from "./campaign.ts";
+import { layoutRevision } from "./layoutVersions.ts";
 import { planBonusBox, removeScrew } from "./rules.ts";
 import { generateSoloPuzzle } from "./soloLevels.ts";
 import { ABILITY_USES, freshAbilities, matchCandidates, queuePreviews, settleAbilities } from "./abilities.ts";
 
 type SoloSave = { seed: number; moves: string[]; elapsedMs: number; legacyTitanicLayout?: true };
 const inMemory = new Map<LevelId, SoloSave | null>();
-export const soloSaveKey = (level: LevelId) => `screw-it:solo-save:${level}:${level === "desert" ? "v3" : "v2"}`;
+export const soloSaveKey = (level: LevelId) => `screw-it:solo-save:${level}:${layoutRevision(level)}`;
 const previousTitanicSaveKey = "screw-it:solo-save:titanic:v1";
 
 function validSave(value: unknown): value is SoloSave {

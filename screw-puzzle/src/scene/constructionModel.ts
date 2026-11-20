@@ -15,12 +15,15 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 import { ConvexGeometry } from "three/addons/geometries/ConvexGeometry.js";
 import type { ConstructionPartId, Screw } from "../game/types.ts";
 import type { Piece, Vector } from "./houseModel.ts";
+
+// Construct only when this level is requested. No live geometry is kept in the module.
+export function createConstructionModel() {
 type Mount = Pick<Screw, "position" | "normal" | "solutionAfter"> & {
   attachedTo: ConstructionPartId;
 };
 const pieces: Piece[] = [],
   pivots: Record<ConstructionPartId, Vector> = {};
-export const CONSTRUCTION_MOUNTS: Mount[] = [];
+const CONSTRUCTION_MOUNTS: Mount[] = [];
 const soft = new RoundedBoxGeometry(1, 1, 1, 2, 0.075),
   brick = new RoundedBoxGeometry(1, 1, 1, 1, 0.065),
   cylinder = new CylinderGeometry(1, 1, 1, 20);
@@ -1286,19 +1289,11 @@ for (const piece of pieces)
       piece.rotation = undefined;
     }
   }
-export const CONSTRUCTION_MODEL = {
+const CONSTRUCTION_MODEL = {
   pieces,
   pivots,
   parts: Object.keys(pivots) as ConstructionPartId[],
 };
-if (import.meta.hot)
-  import.meta.hot.dispose(() => {
-    for (const g of new Set([
-      ...pieces.map((p) => p.geometry),
-      soft,
-      brick,
-      cylinder,
-      pipeGeometry,
-    ]))
-      g?.dispose();
-  });
+
+return { model: CONSTRUCTION_MODEL, mounts: CONSTRUCTION_MOUNTS };
+}

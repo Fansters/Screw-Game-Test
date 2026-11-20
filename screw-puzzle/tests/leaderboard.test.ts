@@ -1,3 +1,4 @@
+import "../src/game/allLevels.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readSoloTimes, recordSoloTime, SOLO_TIMES_KEY } from "../src/game/leaderboard.ts";

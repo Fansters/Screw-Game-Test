@@ -1,3 +1,4 @@
+import "../src/game/allLevels.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CAMPAIGN_LEVELS, levelStatus, readLevelProgress, recordLevelClear } from "../src/game/campaign.ts";

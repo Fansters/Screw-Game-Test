@@ -6,9 +6,12 @@ import { GLYPHS } from "../components/lettering.ts";
 import type { DesertPartId, Screw } from "../game/types.ts";
 import type { Piece, Vector } from "./houseModel.ts";
 
+// Construct only when this level is requested. No live geometry is kept in the module.
+export function createDesertModel() {
+
 type Mount = Pick<Screw, "position" | "normal" | "solutionAfter"> & { attachedTo: DesertPartId };
 const pieces: Piece[] = [], pivots: Record<DesertPartId, Vector> = {};
-export const DESERT_MOUNTS: Mount[] = [];
+const DESERT_MOUNTS: Mount[] = [];
 const rounded = new RoundedBoxGeometry(1, 1, 1, 3, .12);
 const cylinder = new CylinderGeometry(1, 1, 1, 24);
 const cream = "#ffe4b0", pale = "#fff2d4", red = "#cc493e", redLight = "#e95f4c", teal = "#479b91", darkTeal = "#306c65";
@@ -495,5 +498,7 @@ for(const p of pieces.filter(p=>p.part===motelStar))p.geometry=burst;
 const matrix=new Matrix4(), euler=new Euler();
 for(const p of pieces){if(!p.rotation)continue;const source=p.geometry??(p.kind==="cylinder"?cylinder:null);if(!source)continue;
  matrix.makeRotationFromEuler(euler.set(...p.rotation)).scale(new Vector3(...p.size));p.geometry=source.clone().applyMatrix4(matrix);p.size=[1,1,1];p.rotation=undefined;}
-export const DESERT_MODEL={pieces,pivots,parts:Object.keys(pivots) as DesertPartId[]};
-if(import.meta.hot)import.meta.hot.dispose(()=>{const geometries=new Set(pieces.flatMap(p=>p.geometry?[p.geometry]:[]));geometries.add(rounded);geometries.add(cylinder);geometries.forEach(g=>g.dispose());});
+const DESERT_MODEL={pieces,pivots,parts:Object.keys(pivots) as DesertPartId[]};
+
+return { model: DESERT_MODEL, mounts: DESERT_MOUNTS };
+}

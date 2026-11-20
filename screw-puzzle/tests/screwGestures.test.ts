@@ -1,3 +1,4 @@
+import "../src/game/allLevels.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createScrewGestures } from "../src/scene/screwGestures.ts";

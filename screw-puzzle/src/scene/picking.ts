@@ -1,7 +1,7 @@
 import { Raycaster, Vector2, Vector3 } from "three";
 import type { Camera, Intersection, Object3D } from "three";
 import type { GameState, PartId } from "../game/types.ts";
-import { SCREW_SCALE } from "../game/levels.ts";
+import { SCREW_SCALE } from "../game/screwScale.ts";
 import { isScrewAccessible } from "../game/rules.ts";
 
 type CanvasRect = { left: number; top: number; width: number; height: number };

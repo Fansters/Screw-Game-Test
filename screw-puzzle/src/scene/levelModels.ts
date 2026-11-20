@@ -1,31 +1,20 @@
-import { DESERT_MODEL } from "./desertModel.ts";
-import { CONSTRUCTION_MODEL } from "./constructionModel.ts";
-import { CARNIVAL_MODEL } from "./carnivalModel.ts";
-import { ZOO_MODEL } from "./zooModel.ts";
-import { SPACE_MODEL } from "./spaceModel.ts";
-import { PART_IDS } from "../game/types.ts";
-import type { CampsitePartId, CarnivalPartId, ConstructionPartId, DesertPartId, LevelId, PartId, TitanicPartId, ZooPartId, SpacePartId } from "../game/types.ts";
-import { PART_PIVOTS, PIECES } from "./houseModel.ts";
-import { TITANIC_MODEL } from "./titanicModel.ts";
-import { CAMPSITE_MODEL } from "./campsiteModel.ts";
-
-export const LEVEL_MODELS = {
-  cottage: { pieces: PIECES, pivots: PART_PIVOTS, parts: PART_IDS },
-  titanic: TITANIC_MODEL,
-  campsite: CAMPSITE_MODEL,
-  desert: DESERT_MODEL,
-  construction: CONSTRUCTION_MODEL,
-  carnival: CARNIVAL_MODEL,
-  zoo: ZOO_MODEL,
-  space: SPACE_MODEL,
-};
+import type { LevelId, PartId } from "../game/types.ts";
+import type { Piece, Vector } from "./houseModel.ts";
+export type LevelModel = { pieces: Piece[]; pivots: Partial<Record<PartId, Vector>>; parts: readonly PartId[] };
+// Only loaded levels live here; model modules contain factories, not instances.
+export const LEVEL_MODELS = {} as Record<LevelId, LevelModel>;
+const cleaners = new Set<(level: LevelId) => void>();
+export function onLevelRelease(clean: (level: LevelId) => void) { cleaners.add(clean); }
+export function registerModel(level: LevelId, model: LevelModel) { LEVEL_MODELS[level] = model; }
+export function releaseModel(level: LevelId) {
+  const model = LEVEL_MODELS[level]; if (!model) return;
+  cleaners.forEach(clean => clean(level));
+  for (const geometry of new Set(model.pieces.flatMap(p => p.geometry ? [p.geometry] : []))) geometry.dispose();
+  delete LEVEL_MODELS[level];
+}
 export const partLevel = (part: PartId): LevelId => part.startsWith("space-") ? "space" : part.startsWith("zoo-") ? "zoo" : part.startsWith("fair-") ? "carnival" : part.startsWith("site-") ? "construction" : part.startsWith("desert-") ? "desert" : part.startsWith("camp-") ? "campsite" : part.startsWith("ship-") ? "titanic" : "cottage";
-export function partPivot(part: PartId) {
-  if (part.startsWith("space-")) return SPACE_MODEL.pivots[part as SpacePartId];
-  if (part.startsWith("zoo-")) return ZOO_MODEL.pivots[part as ZooPartId];
-  if (part.startsWith("fair-")) return CARNIVAL_MODEL.pivots[part as CarnivalPartId];
-  if (part.startsWith("site-")) return CONSTRUCTION_MODEL.pivots[part as ConstructionPartId];
-  if (part.startsWith("desert-")) return DESERT_MODEL.pivots[part as DesertPartId];
-  if (part.startsWith("camp-")) return CAMPSITE_MODEL.pivots[part as CampsitePartId];
-  return partLevel(part) === "titanic" ? TITANIC_MODEL.pivots[part as TitanicPartId] : PART_PIVOTS[part];
+export function partPivot(part: PartId): Vector {
+  const pivot = LEVEL_MODELS[partLevel(part)]?.pivots[part];
+  if (!pivot) throw new Error(`Load the level before using ${part}`);
+  return pivot;
 }

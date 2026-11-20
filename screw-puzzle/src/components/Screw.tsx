@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import type { ThreeEvent } from "@react-three/fiber";
 import type { Group } from "three";
 import { Quaternion, Vector3 } from "three";
-import { SCREW_SCALE } from "../game/levels";
+import { SCREW_SCALE } from "../game/screwScale";
 import { SCREW_PULL_DISTANCE } from "../scene/screwDimensions";
 import { headGeometry, recessGeometry, shaftGeometry } from "./screwGeometry";
 

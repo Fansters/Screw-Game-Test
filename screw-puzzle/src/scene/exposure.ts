@@ -2,7 +2,7 @@ import { DoubleSide, Mesh, MeshBasicMaterial, Raycaster, Vector3 } from "three";
 import type { GameState } from "../game/types.ts";
 import type { LevelId } from "../game/types.ts";
 import { isScrewAccessible } from "../game/rules.ts";
-import { SCREW_SCALE } from "../game/levels.ts";
+import { SCREW_SCALE } from "../game/screwScale.ts";
 import { LEVEL_MODELS } from "./levelModels.ts";
 import { geometryFor } from "./geometry.ts";
 

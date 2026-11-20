@@ -1,15 +1,16 @@
+import "../src/game/allLevels.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DoubleSide, Mesh, MeshBasicMaterial, Raycaster, Vector3 } from "three";
 import { BONUS_SLOT, createInitialState, removeScrew, isScrewAccessible, planScrewRemoval } from "../src/game/rules.ts";
 import { generatePuzzle } from "../src/game/randomize.ts";
-import { DEMO_LEVEL, SCREW_SCALE } from "../src/game/levels.ts";
+import { DEMO_LEVEL, SCREW_SCALE } from "../src/game/allLevels.ts";
 import { GROUND_IDS, PART_IDS, SCREW_COLOR_ORDER, TILE_IDS } from "../src/game/types.ts";
 import type { GameState, PartId, Screw, ScrewColor } from "../src/game/types.ts";
 import { createRun, currentFrame, runReducer, settledParts } from "../src/animation/run.ts";
 import type { RunState } from "../src/animation/run.ts";
 import { buildSequence } from "../src/animation/sequence.ts";
-import { PART_PIVOTS, PIECES } from "../src/scene/houseModel.ts";
+import { PART_PIVOTS, PIECES } from "../src/game/allLevels.ts";
 import { geometryFor } from "../src/scene/geometry.ts";
 import { findLooseBlocker, isLooseVisible, LOOSE_LIFETIME_MS, loosePartPose } from "../src/scene/loosePhysics.ts";
 import { findExposedScrews } from "../src/scene/exposure.ts";

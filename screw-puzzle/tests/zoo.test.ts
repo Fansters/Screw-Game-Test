@@ -1,3 +1,4 @@
+import "../src/game/allLevels.ts";
 import { ZOO_BLOCKERS, ZOO_EXPOSED_IDS } from "../src/scene/zooAudit.ts";
 import { findScrewObstructions } from "../src/scene/obstructions.ts";
 import assert from "node:assert/strict";
@@ -14,7 +15,7 @@ import {
   generateSoloPuzzle,
   soloLevelTemplate,
 } from "../src/game/soloLevels.ts";
-import { SCREW_SCALE } from "../src/game/levels.ts";
+import { SCREW_SCALE } from "../src/game/allLevels.ts";
 import {
   createInitialState,
   isScrewAccessible,
@@ -25,7 +26,7 @@ import {
   ZOO_ANIMAL_GEOMETRY,
   ZOO_ANIMAL_BASE_SEGMENTS,
   ZOO_ANIMAL_RINGS,
-} from "../src/scene/zooModel.ts";
+} from "../src/game/allLevels.ts";
 import { findExposedScrews } from "../src/scene/exposure.ts";
 import { geometryFor } from "../src/scene/geometry.ts";
 import {

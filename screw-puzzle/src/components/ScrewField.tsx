@@ -5,7 +5,7 @@ import { Color, Object3D, Quaternion, Vector3 } from "three";
 import type { InstancedMesh } from "three";
 import type { GameState } from "../game/types";
 import { SCREW_COLORS } from "../game/colors";
-import { SCREW_SCALE } from "../game/levels";
+import { SCREW_SCALE } from "../game/screwScale";
 import { SCREW_PULL_DISTANCE } from "../scene/screwDimensions";
 import { headGeometry, recessGeometry, shaftGeometry } from "./screwGeometry";
 import { SCREW_SPIN_MS } from "../animation/sequence";

@@ -1,7 +1,8 @@
+import "../src/game/allLevels.ts";
 // Rebuild after editing Moonbase Odyssey geometry or screw mounts.
 import { writeFileSync } from "node:fs";
-import { SPACE_MOUNTS } from "../src/scene/spaceModel.ts";
-import { SCREW_SCALE } from "../src/game/levels.ts";
+import { SPACE_MOUNTS } from "../src/game/allLevels.ts";
+import { SCREW_SCALE } from "../src/game/allLevels.ts";
 import { SCREW_COLOR_ORDER } from "../src/game/types.ts";
 import { createInitialState } from "../src/game/rules.ts";
 import { findScrewObstructions } from "../src/scene/obstructions.ts";

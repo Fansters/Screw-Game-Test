@@ -6,7 +6,7 @@ import { Vector3 } from "three";
 import type { Group } from "three";
 import type { LevelId } from "../game/campaign";
 import type { GameState, PartId, Screw } from "../game/types";
-import { SCREW_SCALE } from "../game/levels";
+import { SCREW_SCALE } from "../game/screwScale";
 import { pickSceneTarget } from "../scene/picking";
 import { createScrewGestures } from "../scene/screwGestures";
 import { isScrewAccessible } from "../game/rules";

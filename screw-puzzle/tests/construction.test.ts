@@ -1,3 +1,4 @@
+import "../src/game/allLevels.ts";
 import {
   CONSTRUCTION_BLOCKERS,
   CONSTRUCTION_EXPOSED_IDS,
@@ -10,13 +11,13 @@ import {
   generateSoloPuzzle,
   soloLevelTemplate,
 } from "../src/game/soloLevels.ts";
-import { SCREW_SCALE } from "../src/game/levels.ts";
+import { SCREW_SCALE } from "../src/game/allLevels.ts";
 import {
   createInitialState,
   isScrewAccessible,
   removeScrew,
 } from "../src/game/rules.ts";
-import { CONSTRUCTION_MODEL } from "../src/scene/constructionModel.ts";
+import { CONSTRUCTION_MODEL } from "../src/game/allLevels.ts";
 import { findExposedScrews } from "../src/scene/exposure.ts";
 import { geometryFor } from "../src/scene/geometry.ts";
 import {

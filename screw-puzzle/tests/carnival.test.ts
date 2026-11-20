@@ -1,3 +1,4 @@
+import "../src/game/allLevels.ts";
 import {
   CARNIVAL_BLOCKERS,
   CARNIVAL_EXPOSED_IDS,
@@ -10,7 +11,7 @@ import {
   generateSoloPuzzle,
   soloLevelTemplate,
 } from "../src/game/soloLevels.ts";
-import { SCREW_SCALE } from "../src/game/levels.ts";
+import { SCREW_SCALE } from "../src/game/allLevels.ts";
 import {
   createInitialState,
   isScrewAccessible,
@@ -20,7 +21,7 @@ import {
   CARNIVAL_MODEL,
   CARNIVAL_WHEEL_RADIUS,
   CARNIVAL_WHEEL_REFERENCE_RADIUS,
-} from "../src/scene/carnivalModel.ts";
+} from "../src/game/allLevels.ts";
 import { findExposedScrews } from "../src/scene/exposure.ts";
 import { geometryFor } from "../src/scene/geometry.ts";
 import {

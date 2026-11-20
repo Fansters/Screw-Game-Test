@@ -1,8 +1,9 @@
+import "../src/game/allLevels.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createRoomServer, RECONNECT_MS } from "../server/room.ts";
 import { FALL_DURATION_MS } from "../src/game/fallTiming.ts";
-import { DEMO_LEVEL } from "../src/game/levels.ts";
+import { DEMO_LEVEL } from "../src/game/allLevels.ts";
 import { generatePuzzle } from "../src/game/randomize.ts";
 import { generateSoloPuzzle, soloLevelTemplate } from "../src/game/soloLevels.ts";
 import type { LevelId } from "../src/game/types.ts";

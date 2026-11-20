@@ -1,3 +1,4 @@
+import "../src/game/allLevels.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, BoxGeometry, InstancedMesh, Matrix4, Object3D, Vector3, Quaternion } from "three";
@@ -12,7 +13,7 @@ import { findMatchHint, findHintView, hintVisible } from "../src/scene/matchHint
 import { LEVEL_MODELS } from "../src/scene/levelModels.ts";
 import { geometryFor } from "../src/scene/geometry.ts";
 import { headGeometry, recessGeometry, shaftGeometry } from "../src/components/screwGeometry.ts";
-import { SCREW_SCALE } from "../src/game/levels.ts";
+import { SCREW_SCALE } from "../src/game/allLevels.ts";
 
 function fixture() {
   const screws: Screw[] = ["red", "blue", "yellow", "green"].flatMap((color, c) => Array.from({ length: 6 }, (_, i) => ({

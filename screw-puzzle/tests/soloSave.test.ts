@@ -1,3 +1,4 @@
+import "../src/game/allLevels.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createRun, elapsedRunTime, runReducer } from "../src/animation/run.ts";
@@ -81,7 +82,7 @@ test("solo checkpoints restore the same puzzle, tray, bonus box and playing time
   const spaceRestored = restoreSoloSave("space", readSoloSave("space")!)!;
   assert.deepEqual(spaceRestored.game, spaceMoves.reduce(removeScrew, space.state));
   assert.equal(spaceRestored.checkpoint.elapsedBefore, 12345);
-  assert.equal(soloSaveKey("space"), "screw-it:solo-save:space:v2");
+  assert.equal(soloSaveKey("space"), "screw-it:solo-save:space:v3");
   clearSoloSave("space");
   assert.equal(readSoloSave("space"), null);
 

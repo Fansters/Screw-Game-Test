@@ -1,11 +1,12 @@
+import "../src/game/allLevels.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DoubleSide, Mesh, MeshBasicMaterial, Raycaster, SphereGeometry, Vector3 } from "three";
+import { DoubleSide, FrontSide, Mesh, MeshBasicMaterial, Raycaster, SphereGeometry, Vector3 } from "three";
 import { SPACE_BLOCKERS, SPACE_EXPOSED_IDS } from "../src/scene/spaceAudit.ts";
-import { SPACE_MODEL, SPACE_CURVED_GEOMETRY, SPACE_BASE_SEGMENTS, SPACE_RINGS } from "../src/scene/spaceModel.ts";
+import { SPACE_MODEL, SPACE_CURVED_GEOMETRY, SPACE_BASE_SEGMENTS, SPACE_RINGS } from "../src/game/allLevels.ts";
 import { findScrewObstructions } from "../src/scene/obstructions.ts";
 import { generateSoloPuzzle, soloLevelTemplate } from "../src/game/soloLevels.ts";
-import { SCREW_SCALE } from "../src/game/levels.ts";
+import { SCREW_SCALE } from "../src/game/allLevels.ts";
 import { createInitialState, isScrewAccessible, removeScrew } from "../src/game/rules.ts";
 import { findExposedScrews } from "../src/scene/exposure.ts";
 import { geometryFor } from "../src/scene/geometry.ts";
@@ -45,6 +46,33 @@ function solids() {
     }),
   };
 }
+
+test("craters show solid outer and top faces; the airlock seals the opening until its leaves detach", () => {
+  const { material, objects } = solids();
+  material.side = FrontSide; // Gameplay clearance is two-sided; rendering is not.
+  const ray = new Raycaster();
+  try {
+    for (const [i, x, z, radius] of [[0, -3.77, 4.32, 1.02], [1, -.22, 3.5, .57]]) {
+      const rims = objects.filter(o => o.part.startsWith(`space-crater-rim-${i}-`)).map(o => o.mesh);
+      for (const side of [-1, 1]) {
+        ray.set(new Vector3(x + side * radius * 1.5, .28, z), new Vector3(-side, 0, 0));
+        assert.ok(ray.intersectObjects(rims).length, `crater ${i} outer face ${side}`);
+        ray.set(new Vector3(x + side * radius * .8, 1, z), new Vector3(0, -1, 0));
+        assert.ok(ray.intersectObjects(rims).length, `crater ${i} top face ${side}`);
+      }
+    }
+    const entrance = objects.filter(o => o.part.startsWith("space-airlock-")).map(o => o.mesh);
+    for (let x = -.88; x <= .88; x += .08) for (let y = .88; y <= 2.94; y += .08) {
+      ray.set(new Vector3(x, y, 3), new Vector3(0, 0, -1)); ray.far = 2.5;
+      assert.ok(ray.intersectObjects(entrance).length, `airlock gap at ${x}, ${y}`);
+    }
+    const frame = objects.filter(o => o.part === "space-airlock-frame").map(o => o.mesh);
+    for (const x of [-.3, .3]) {
+      ray.set(new Vector3(x, 1.8, 3), new Vector3(0, 0, -1));
+      assert.equal(ray.intersectObjects(frame).length, 0, "detached leaves leave a real doorway");
+    }
+  } finally { material.dispose(); }
+});
 test("each space head is attached to its own object and has a viewing path in a full solution", () => {
   const { material, objects } = solids(),
     ray = new Raycaster(),

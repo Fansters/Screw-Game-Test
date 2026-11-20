@@ -21,16 +21,19 @@ import { GLYPHS } from "../components/lettering.ts";
 import type { ZooPartId, Screw } from "../game/types.ts";
 import type { Piece, Vector } from "./houseModel.ts";
 
+// Construct only when this level is requested. No live geometry is kept in the module.
+export function createZooModel() {
+
 type Mount = Pick<Screw, "position" | "normal" | "solutionAfter"> & {
   attachedTo: ZooPartId;
 };
 const pieces: Piece[] = [],
   pivots: Record<ZooPartId, Vector> = {};
-export const ZOO_MOUNTS: Mount[] = [];
-export const ZOO_ANIMAL_BASE_SEGMENTS = 20,
+const ZOO_MOUNTS: Mount[] = [];
+const ZOO_ANIMAL_BASE_SEGMENTS = 20,
   ZOO_ANIMAL_SEGMENTS = 24,
   ZOO_ANIMAL_RINGS = 12;
-export const ZOO_ANIMAL_GEOMETRY = new SphereGeometry(
+const ZOO_ANIMAL_GEOMETRY = new SphereGeometry(
   1,
   ZOO_ANIMAL_SEGMENTS,
   ZOO_ANIMAL_RINGS,
@@ -1779,22 +1782,13 @@ for (const p of pieces)
     p.size = [1, 1, 1];
     p.rotation = undefined;
   }
-export const ZOO_MODEL = {
+const ZOO_MODEL = {
   pieces,
   pivots,
   parts: Object.keys(pivots) as ZooPartId[],
   animalParts,
   habitatFences: [...habitatFences, ...pondFences],
 };
-if (import.meta.hot)
-  import.meta.hot.dispose(() => {
-    for (const g of new Set([
-      ...pieces.map((p) => p.geometry),
-      soft,
-      stone,
-      cylinder,
-      leafGeometry,
-      ZOO_ANIMAL_GEOMETRY,
-    ]))
-      g?.dispose();
-  });
+
+return { model: ZOO_MODEL, mounts: ZOO_MOUNTS, ZOO_ANIMAL_BASE_SEGMENTS, ZOO_ANIMAL_SEGMENTS, ZOO_ANIMAL_RINGS, ZOO_ANIMAL_GEOMETRY };
+}

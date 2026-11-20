@@ -5,10 +5,13 @@ import type { Piece, Vector } from "./houseModel.ts";
 import { geometryFor } from "./geometry.ts";
 import { makeWaterBlocks } from "./titanicWater.ts";
 
+// Construct only when this level is requested. No live geometry is kept in the module.
+export function createTitanicModel() {
+
 type Mount = Pick<Screw, "position" | "normal" | "solutionAfter"> & { attachedTo: TitanicPartId };
 const pieces: Piece[] = [];
 const pivots: Record<TitanicPartId, Vector> = {};
-export const TITANIC_MOUNTS: Mount[] = [];
+const TITANIC_MOUNTS: Mount[] = [];
 const waterMounts: Mount[] = [];
 
 const cream = "#f3ead8", white = "#fff9ed", teak = "#bd8d60", wood = "#744c36";
@@ -310,4 +313,7 @@ makeWaterBlocks(halfLength, hullWidthAt).forEach(({ piece, screw }, index) => {
   mount.solutionAfter = undefined;
 });
 
-export const TITANIC_MODEL = { pieces, pivots, parts: Object.keys(pivots) as TitanicPartId[] };
+const TITANIC_MODEL = { pieces, pivots, parts: Object.keys(pivots) as TitanicPartId[] };
+
+return { model: TITANIC_MODEL, mounts: TITANIC_MOUNTS };
+}

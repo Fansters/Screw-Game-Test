@@ -4,6 +4,8 @@ A mobile-first 3D screw puzzle built with React, Three.js, React Three Fiber and
 
 ## Run and validate
 
+The player-card button supports Google accounts, protected online guests, guest linking and public nicknames. Email sign-in is deferred; SMTP is not needed for this release. Follow [the auth setup and Vercel checklist](docs/auth-setup.md), then [the live acceptance checklist](docs/auth-live-testing.md). Public ranked submissions remain closed until trusted ranked sessions are connected; see [the leaderboard plan](docs/global-leaderboard.md). The seven levels, local times and casual/co-op saves keep their current behavior.
+
 ```sh
 npm install
 npm run dev
@@ -108,15 +110,17 @@ The lavender lunar base follows the supplied space reference: cream/red rocket o
 
 All 225 assemblies have one naturally spaced screw. Fixings include inward habitat faces, deck edges, telescope/rover sides, the lab desk underside, nozzles, cargo lids and different faces of the tunnel joints. Thin transparent panes still block picking and extraction. Curved surfaces use 28×12 spheres instead of the ordinary 20×12 baseline, giving 40% more faces; rounded panels have three bevel segments and dishes/panels have detailed rims, struts and grids. Other levels retain their geometry.
 
-Level 7 is immediately available in solo and co-op, with independent checkpoints/personal bests, shared abilities, physics and per-player counts. Rebuild clearance/exposure using `node tools/audit_space.ts` after changes. Tests check source/cache agreement, comfortable head spacing, all physical viewing paths, 30 varied winning seeds without lifelines, every Rapier assembly, solo saves/times and a full shared co-op solve. Frontend and room server use protocol 23.
+Level 7 is immediately available in solo and co-op, with independent checkpoints/personal bests, shared abilities, physics and per-player counts. Rebuild clearance/exposure using `node tools/audit_space.ts` after changes. Tests check source/cache agreement, comfortable head spacing, all physical viewing paths, 30 varied winning seeds without lifelines, every Rapier assembly, solo saves/times and a full shared co-op solve. Frontend and room server use protocol 24. The corrected airlock fills its real wall opening, and crater rims use outward-facing triangles. Space saves and best times now use v3 keys; previous-layout records remain stored separately.
 
 ## What loads and where memory goes
 
-The current application imports the level modules eagerly. Their procedural source geometries and definitions are constructed when the main game code loads, including the archived ship source. This is different from running every level: React mounts and renders only the selected scene, and each active solo round or multiplayer room creates a physics world for its selected level. The initial title/menu uses the cottage scene before a different level is chosen.
+The home screen renders the floating title and background, without creating any level scenery. Choosing a solo level downloads only that level’s procedural model code and clearance data, builds its geometry, restores or generates the puzzle, then warms up its graphics and physics. Co-op clients follow the room’s selected level and announce readiness only after their own scene is prepared. Download/build failures offer reload; Back to levels cancels a solo selection safely.
 
-`modelBatches(level)` builds merged render geometry as a level is used, and caches it in JavaScript. Source meshes and these caches can remain resident after visiting another level. The room server likewise shares the source definitions between rooms, while keeping each room's game and physics state separate. Level definitions are not fetched as separate on-demand downloads in this version.
+Every model module exports a factory instead of retaining live geometry. A reference-counted lease keeps the selected level alive while it is used. Leaving or switching levels releases the lease; after the old Three.js scene unmounts, the source geometry, merged render buffers, obstruction meshes, collision-shape cache and local bounds are released. Revisiting uses the browser’s cached code download but constructs fresh geometry. Rapid re-entry shares an in-flight load and cancels pending eviction. Shared rendering helpers and the Rapier engine remain reusable; this does not promise that the browser unloads JavaScript modules or immediately returns every reserved byte to the operating system.
 
-Run `node tools/level_memory.ts` to measure source/render vertex-buffer payloads, triangle counts and batches. These figures exclude JavaScript objects, materials, textures, physics, browser overhead and additional GPU storage, so they are **not total tab RAM**. Measuring one browser's frame rate also does not establish every device's memory limit. A future scaling step is per-level dynamic imports plus explicit cache/resource eviction when leaving a level; that is not implemented in this update.
+The Node room server uses `src/game/allLevels.ts` to preload its shared source definitions once. Each room still has its own game and physics world. This server/audit entry must never be imported by the browser.
+
+Run `node tools/level_memory.ts` to measure source/render vertex-buffer payloads, triangle counts and batches for all fixtures. These figures exclude JavaScript objects, materials, textures, physics, browser overhead and additional GPU storage, so they are **not total tab RAM**. The isolated loader regression test checks an empty initial registry, concurrent acquisitions, deferred release, disposal of every source/merged buffer, and fresh geometry on revisit.
 
 ## Colors and verified randomization
 

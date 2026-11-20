@@ -1,7 +1,8 @@
+import "../src/game/allLevels.ts";
 // Rebuild after changing carnival geometry or screw placements.
 import { writeFileSync } from "node:fs";
-import { CARNIVAL_MOUNTS } from "../src/scene/carnivalModel.ts";
-import { SCREW_SCALE } from "../src/game/levels.ts";
+import { CARNIVAL_MOUNTS } from "../src/game/allLevels.ts";
+import { SCREW_SCALE } from "../src/game/allLevels.ts";
 import { SCREW_COLOR_ORDER } from "../src/game/types.ts";
 import { createInitialState } from "../src/game/rules.ts";
 import { findScrewObstructions } from "../src/scene/obstructions.ts";

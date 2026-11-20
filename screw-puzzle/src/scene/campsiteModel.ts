@@ -5,10 +5,13 @@ import type { CampsitePartId, Screw } from "../game/types.ts";
 import type { Piece, Vector } from "./houseModel.ts";
 import { geometryFor } from "./geometry.ts";
 
+// Construct only when this level is requested. No live geometry is kept in the module.
+export function createCampsiteModel() {
+
 type Mount = Pick<Screw, "position" | "normal" | "solutionAfter"> & { attachedTo: CampsitePartId };
 const pieces: Piece[] = [];
 const pivots: Record<CampsitePartId, Vector> = {};
-export const CAMPSITE_MOUNTS: Mount[] = [];
+const CAMPSITE_MOUNTS: Mount[] = [];
 const softBox = new RoundedBoxGeometry(1, 1, 1, 3, 0.09);
 const roundLog = new CylinderGeometry(1, 1, 1, 24);
 const wood = "#a86e3e", paleWood = "#d6a86a", darkWood = "#714b37";
@@ -593,9 +596,7 @@ for (const { part, x, z } of terrain) {
 }
 material.dispose();
 
-export const CAMPSITE_MODEL = { pieces, pivots, parts: Object.keys(pivots) as CampsitePartId[] };
-if (import.meta.hot) import.meta.hot.dispose(() => {
-  const geometries = new Set(pieces.flatMap(({ geometry }) => geometry ? [geometry] : []));
-  geometries.add(softBox); geometries.add(roundLog);
-  for (const geometry of geometries) geometry.dispose();
-});
+const CAMPSITE_MODEL = { pieces, pivots, parts: Object.keys(pivots) as CampsitePartId[] };
+
+return { model: CAMPSITE_MODEL, mounts: CAMPSITE_MOUNTS };
+}

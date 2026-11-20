@@ -177,7 +177,9 @@ export const SPACE_BLOCKERS: readonly (readonly SpacePartId[])[] = [
   [
     "space-greenhouse-glass-7"
   ],
-  [],
+  [
+    "space-airlock-frame"
+  ],
   [],
   [],
   [],
@@ -200,7 +202,9 @@ export const SPACE_BLOCKERS: readonly (readonly SpacePartId[])[] = [
   ],
   [],
   [],
-  [],
+  [
+    "space-airlock-frame"
+  ],
   [],
   [],
   [
@@ -358,19 +362,10 @@ export const SPACE_BLOCKERS: readonly (readonly SpacePartId[])[] = [
     "space-rover-shell"
   ],
   [
-    "space-crater-rim-1-0",
     "space-crater-rim-1-1"
   ],
-  [
-    "space-crater-rim-0-0",
-    "space-crater-rim-0-1",
-    "space-crater-rim-1-0",
-    "space-crater-rim-1-1"
-  ],
-  [
-    "space-crater-rim-0-0",
-    "space-crater-rim-0-1"
-  ],
+  [],
+  [],
   [],
   [],
   [],
@@ -432,4 +427,4 @@ export const SPACE_BLOCKERS: readonly (readonly SpacePartId[])[] = [
   [],
   []
 ];
-export const SPACE_EXPOSED_IDS = ["space-6","space-8","space-14","space-16","space-19","space-20","space-24","space-27","space-30","space-31","space-32","space-33","space-34","space-37","space-40","space-44","space-45","space-46","space-47","space-48","space-50","space-52","space-54","space-55","space-56","space-57","space-74","space-75","space-76","space-77","space-78","space-79","space-80","space-81","space-82","space-83","space-84","space-85","space-86","space-87","space-88","space-89","space-90","space-91","space-93","space-94","space-95","space-96","space-97","space-103","space-104","space-105","space-108","space-109","space-110","space-111","space-115","space-117","space-120","space-121","space-122","space-123","space-124","space-125","space-126","space-127","space-128","space-129","space-130","space-131","space-132","space-133","space-134","space-135","space-137","space-138","space-139","space-140","space-141","space-142","space-143","space-144","space-147","space-149","space-150","space-151","space-152","space-155","space-156","space-157","space-160","space-161","space-164","space-165","space-167","space-168","space-171","space-173","space-174","space-176","space-177","space-178","space-179","space-181","space-182","space-185","space-190","space-191","space-192","space-196","space-198","space-199","space-200","space-201","space-202","space-203","space-204","space-206","space-208","space-210","space-214","space-215","space-216","space-217","space-218","space-219","space-221","space-222","space-224","space-225"] as const;
+export const SPACE_EXPOSED_IDS = ["space-6","space-8","space-14","space-16","space-19","space-20","space-24","space-27","space-30","space-31","space-32","space-33","space-34","space-37","space-40","space-44","space-46","space-48","space-50","space-52","space-54","space-55","space-56","space-57","space-75","space-76","space-77","space-78","space-79","space-80","space-81","space-82","space-83","space-84","space-85","space-86","space-87","space-88","space-89","space-90","space-91","space-93","space-94","space-96","space-97","space-103","space-104","space-105","space-108","space-109","space-110","space-111","space-115","space-117","space-120","space-121","space-122","space-123","space-124","space-125","space-126","space-127","space-128","space-129","space-130","space-131","space-132","space-133","space-134","space-135","space-137","space-138","space-139","space-140","space-141","space-142","space-143","space-144","space-147","space-149","space-150","space-151","space-152","space-155","space-156","space-157","space-160","space-161","space-164","space-165","space-167","space-168","space-171","space-173","space-174","space-176","space-177","space-178","space-179","space-181","space-182","space-185","space-188","space-189","space-190","space-191","space-192","space-196","space-198","space-199","space-200","space-201","space-202","space-203","space-204","space-206","space-208","space-210","space-214","space-215","space-216","space-217","space-218","space-219","space-221","space-222","space-225"] as const;

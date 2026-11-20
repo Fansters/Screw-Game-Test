@@ -17,14 +17,17 @@ import { GLYPHS } from "../components/lettering.ts";
 import type { CarnivalPartId, Screw } from "../game/types.ts";
 import type { Piece, Vector } from "./houseModel.ts";
 
+// Construct only when this level is requested. No live geometry is kept in the module.
+export function createCarnivalModel() {
+
 type Mount = Pick<Screw, "position" | "normal" | "solutionAfter"> & {
   attachedTo: CarnivalPartId;
 };
 const pieces: Piece[] = [],
   pivots: Record<CarnivalPartId, Vector> = {};
-export const CARNIVAL_MOUNTS: Mount[] = [];
-export const CARNIVAL_WHEEL_REFERENCE_RADIUS = 1.6;
-export const CARNIVAL_WHEEL_RADIUS = CARNIVAL_WHEEL_REFERENCE_RADIUS * 2;
+const CARNIVAL_MOUNTS: Mount[] = [];
+const CARNIVAL_WHEEL_REFERENCE_RADIUS = 1.6;
+const CARNIVAL_WHEEL_RADIUS = CARNIVAL_WHEEL_REFERENCE_RADIUS * 2;
 const soft = new RoundedBoxGeometry(1, 1, 1, 2, 0.09),
   stone = new RoundedBoxGeometry(1, 1, 1, 1, 0.13),
   cylinder = new CylinderGeometry(1, 1, 1, 24);
@@ -1426,18 +1429,11 @@ for (const piece of pieces)
     piece.size = [1, 1, 1];
     piece.rotation = undefined;
   }
-export const CARNIVAL_MODEL = {
+const CARNIVAL_MODEL = {
   pieces,
   pivots,
   parts: Object.keys(pivots) as CarnivalPartId[],
 };
-if (import.meta.hot)
-  import.meta.hot.dispose(() => {
-    for (const g of new Set([
-      ...pieces.map((p) => p.geometry),
-      soft,
-      stone,
-      cylinder,
-    ]))
-      g?.dispose();
-  });
+
+return { model: CARNIVAL_MODEL, mounts: CARNIVAL_MOUNTS, CARNIVAL_WHEEL_REFERENCE_RADIUS, CARNIVAL_WHEEL_RADIUS };
+}

@@ -1,10 +1,11 @@
+import "../src/game/allLevels.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Box3, DoubleSide, Mesh, MeshBasicMaterial, Raycaster, Vector3 } from "three";
 import { generateSoloPuzzle, soloLevelTemplate } from "../src/game/soloLevels.ts";
-import { SCREW_SCALE } from "../src/game/levels.ts";
+import { SCREW_SCALE } from "../src/game/allLevels.ts";
 import { isScrewAccessible, removeScrew } from "../src/game/rules.ts";
-import { TITANIC_MODEL } from "../src/scene/titanicModel.ts";
+import { TITANIC_MODEL } from "../src/game/allLevels.ts";
 import { geometryFor } from "../src/scene/geometry.ts";
 import { createPartPhysics, initPartPhysics } from "../src/scene/partPhysics.ts";
 import { modelBatches } from "../src/scene/modelBatches.ts";

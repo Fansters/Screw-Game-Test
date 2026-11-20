@@ -1,12 +1,13 @@
+import "../src/game/allLevels.ts";
 import { DESERT_BLOCKERS, DESERT_EXPOSED_IDS } from "../src/scene/desertAudit.ts";
 import { findScrewObstructions } from "../src/scene/obstructions.ts";
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {DoubleSide,Mesh,MeshBasicMaterial,Raycaster,Vector3} from 'three';
 import {generateSoloPuzzle,soloLevelTemplate} from '../src/game/soloLevels.ts';
-import {SCREW_SCALE} from '../src/game/levels.ts';
+import {SCREW_SCALE} from '../src/game/allLevels.ts';
 import {createInitialState,isScrewAccessible,removeScrew} from '../src/game/rules.ts';
-import {DESERT_MODEL} from '../src/scene/desertModel.ts';
+import {DESERT_MODEL} from '../src/game/allLevels.ts';
 import {findExposedScrews} from '../src/scene/exposure.ts';
 import {geometryFor} from '../src/scene/geometry.ts';
 import {createPartPhysics,initPartPhysics} from '../src/scene/partPhysics.ts';

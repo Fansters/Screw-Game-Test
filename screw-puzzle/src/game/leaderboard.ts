@@ -1,6 +1,7 @@
 import type { LevelId } from "./campaign.ts";
+import { layoutRevision } from "./layoutVersions.ts";
 
-const timesKey = (level: LevelId) => `screw-it:solo-times:${level}:${level === "desert" ? "v3" : "v2"}`;
+const timesKey = (level: LevelId) => `screw-it:solo-times:${level}:${layoutRevision(level)}`;
 export const SOLO_TIMES_KEY = timesKey("cottage");
 export const SOLO_TIMES_LIMIT = 10;
 

@@ -1,7 +1,7 @@
 import { Box3, Object3D, Quaternion, Vector3 } from "three";
 import type { PartId, Screw } from "../game/types.ts";
 import { geometryFor } from "./geometry.ts";
-import { LEVEL_MODELS, partLevel, partPivot } from "./levelModels.ts";
+import { LEVEL_MODELS, partLevel, partPivot, onLevelRelease } from "./levelModels.ts";
 import type { Vector } from "./houseModel.ts";
 import { findScrewObstructions } from "./obstructions.ts";
 import { SCREW_PULL_DISTANCE } from "./screwDimensions.ts";
@@ -28,12 +28,12 @@ export function mergeLooseParts(previous: LooseParts, incoming: LooseParts): Loo
   }));
 }
 
-const partIds = new Set<string>(Object.values(LEVEL_MODELS).flatMap(({ parts }) => [...parts]));
 export function isLevelPart(id: unknown): id is PartId {
-  return typeof id === "string" && partIds.has(id);
+  return typeof id === "string" && Boolean(LEVEL_MODELS[partLevel(id as PartId)]?.parts.includes(id as PartId));
 }
 
 const localBounds = new Map<PartId, Box3>();
+onLevelRelease(level => { for (const part of localBounds.keys()) if (partLevel(part) === level) localBounds.delete(part); });
 function partBounds(part: PartId): Box3 {
   const cached = localBounds.get(part);
   if (cached) return cached;

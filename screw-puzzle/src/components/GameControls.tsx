@@ -6,6 +6,7 @@ import AudioButton from "./AudioButton";
 import HelpDialog from "./HelpDialog";
 import SoloLeaderboard from "./SoloLeaderboard";
 import { updateReadability, useReadability } from "./readability";
+import { useAccountCard } from "./accountContext";
 
 export default function GameControls({ muted, toggle, onReset, onLeave, resetDisabled, leaderboardLevel }: {
   muted: Record<AudioChannel, boolean>; toggle: (channel: AudioChannel) => void;
@@ -13,6 +14,7 @@ export default function GameControls({ muted, toggle, onReset, onLeave, resetDis
   leaderboardLevel?: LevelId;
 }) {
   const help = useRef<HTMLDialogElement>(null);
+  const account = useAccountCard();
   const readabilityDialog = useRef<HTMLDialogElement>(null);
   const readability = useReadability();
   const controls = useRef<HTMLDivElement>(null);
@@ -38,6 +40,11 @@ export default function GameControls({ muted, toggle, onReset, onLeave, resetDis
         <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 10h.01M14 15h2v7m-2 0h4" /></svg>
       </button>,
       leaderboardLevel && <SoloLeaderboard key="leaderboard" activeLevel={leaderboardLevel} />,
+      <button key="account" className="icon-button account-control" type="button" aria-label="Player account" title="Player account" aria-haspopup="dialog"
+        onClick={() => { setExpanded(false); account.open(); }}>
+        <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="11" r="5" /><path d="M6 27v-3a10 10 0 0 1 20 0v3" /></svg>
+        {account.kind && <span className={`account-indicator ${account.kind}`} aria-hidden="true" />}
+      </button>,
       <button key="readability" className="icon-button" onClick={() => readabilityDialog.current?.showModal()} aria-label="Readability settings" title="Readability settings" aria-haspopup="dialog">
         <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 16s4-8 13-8 13 8 13 8-4 8-13 8S3 16 3 16Z" /><circle cx="16" cy="16" r="4" /></svg>
       </button>,

@@ -7,7 +7,7 @@ import type { LevelId } from "../game/campaign";
 import type { PartId } from "../game/types";
 import { LEVEL_MODELS, partPivot } from "../scene/levelModels";
 import { modelBatches } from "../scene/modelBatches";
-import { SPACE_GLASS_COLOR } from "../scene/spaceModel";
+import { SPACE_GLASS_COLOR } from "../scene/spacePalette";
 import { FALL_DURATION_MS } from "../game/fallTiming";
 import { showPartAppearance } from "../scene/partAppearance";
 import { isLooseVisible, loosePartPose, LOOSE_LIFETIME_MS, SMOKE_DURATION_MS, smokeScale } from "../scene/loosePhysics";

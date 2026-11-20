@@ -1,8 +1,9 @@
+import "../src/game/allLevels.ts";
 // Rebuild after changing Route 66 geometry or screw placements.
 // The game loads these static results; tests independently check the meshes.
 import { writeFileSync } from "node:fs";
-import { DESERT_MOUNTS } from "../src/scene/desertModel.ts";
-import { SCREW_SCALE } from "../src/game/levels.ts";
+import { DESERT_MOUNTS } from "../src/game/allLevels.ts";
+import { SCREW_SCALE } from "../src/game/allLevels.ts";
 import { SCREW_COLOR_ORDER } from "../src/game/types.ts";
 import { createInitialState } from "../src/game/rules.ts";
 import { findScrewObstructions } from "../src/scene/obstructions.ts";

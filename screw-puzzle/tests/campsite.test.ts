@@ -1,10 +1,11 @@
+import "../src/game/allLevels.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DoubleSide, Mesh, MeshBasicMaterial, Raycaster, Vector3 } from "three";
 import { generateSoloPuzzle, soloLevelTemplate } from "../src/game/soloLevels.ts";
-import { SCREW_SCALE } from "../src/game/levels.ts";
+import { SCREW_SCALE } from "../src/game/allLevels.ts";
 import { createInitialState, isScrewAccessible, removeScrew } from "../src/game/rules.ts";
-import { CAMPSITE_MODEL } from "../src/scene/campsiteModel.ts";
+import { CAMPSITE_MODEL } from "../src/game/allLevels.ts";
 import { geometryFor } from "../src/scene/geometry.ts";
 import { findExposedScrews } from "../src/scene/exposure.ts";
 import { createPartPhysics, initPartPhysics } from "../src/scene/partPhysics.ts";

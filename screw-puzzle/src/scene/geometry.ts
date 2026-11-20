@@ -1,6 +1,6 @@
 import { BoxGeometry, BufferGeometry, ConeGeometry, CylinderGeometry, ExtrudeGeometry, Float32BufferAttribute, IcosahedronGeometry, Shape, SphereGeometry, TorusGeometry } from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
-import { HOUSE } from "./houseModel.ts";
+import { HOUSE } from "./houseConfig.ts";
 import type { Piece } from "./houseModel.ts";
 const shape = new Shape();
 shape.moveTo(-HOUSE.halfWidth, 0); shape.lineTo(HOUSE.halfWidth, 0);

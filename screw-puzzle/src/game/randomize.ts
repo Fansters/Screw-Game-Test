@@ -1,4 +1,4 @@
-import { DEMO_LEVEL } from "./levels.ts";
+import { levelData } from "./levelData.ts";
 import { createInitialState, removeScrew } from "./rules.ts";
 import { SCREW_COLOR_ORDER } from "./types.ts";
 import type { GameState, PartId, Screw, ScrewColor } from "./types.ts";
@@ -61,7 +61,7 @@ export class PuzzleColorsUnavailable extends Error {}
 
 // Construct a solution first; color it using only the two currently active boxes.
 // This gives true spatial mixing and a proof of solvability instead of blind shuffling.
-export function generatePuzzle(seed: number, template: readonly Screw[] = DEMO_LEVEL, preferLayeredPeel = false,
+export function generatePuzzle(seed: number, template: readonly Screw[] = levelData("cottage").template, preferLayeredPeel = false,
   exposedHeads?: ReadonlySet<string>, adaptPeelToColors = false): GeneratedPuzzle {
   const opening = exposedHeads ?? new Set(template.filter((screw) => !screw.obstructedBy?.length && !screw.solutionAfter?.length).map((screw) => screw.id));
   const counts = ownerCounts(template);

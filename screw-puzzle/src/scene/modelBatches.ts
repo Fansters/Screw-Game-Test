@@ -4,7 +4,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { LevelId } from "../game/campaign.ts";
 import type { PartId } from "../game/types.ts";
 import { geometryFor } from "./geometry.ts";
-import { LEVEL_MODELS } from "./levelModels.ts";
+import { LEVEL_MODELS, onLevelRelease } from "./levelModels.ts";
 
 // Preserve independently falling parts, but draw same-color details together.
 // The original pieces remain the source for obstruction calculations.
@@ -33,5 +33,5 @@ function buildBatches(level: LevelId) {
 }
 const batchesByLevel: Partial<Record<LevelId, ReturnType<typeof buildBatches>>> = {};
 export function modelBatches(level: LevelId) { return batchesByLevel[level] ??= buildBatches(level); }
-export const MODEL_BATCHES = modelBatches("cottage");
+onLevelRelease(level => { batchesByLevel[level]?.forEach(batch => batch.geometry.dispose()); delete batchesByLevel[level]; });
 if (import.meta.hot) import.meta.hot.dispose(() => Object.values(batchesByLevel).flat().forEach((batch) => batch.geometry.dispose()));

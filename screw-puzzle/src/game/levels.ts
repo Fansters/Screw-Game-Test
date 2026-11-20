@@ -1,16 +1,21 @@
 import { budgetFasteners } from "./fastenerBudget.ts";
 import { BATHROOM_IDS, CEILING_IDS, DINING_CHAIRS, FLOOR_BEAMS, FRAME_POSTS, GARLANDS, GROUND_IDS, INTERIOR_DOORS, PARTITION_IDS, PLINTH_IDS, ROOF_IDS, ROOF_SECTIONS, SCREW_COLOR_ORDER, SNOW_ROOFS, TILE_IDS, WALL_SECTIONS } from "./types.ts";
 import type { PartId, Screw } from "./types.ts";
-import { HOUSE, PART_PIVOTS, ROOF_PITCH, resizeFurniturePoint, stairTread } from "../scene/houseModel.ts";
+import { HOUSE, ROOF_PITCH, stairTread } from "../scene/houseConfig.ts";
+import type { createCottageModel } from "../scene/houseModel.ts";
 import { findScrewObstructions } from "../scene/obstructions.ts";
 import { BATHROOM } from "../scene/bathroom.ts";
 import { CANDY_CANES, candyPoint, WINDOW_WREATHS, windowWreathPoint } from "../scene/christmas.ts";
 import { FURNISHING_MOUNTS, WINDOW_BLINDS } from "../scene/furnishings.ts";
-export { ROOF_PITCH } from "../scene/houseModel.ts";
+export { ROOF_PITCH } from "../scene/houseConfig.ts";
 export const ROOF_RUN = HOUSE.roofRun;
 export const ROOF_RISE = HOUSE.roofRise;
-export const SCREW_SCALE = 0.275 * 1.25 * 1.15;
+import { SCREW_SCALE } from "./screwScale.ts";
+export { SCREW_SCALE } from "./screwScale.ts";
 
+
+export function createCottageTemplate({ model, resizeFurniturePoint }: ReturnType<typeof createCottageModel>) {
+const PART_PIVOTS = model.pivots;
 type Vector = [number, number, number];
 type Placement = { position: Vector; normal: Vector; attachedTo: PartId; solutionAfter?: readonly PartId[] };
 const placements: Placement[] = [];
@@ -245,7 +250,10 @@ for (const cover of [...FURNISHING_MOUNTS.map(({ id }) => id), "bedroom-rug", "s
 const budgeted = budgetFasteners(candidates, 240, (mount) => (revealHeads.has(mount) || mount.normal[1] < 0 ? 200 : 0) +
   (mount.obstructedBy.length ? 100 : 0) + (mount.normal[1] < 0 ? 35 : mount.normal[1] < .9 ? 20 : 0) +
   (/^(wall-|roof-|ceiling-|partition-|interior-door)/.test(mount.attachedTo) ? 15 : 0));
-export const DEMO_LEVEL: Screw[] = budgeted.map((placement, index) => ({ ...placement, solutionAfter: placement.solutionAfter ? [...placement.solutionAfter] : undefined,
+const DEMO_LEVEL: Screw[] = budgeted.map((placement, index) => ({ ...placement, solutionAfter: placement.solutionAfter ? [...placement.solutionAfter] : undefined,
   id: `screw-${index + 1}`,
   // Quotas are whole triples; actual positions receive verified randomized colors.
   color: SCREW_COLOR_ORDER[Math.floor(index / 3) % SCREW_COLOR_ORDER.length], removed: false }));
+
+return DEMO_LEVEL;
+}
