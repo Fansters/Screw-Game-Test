@@ -27,7 +27,7 @@ export class FinishOutbox {
     if (!isPlayerId(playerId) || !isCasualFinish(finish)) throw new Error("Invalid completed result.");
     const values = this.read(), old = values.find(item => item.playerId === playerId && item.finish.runId === finish.runId);
     if (old) { if (JSON.stringify(old.finish) !== JSON.stringify(finish)) throw new Error("Finish ID conflict."); return; }
-    if (values.length >= 500) throw new Error("Online result queue is full. Local time is saved.");
+    if (values.length >= 500) throw new Error("Online result queue is full. Try uploading pending results first.");
     this.write([...values,{playerId,finish,status:"pending",message:""}]);
   }
   update(playerId: string, runId: string, status: PendingFinish["status"], message: string) {

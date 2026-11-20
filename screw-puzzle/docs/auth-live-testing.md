@@ -1,10 +1,10 @@
-# Google and leaderboard: live checklist (0.1.30)
+# Google and leaderboard: live checklist (0.1.31)
 
 ## What the setup did
 
 1. **Return URLs:** tell Supabase which game addresses it may return to after sign-in.
 2. **Google OAuth:** Google checks the player's identity; Supabase keeps their session and account.
-3. **Local play:** anyone can play immediately, without creating an account. Saves and personal times stay in that browser.
+3. **Local play:** anyone can play immediately, without creating an account. Unfinished progress stays in that browser; guest finish times are not stored.
 4. **Email/SMTP:** skipped. Google does not need it.
 5. **Vercel variables:** connect the deployed frontend to Supabase and the existing co-op server.
 
@@ -15,26 +15,26 @@ Existing online guest accounts can still link Google. New online guests are no l
 - The casual leaderboard migration is already applied; do not run it again manually.
 - Vercel Config variables must include VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY. Keep VITE_ROOM_SERVER. No new variable or Turnstile setup is needed.
 - Check Supabase Site URL/redirect allow-list and the Google callback URI: https://eviapvuviucbdgvsjcue.supabase.co/auth/v1/callback. Google secrets stay in Supabase, never in VITE_ values.
-- Push the reviewed source to the connected GitHub production branch. Wait for Vercel Ready and confirm version 0.1.30. Local .env.local is ignored by Git; changed Vercel variables require a new build.
+- Push the reviewed source to the connected GitHub production branch. Wait for Vercel Ready and confirm version 0.1.31. Local .env.local is ignored by Git; changed Vercel variables require a new build.
 - Room protocol is still 26. This leaderboard release needs no Render configuration or room-server code change.
 
 ## Test 1: ordinary guest
 
 1. Open a private window without signing in. Start/resume a solo level.
-2. Open Leaderboard. Online should be readable without sign-in; choose any of the six levels.
-3. Finish a level. Its time should appear under This device, with no public upload.
-4. Sign in afterward. That earlier guest win must remain local.
+2. Open Leaderboard on Home: it is readable without sign-in, with all six levels. Inside a level, only that level’s board is available; there is no selector.
+3. Finish a level. Its elapsed time should be shown above the current level’s public board, with a guest explanation and no score upload or device leaderboard.
+4. Sign in afterward. That earlier guest win must not be published.
 5. Refresh a playing level: it should reopen the same level and offer/resume its saved progress.
 
 ## Test 2: Google and a real online result
 
 1. Sign in with Google, save a public nickname, and leave the player card.
 2. Finish any solo level while still signed in. Use an ability if you want to check the metadata.
-3. The winning screen should show your time and confirm the online save. If the connection fails, it should show an upload waiting message.
-4. Open Leaderboard → Online → that level. Confirm your nickname, time and ability counts; with an empty board you will be first.
+3. The winning screen should show your time and the current level’s leaderboard. After upload your best row is highlighted. If the connection fails, the upload remains pending; retrying refreshes the board.
+4. Check the embedded board or in-game Leaderboard. Confirm your nickname, time and ability counts; with an empty board you will be first. There is no level selector in-game.
 5. Reload. Open the same board on another device; the public result should be there. Sign in there to see the You marker/personal placement.
 6. A faster later win should improve your best. A slower win must not create a second public slot or replace the faster time.
-7. Open This device: local history remains independent. Another device does not receive unfinished progress or old local history.
+7. Check that there is no This device tab or local-best value on level cards. Another device receives online results, but not unfinished puzzle progress.
 
 ## Test 3: resume and retries
 
@@ -56,9 +56,13 @@ Check phone, tablet and desktop menus and cards. Icons should share a starting r
 | Accounts/boards unavailable | Check both VITE_SUPABASE_* Config values and redeploy. |
 | Google redirect error | Google's redirect is the Supabase callback; Supabase's redirects are the game's URLs. |
 | Can't choose a public name | Use a unique 3–20 character nickname with letters, numbers, spaces, _ or -. |
-| First finished time still waiting | Check connection, same Google account, nickname and Retry upload. Local time remains safe. |
-| No public record after a guest win | Expected: Google sign-in is required at the finish; older guest history is not imported. |
+| First finished time still waiting | Check connection, same Google account, nickname and Retry upload. The pending result stays bound to the account that finished. |
+| No public record after a guest win | Expected: Google sign-in is required at the finish; guest times are not recorded/imported. |
 | Result not in top 10 | Check Your best below the list, the selected level and current layout. |
 | Same Google already belongs elsewhere | Use the existing account or a different Google identity; guests are never silently merged. |
 
 Share the step, device/browser, visible message and app version when reporting a fault. Do not share access tokens, private keys or temporary OAuth callback URLs.
+
+## Nickname checks
+
+Choose an available name in My account after Google sign-in. Rename it more than once; your results must keep the same times and show the new name. A name already taken, including a different capitalization, must be refused. Renaming frees the previous name. No rename cooldown has been added.

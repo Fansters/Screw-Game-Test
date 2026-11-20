@@ -1,50 +1,21 @@
-import "../src/game/allLevels.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readSoloTimes, recordSoloTime, SOLO_TIMES_KEY } from "../src/game/leaderboard.ts";
+import { readLegacyCottageClear } from "../src/game/leaderboard.ts";
 
-test("solo records validate saved data, rank the fastest ten, and recover from a denied write", (t) => {
-  const saved = new Map([[SOLO_TIMES_KEY, JSON.stringify([
-    { elapsedMs: 35_000, completedAt: 20 }, { elapsedMs: -50, completedAt: 20 }, { elapsedMs: 500, completedAt: "yesterday" },
-  ])]]);
-  let writable = true;
-  Object.defineProperty(globalThis, "window", { configurable: true, value: {
-    localStorage: {
-      getItem: (key: string) => saved.get(key) ?? null,
-      setItem: (key: string, value: string) => {
-        if (!writable) throw new Error("Storage unavailable");
-        saved.set(key, value);
-      },
-    },
-  } });
-  t.after(() => Reflect.deleteProperty(globalThis, "window"));
-  assert.deepEqual(readSoloTimes().map(({ elapsedMs }) => elapsedMs), [35_000]);
-  recordSoloTime(NaN);
-  for (let i = 12; i >= 2; i -= 1) recordSoloTime(i * 1000);
-  assert.deepEqual(readSoloTimes().map(({ elapsedMs }) => elapsedMs), [2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10_000, 11_000]);
-  writable = false;
-  recordSoloTime(1500.4);
-  assert.equal(readSoloTimes()[0].elapsedMs, 1500);
-  writable = true;
-  recordSoloTime(1900);
-  assert.deepEqual(readSoloTimes().slice(0, 3).map(({ elapsedMs }) => elapsedMs), [1500, 1900, 2000]);
-  assert.equal(JSON.parse(saved.get(SOLO_TIMES_KEY)!).length, 10);
-  assert.equal(readSoloTimes("campsite").length, 0);
-  recordSoloTime(24_000, "campsite");
-  assert.equal(readSoloTimes("campsite")[0].elapsedMs, 24_000);
-  assert.equal(readSoloTimes("cottage")[0].elapsedMs, 1500);
-  recordSoloTime(93_000, "construction");
-  assert.equal(readSoloTimes("construction")[0].elapsedMs, 93_000);
-  assert.equal(readSoloTimes("campsite")[0].elapsedMs, 24_000);
-  recordSoloTime(102_000, "carnival");
-  assert.equal(readSoloTimes("carnival")[0].elapsedMs, 102_000);
-  assert.equal(readSoloTimes("construction")[0].elapsedMs, 93_000);
-  recordSoloTime(118_000, "zoo");
-  assert.equal(readSoloTimes("zoo")[0].elapsedMs, 118_000);
-  assert.equal(readSoloTimes("carnival")[0].elapsedMs, 102_000);
-  recordSoloTime(131_000, "space");
-  assert.equal(readSoloTimes("space")[0].elapsedMs, 131_000);
-  assert.equal(readSoloTimes("zoo")[0].elapsedMs, 118_000);
-  saved.set(SOLO_TIMES_KEY, "{malformed");
-  assert.equal(readSoloTimes()[0].elapsedMs, 1500);
+test("retired device times are read only to preserve legacy completion, never recorded or rewritten", t => {
+  const values = new Map<string,string>();
+  let writes = 0;
+  Object.defineProperty(globalThis, "window", {configurable:true,value:{localStorage:{
+    getItem:(key:string)=>values.get(key)??null, setItem:()=>{writes++;}
+  }}});
+  t.after(()=>Reflect.deleteProperty(globalThis,"window"));
+  assert.equal(readLegacyCottageClear(),false);
+  values.set("screw-it:solo-times:cottage:v1","{bad");
+  values.set("screw-it:solo-times:cottage:v2",JSON.stringify([{elapsedMs:-1}]));
+  assert.equal(readLegacyCottageClear(),false);
+  values.set("screw-it:solo-times:cottage:v2",JSON.stringify([{elapsedMs:12345}]));
+  assert.equal(readLegacyCottageClear(),true);
+  assert.equal(writes,0);
+  Object.defineProperty(globalThis,"window",{configurable:true,value:{localStorage:{getItem:()=>{throw Error();}}}});
+  assert.equal(readLegacyCottageClear(),false);
 });

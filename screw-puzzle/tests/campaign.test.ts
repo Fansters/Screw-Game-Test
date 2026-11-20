@@ -2,7 +2,7 @@ import "../src/game/allLevels.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CAMPAIGN_LEVELS, levelStatus, readLevelProgress, recordLevelClear } from "../src/game/campaign.ts";
-import { SOLO_TIMES_KEY } from "../src/game/leaderboard.ts";
+const SOLO_TIMES_KEY = "screw-it:solo-times:cottage:v2"; // Read-only completion compatibility.
 
 test("all six levels are playable immediately while completed runs retain their progress", (t) => {
   const saved = new Map<string, string>();

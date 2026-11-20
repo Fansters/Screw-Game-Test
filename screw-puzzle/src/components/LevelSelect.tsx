@@ -4,13 +4,11 @@ import { CAMPAIGN_LEVELS, levelStatus, readLevelProgress } from "../game/campaig
 import type { LevelId } from "../game/campaign";
 import { LEVEL_PRESENTATION, savedScrewCount } from "../game/levelPresentation";
 import { readSoloSave } from "../game/soloSave";
-import { readSoloTimes } from "../game/leaderboard";
-import { formatRunTime } from "../game/runTime";
 
 const horizontalQuery = "(min-width: 700px) and (min-height: 500px)";
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const arrow = <path d="m19 6-9 10 9 10" />;
-const clock = <><circle cx="16" cy="17" r="11" /><path d="M16 10v7l5 3M12 2h8" /></>;
+const people = <><circle cx="12" cy="11" r="4" /><path d="M4 27v-3a8 8 0 0 1 16 0v3m2-20a4 4 0 0 1 0 8m2 4a7 7 0 0 1 4 6" /></>;
 
 export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
   onBack: () => void; onSelect: (level: LevelId) => void; mode?: "solo" | "multiplayer";
@@ -20,7 +18,7 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
   const cards = useRef<(HTMLLIElement | null)[]>([]);
   const [completed] = useState(readLevelProgress);
   const [details] = useState(() => CAMPAIGN_LEVELS.map(({ id }) => ({
-    save: mode === "solo" ? readSoloSave(id) : null, best: mode === "solo" ? readSoloTimes(id)[0] : undefined,
+    save: mode === "solo" ? readSoloSave(id) : null,
   })));
   const [active, setActive] = useState(0);
   const frame = useRef(0);
@@ -184,7 +182,7 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
     </header>
     <ol ref={track} className="level-list" aria-label="Level previews" onKeyDown={keyNavigate}>
       {CAMPAIGN_LEVELS.map(({ id, title }, index) => {
-        const playable = levelStatus(index) === "playable", { save, best } = details[index];
+        const playable = levelStatus(index) === "playable", { save } = details[index];
         const presentation = LEVEL_PRESENTATION[id], removed = savedScrewCount(save?.moves ?? []);
         const cleared = completed.has(id);
         const action = mode === "multiplayer" ? "Choose level" : save ? "Resume puzzle" : cleared ? "Play again" : "Let's play";
@@ -201,10 +199,9 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
             <div className="level-card-copy"><h3>{title}</h3><p>{presentation.description}</p></div>
             <dl className="level-facts">
               <div><dt><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" /><path d="M16 10v12M10 16h12" /></svg>Screws</dt><dd>{presentation.screws}</dd></div>
-              <div><dt><svg viewBox="0 0 32 32" aria-hidden="true">{clock}</svg>{mode === "solo" ? "Your best" : "Mode"}</dt>
-                <dd>{mode === "multiplayer" ? "Co-op" : best ? formatRunTime(best.elapsedMs, true) : "Set a time"}</dd></div>
+              <div><dt><svg viewBox="0 0 32 32" aria-hidden="true">{people}</svg>Mode</dt><dd>{mode === "multiplayer" ? "Co-op" : "Solo"}</dd></div>
             </dl>
-            <div className="level-save-note">{mode === "multiplayer" ? "Two cameras · one shared puzzle" : save ? `${removed} / ${presentation.screws} screws · progress saved` : cleared ? "Another adventure? Beat your best." : "Fresh puzzle · all abilities included"}</div>
+            <div className="level-save-note">{mode === "multiplayer" ? "Two cameras · one shared puzzle" : save ? `${removed} / ${presentation.screws} screws · progress saved` : cleared ? "Another adventure? Chase the leaderboard." : "Fresh puzzle · all abilities included"}</div>
             {save && <div className="level-save-track" role="progressbar" aria-label={`${title} saved progress`} aria-valuemin={0} aria-valuemax={presentation.screws} aria-valuenow={removed}>
               <span style={{ width: `${Math.min(100, removed / presentation.screws * 100)}%` }} /></div>}
             <button className="level-play-button" type="button" disabled={!playable}

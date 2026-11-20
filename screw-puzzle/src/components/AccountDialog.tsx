@@ -110,7 +110,7 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
           try { await startGoogleAccount(client.auth, callbackUrl); } catch (error) { clearAccountIntent(sessionStore); throw error; }
         })}><span aria-hidden="true">G</span> {anonymous ? "Keep this guest with Google" : "Continue with Google"}</button>
         {providers && !providers.google && <p className="account-hint">Google sign-in isn’t available yet.</p>}
-        {!user && <p className="account-hint">No account needed to play. Your progress and personal times stay on this device.</p>}
+        {!user && <p className="account-hint">No account needed to play. Sign in with Google to save times on the leaderboard.</p>}
       </>}
       {user && <>
         {user.email && <p className="account-email-private">{user.email}<span>Private · never shown on the leaderboard</span></p>}
@@ -123,7 +123,7 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
             <button className="account-button primary" disabled={busy}>Save player name</button>
           </form> : <p role="status">Getting your player name…</p>}
         {confirmOut ? <div className="account-signout-check">
-          <p>{anonymous ? "Forget this guest? Link Google first if you want to keep this profile. Signing out cannot be undone for a guest." : "Sign out on this device? Your local times and saves stay here."}</p>
+          <p>{anonymous ? "Forget this guest? Link Google first if you want to keep this profile. Signing out cannot be undone for a guest." : "Sign out on this device? Your online scores stay with your account, and your saved puzzle stays here."}</p>
           <button className="account-button danger" disabled={busy} onClick={() => void action(async () => {
             const result = await client.auth.signOut({ scope: "local" }); if (result.error) throw result.error;
             clearAccountIntent(sessionStore); setUser(null); onKind(null); setConfirmOut(false); setNotice("Signed out on this device.");
@@ -133,7 +133,7 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
       </>}
       {!permanent && <button className="account-link" disabled={busy} onClick={() => { setNotice(""); setRetry(value => value + 1); }}>Refresh sign-in options</button>}
     </>}
-    <p className="account-footnote">Solo wins finished with Google signed in are shared on the casual leaderboard. Game progress and local times stay on this device.</p>
+    <p className="account-footnote">Solo wins finished with Google signed in are shared on the leaderboard. Unfinished game progress stays on this device.</p>
     <button className="account-button keep-playing" onClick={closeCard}>Keep playing</button>
   </AccountModal>;
 }

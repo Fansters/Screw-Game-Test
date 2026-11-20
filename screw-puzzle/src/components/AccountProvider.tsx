@@ -33,7 +33,7 @@ export default function AccountProvider({ children }: { children: ReactNode }) {
     {active && (config ? <Suspense fallback={open && <AccountModal open onClose={close}><p role="status">Getting your player card…</p></AccountModal>}>
       <AccountDialog open={open} onClose={close} onKind={setKind} />
     </Suspense> : <AccountModal open={open} onClose={close}>
-      <p>Online accounts are not available right now. You can still play and keep personal times on this device.</p>
+      <p>Online accounts are not available right now. You can still play and save puzzle progress on this device.</p>
       <button className="account-button primary" onClick={close}>Keep playing</button>
     </AccountModal>)}
   </AccountContext>;

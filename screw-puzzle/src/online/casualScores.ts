@@ -28,7 +28,7 @@ export async function syncFinishes(playerId: string, cancelled: () => boolean) {
       const message = error?.message ?? "";
       const name = message === "nickname_required", invalid = error?.code === "22023" || error?.code === "22P02";
       await withOutboxLock(() => finishOutbox.update(playerId,item.finish.runId,name ? "name" : invalid ? "failed" : "pending",
-        name ? "Choose a public player name to share your time." : invalid ? "This result couldn’t be published. Your local time is saved." : "Waiting to upload your time. We’ll retry automatically."));
+        name ? "Choose a public player name to share your time." : invalid ? "This result couldn’t be published." : "Waiting to upload your time. We’ll retry automatically."));
       break;
     }
   }

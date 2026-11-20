@@ -2,7 +2,8 @@ import { useCallback, useEffect, useEffectEvent, useReducer, useRef, useState } 
 import { useAccountCard } from "./accountContext";
 import { queueFinish } from "../online/casualScores";
 import { casualBoardId } from "../game/casualLeaderboard";
-import OnlineFinishNotice from "./OnlineFinishNotice";
+import FinishLeaderboard from "./OnlineFinishNotice";
+import type { FinishReceipt } from "./OnlineLeaderboard";
 import { LIFELINE_COUNT } from "../animation/run";
 import { ABILITY_USES } from "../game/abilities";
 import GameScene from "./GameScene";
@@ -23,7 +24,6 @@ import type { PartId } from "../game/types";
 import { generateSoloPuzzle } from "../game/soloLevels";
 import { createRun, currentFrame, elapsedRunTime, runReducer } from "../animation/run";
 import { canOpenBonusBox } from "../game/rules";
-import { recordSoloTime } from "../game/leaderboard";
 import { CAMPAIGN_LEVELS, recordLevelClear } from "../game/campaign";
 import type { LevelId } from "../game/campaign";
 
@@ -36,8 +36,7 @@ function freshPuzzle(level: LevelId) { return generateSoloPuzzle(level, crypto.g
 
 export default function SoloGame({ level, initial, audio, onExit }: { level: LevelId; initial: SoloInitial; audio: ReturnType<typeof useGameAudio>; onExit: (levels: boolean) => void }) {
   const { playerId } = useAccountCard();
-  const [scoreNotice, setScoreNotice] = useState("");
-  const [queuedFinish, setQueuedFinish] = useState<{runId:string;playerId:string;round:number} | null>(null);
+  const [finishedRun, setFinishedRun] = useState<(FinishReceipt & {round:number}) | null>(null);
   const [run, dispatch] = useReducer(runReducer, initial, saved => ({ ...createRun(saved.game, saved.seed), ...saved.checkpoint, started: true }));
   const [arrival, setArrival] = useState<{ view: CameraView; round: number } | null>(null);
   const [confirmation, setConfirmation] = useState<"reset" | "leave" | null>(null);
@@ -96,12 +95,12 @@ export default function SoloGame({ level, initial, audio, onExit }: { level: Lev
     recordedRound.current = round;
     recordLevelClear(level);
     if (elapsedOnWin !== null) {
-      recordSoloTime(elapsedOnWin, level);
       // Capture identity only on the first winning render; never claim guest history.
-      if (playerId) void queueFinish(playerId,{runId:run.runId,boardId:casualBoardId(level),level,elapsedMs:Math.round(elapsedOnWin),
+      const upload = playerId ? queueFinish(playerId,{runId:run.runId,boardId:casualBoardId(level),level,elapsedMs:Math.round(elapsedOnWin),
         extraBoxUses:LIFELINE_COUNT-run.lifelines,findMatchUses:ABILITY_USES-run.abilities.finds,resumed:run.resumed,
-        screwCount:run.logical.screws.length}).then(() => setQueuedFinish({runId:run.runId,playerId,round}))
-          .catch(() => setScoreNotice("Your time is saved locally, but couldn’t be queued online."));
+        screwCount:run.logical.screws.length}) : Promise.resolve();
+      void upload.then(() => setFinishedRun(previous => previous && previous.round > round ? previous : {runId:run.runId,playerId,round,error:false}))
+        .catch(() => setFinishedRun(previous => previous && previous.round > round ? previous : {runId:run.runId,playerId,round,error:true}));
     }
   }, [won, round, level, elapsedOnWin, playerId, run.runId, run.lifelines, run.abilities.finds, run.resumed, run.logical.screws.length]);
 
@@ -135,7 +134,6 @@ export default function SoloGame({ level, initial, audio, onExit }: { level: Lev
 
   function returnToTitle(openLevels = false) { setConfirmation(null); onExit(openLevels); }
   function restart() {
-    setScoreNotice("");
     clearSoloSave(level);
     setConfirmation(null);
     const puzzle = freshPuzzle(level);
@@ -154,7 +152,7 @@ export default function SoloGame({ level, initial, audio, onExit }: { level: Lev
       view={view} onCameraArrive={cameraArrived} playable={playable} onReady={sceneReady} onScrewSelect={selectScrew}
       onBlockedScrew={() => play("blocked")} projectorRef={project} hint={run.abilities.hint} hintControlsRef={hintControlsRef} />
     {!revealed && <LevelLoading title={CAMPAIGN_LEVELS.find(({ id }) => id === level)!.title} stage={run.ready ? "Positioning camera" : "Warming scene"} />}
-    {run.started && cameraReady && <><GameUI game={run.display} frame={frame} waitingCount={run.logical.tray.length} />
+    {run.started && cameraReady && mode !== "won" && <><GameUI game={run.display} frame={frame} waitingCount={run.logical.tray.length} />
       <GameBar key={run.round} level={level} lifelines={run.lifelines}
       progress={<GameTimer startedAt={timerStartedAt} stoppedAt={timerStoppedAt}
         elapsedBefore={elapsedBefore} removed={removedCount} total={run.logical.screws.length} />}
@@ -169,13 +167,13 @@ export default function SoloGame({ level, initial, audio, onExit }: { level: Lev
     <TransferOverlay frame={frame} getOrigin={getOrigin} />
     <GameOverlay mode={mode} onStart={() => {}} onRestart={restart}
       onLevels={() => returnToTitle(true)} levelTitle={CAMPAIGN_LEVELS.find(({ id }) => id === level)!.title}
-      elapsedMs={elapsedOnWin ?? undefined} finishNotice={queuedFinish?.round === round ? <OnlineFinishNotice runId={queuedFinish.runId} playerId={queuedFinish.playerId} /> : undefined} />
+      elapsedMs={elapsedOnWin ?? undefined} finishNotice={<FinishLeaderboard level={level} elapsedMs={elapsedOnWin ?? 0}
+        receipt={finishedRun?.round === round ? finishedRun : undefined} />} />
     <GameControls muted={muted} toggle={toggle} leaderboardLevel={level} onReset={run.started ? () => setConfirmation("reset") : undefined}
       onLeave={run.started ? () => setConfirmation("leave") : undefined} />
     {confirmation && <ResetDialog action={confirmation} onCancel={() => setConfirmation(null)}
       onConfirm={confirmation === "reset" ? restart : () => { saveProgress(); returnToTitle(); }}
       onLevels={confirmation === "leave" ? () => { saveProgress(); returnToTitle(true); } : undefined} />}
-    {scoreNotice && <span className="score-notice" role="status">{scoreNotice}</span>}
     <DesktopCursor />
   </div>;
 }

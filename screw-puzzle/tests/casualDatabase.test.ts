@@ -54,6 +54,10 @@ test("casual PostgreSQL endpoint enforces Google ownership, immutable retries, p
   const json=JSON.stringify(publicBoard); assert.ok(!json.includes("@example.com")&&!json.includes("player_id")&&!json.includes("run_id"));
   await role("authenticated",uuid(1),"update public.player_profiles set nickname='New Name' where id=$1",[uuid(1)]);
   assert.equal((await read()).entries[0].nickname,"New Name");
+  await assert.rejects(role("authenticated",uuid(1),"update public.player_profiles set nickname='PLAYER 2' where id=$1",[uuid(1)]));
+  for(const nickname of ["NEW NAME","New Name 2","New Name"]) await role("authenticated",uuid(1),"update public.player_profiles set nickname=$2 where id=$1",[uuid(1),nickname]);
+  await role("authenticated",uuid(2),"update public.player_profiles set nickname='Player 1' where id=$1",[uuid(2)]);
+  assert.equal((await read()).entries[0].nickname,"New Name","repeated renames retain the same player's result");
   await submit(11,payload(511,9000)); assert.equal((await read()).entries[0].nickname,"Player 11");
   const closed=(await role<{b:Board}>("anon","","select public.get_casual_leaderboard('unknown') b")).rows[0].b;
   assert.equal(closed.open,false); assert.equal(closed.entries.length,0);

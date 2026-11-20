@@ -1,6 +1,6 @@
 # Player accounts: setup and deployment
 
-The player-card UI ships in **0.1.30**. Open **Login** below Two-player game on Home, or the player-account tile inside the in-game hamburger menu. It supports Google sign-in, a public nickname, reload/session restoration and confirmed sign-out. New online-guest creation and its Turnstile widget have been removed; existing guest sessions can still link to Google. Casual play needs no account. Email sign-in is deferred: no SMTP or email templates are required for this release. Solo wins finished with Google signed in now submit automatically to the casual leaderboard. A nickname is required; resumed runs and normal abilities count. Guest history stays local. See the leaderboard and live testing guides.
+The player-card UI ships in **0.1.31**. Open **Login** below Two-player game on Home, or the player-account tile inside the in-game hamburger menu. It supports Google sign-in, a public nickname, reload/session restoration and confirmed sign-out. New online-guest creation and its Turnstile widget have been removed; existing guest sessions can still link to Google. Casual play needs no account. Email sign-in is deferred: no SMTP or email templates are required for this release. Solo wins finished with Google signed in now submit automatically to the casual leaderboard. A nickname is required; resumed runs and normal abilities count. Guest wins are not recorded as times. See the leaderboard and live testing guides.
 
 On 2026-11-20, a read-only public settings check reported Google and anonymous sign-in enabled, local Turnstile configuration present, and the live homepage returning 200. This does not verify Google's final redirect or the Turnstile secret/domain setup. No live test users or scores were created. Follow [the live testing checklist](auth-live-testing.md) after deployment.
 
@@ -35,7 +35,7 @@ Google's callback is the Supabase URL above. The app's Site URL/Redirect URLs ar
 
 ## 3. Ordinary play, without online guests
 
-No setup is needed. Starting a level creates no Supabase identity; saves and personal times stay in the current browser. Creating new online guests is no longer offered. Google does not need a Turnstile widget. Existing guest users/nicknames are preserved and can still use **Keep this guest with Google**; keep manual identity linking enabled for them.
+No setup is needed. Starting a level creates no Supabase identity; unfinished puzzle progress stays in the current browser, while guest finishing times are not recorded. Creating new online guests is no longer offered. Google does not need a Turnstile widget. Existing guest users/nicknames are preserved and can still use **Keep this guest with Google**; keep manual identity linking enabled for them.
 
 This UI release does not change hosted Supabase provider/CAPTCHA settings or delete users. `VITE_TURNSTILE_SITE_KEY` is unused by the current player card and may remain in existing environments. Do not enable guest creation or configure a widget for this release. Legacy CAPTCHA/guest/email helpers are inactive compatibility groundwork.
 
@@ -68,7 +68,7 @@ Do not add Google client secrets, Turnstile secrets or a Supabase secret/service
 - Real provider settings and the publishable-key connection were checked read-only. Google sign-in still needs live acceptance tests after deployment. The current card does not offer new online guests. SMTP is out of scope.
 - Auth downloads are deferred; the current UI does not load Turnstile; opening the home screen does not create an anonymous account or load any level scenery. A stored session or sign-in callback can initialise Auth in the background.
 - Emails are private in the account card. Only the deliberately chosen nickname appears on the casual leaderboard; public rows have no email or account UUID.
-- Sign-out affects this device; it keeps local game saves/times. Forgetting an anonymous guest requires confirmation because an unlinked guest cannot recover its identity after sign-out.
+- Sign-out affects this device; it keeps saved puzzle progress and preserves scores on the online account. Forgetting an anonymous guest requires confirmation because an unlinked guest cannot recover its identity after sign-out.
 - OAuth navigation saves current solo progress through the existing page-hide handler and preserves its level route. After returning, the current casual level/checkpoint is restored directly using the saved level route. Co-op follows the existing reconnect/seat-expiry rules.
 - Auth URL credentials are cleared after processing, excluded from analytics, and suppressed in outgoing referrers. Stale email UI challenges are cleared when Auth boots; the current UI never requests a code.
 

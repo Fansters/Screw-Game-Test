@@ -1,8 +1,8 @@
-# Casual global leaderboard (0.1.30)
+# Casual global leaderboard (0.1.31)
 
 ## What is implemented
 
-The game has Online and This device tabs in the same leaderboard card. Online shows up to ten players per current level/layout, plus your own best/place even outside that list. Anyone can view it. Only solo wins finished while signed into Google can publish, and a public nickname is required. Guest history stays local; signing in afterward does not import it.
+The game has one online-only leaderboard. Home offers all six level boards; in-level menus show only that level. Solo victory embeds the current board directly, highlights your best result and retains your just-finished time above it. A slower attempt never appears to replace an earlier best. The completed gameplay HUD hides on the solo win screen so abilities/counters cannot cover replay controls; the corner game menu remains available. The card moves to your row once if needed, respects reduced motion and leaves later manual scrolling alone. Personal placement remains visible below the public top ten when necessary, including tied ranks at the ten-account cutoff. Anyone can view boards. Only solo wins finished while signed into Google can publish, and a public nickname is required. Guest finishes do not create persistent time records; later sign-in does not import past results. Saved puzzle progress, completion badges and the pending upload queue remain device-local.
 
 Timing starts on the first accepted screw and stops on logical victory, before the final animations finish. Menus count while the level is open. Saved/resumed runs count using accumulated play time; time away from a closed game does not. Both abilities are allowed with their usual three uses and no penalty. Entries disclose extra-box uses, Find a Match uses and whether the run was resumed. Puzzles still use fresh random colours.
 
@@ -11,10 +11,10 @@ Each player occupies at most one spot per board: their fastest finish. Equal int
 ## How the pieces fit together
 
 1. **Stable finish identity.** Each solo attempt gets a UUID. Checkpoints preserve it; reset creates a new one. Older checkpoints remain resumable and receive an ID when restored.
-2. **Capture the finish once.** SoloGame records the local clear as before and snapshots the Google account at the first winning render. A later sign-in cannot claim a guest win. Co-op and lost runs do not submit.
+2. **Capture the finish once.** SoloGame records a completion badge (not a device time) and snapshots the Google account at the first winning render. A later sign-in cannot claim a guest win. Co-op and lost runs do not submit.
 3. **Reliable upload.** The device outbox stores an immutable result bound to that account. It retries after connection returns, every 30 seconds, on reload/sign-in to the same account, or with Retry upload. Missing nicknames wait for a name to be saved. Another account cannot adopt queued results. Storage denial falls back to memory for that visit.
 4. **Authenticated database endpoint.** Supabase validates the Google identity, current nickname, active layout, expected account, integer duration, screw count and ability limits. A transaction lock and account/run primary key make concurrent retries idempotent. Conflicting payloads cannot overwrite a completed result. A ceiling of 120 new finishes per account/hour limits spam; exact retries do not consume it.
-5. **Public projection.** A read-only function returns nicknames, times, ability/resume metadata and placement. It returns no email, account UUID or run UUID. Raw history has no browser-role access. The open board refreshes periodically and after upload changes.
+5. **Public projection.** A read-only function returns nicknames, times, ability/resume metadata and placement. It returns no email, account UUID or run UUID. Raw history has no browser-role access. The open board refreshes periodically and after upload/name/connection changes. Background refresh preserves the visible table; account/level changes discard stale views and cancel outdated requests.
 
 These are friendly casual times reported by the game client. Authentication and field validation protect ownership; they do not verify that every move/time is honest. No server replay or anti-cheat claim is made.
 
@@ -26,7 +26,7 @@ The exposed functions are `public.submit_casual_finish(jsonb, uuid)` (authentica
 
 No Edge Function, database password, service-role key or new Render process is needed. Keep these existing Vercel Config variables for Production and any tested Preview: VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_ROOM_SERVER. Local .env.local is not uploaded by Git. Publish the frontend through the connected production branch; this release does not change room protocol 26.
 
-Local PostgreSQL tests cover permission denial, missing names, account-switch rejection, payload validation, duplicate/conflicting retries, faster/slower finishes, shared ties, public top-ten privacy, personal placement and nickname updates. Browser fixtures cover finish capture, reconnect/name retries and guest-then-login behavior without putting invented times in the live database. See [the live checklist](auth-live-testing.md) for the real Google completion test after deploying.
+Local PostgreSQL tests cover permission denial, missing names, account-switch rejection, payload validation, duplicate/conflicting retries, faster/slower finishes, shared ties, public top-ten privacy, personal placement and nickname updates. Browser fixtures cover finish capture, reconnect/name retries, guest-then-login behavior, current-level scoping and responsive win boards without putting invented times in the live database. See [the live checklist](auth-live-testing.md) for the real Google completion test after deploying.
 
 ## Co-op box ownership: future work
 
@@ -41,3 +41,7 @@ This release keeps shared boxes. The approved future rules are:
 7. Enforce this on the room server, test replacement/transfer/reconnect races, then bump the room protocol and deploy both services together.
 
 Later achievements could recognize no-ability clears, personal improvements, finishing every world and cooperative teamwork. Keep these separate from the current timing rules.
+
+## Public nicknames
+
+Google identifies the account, not its public nickname. Players choose a unique 3–20 character name using letters A–Z, numbers, spaces, underscores or hyphens; it must start with a letter or number. Names are trimmed/normalized, and uniqueness is case-insensitive. There is no application rename limit or cooldown. Updating the name keeps the same account/results and changes its display on existing boards; the old name becomes available again. The database unique index settles simultaneous claims, and owner-only policies prevent changing someone else’s name. No live account/profile data was changed for this UI release.

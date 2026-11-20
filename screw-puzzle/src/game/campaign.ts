@@ -1,4 +1,4 @@
-import { readSoloTimes } from "./leaderboard.ts";
+import { readLegacyCottageClear } from "./leaderboard.ts";
 import type { LevelId } from "./types.ts";
 export type { LevelId } from "./types.ts";
 
@@ -26,13 +26,7 @@ export function readLevelProgress(): ReadonlySet<LevelId> {
       if (window.localStorage.getItem(clearKey(id)) === "1") completed.add(id);
     }
   } catch { /* Keep progress for the current visit. */ }
-  // Earlier layouts' times still prove progression, but are not ranked against 240-screw runs.
-  try {
-    const previous: unknown = JSON.parse(window.localStorage.getItem("screw-it:solo-times:cottage:v1") ?? "[]");
-    if (Array.isArray(previous) && previous.some((time) => time && typeof time.elapsedMs === "number" && time.elapsedMs > 0)) completed.add("cottage");
-  } catch { /* Old progress is optional. */ }
-  // Personal times from before the level picker also prove a Cottage win.
-  if (!completed.has("cottage") && readSoloTimes().length > 0) completed.add("cottage");
+  if (!completed.has("cottage") && readLegacyCottageClear()) completed.add("cottage");
   return completed;
 }
 

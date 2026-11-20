@@ -35,7 +35,7 @@ export default function GameControls({ muted, toggle, onReset, onLeave, resetDis
     <svg viewBox="0 0 32 32" aria-hidden="true">{person}</svg><span>{account.kind === "player" ? "My account" : "Login"}</span>
     {account.kind && <span className={`account-indicator ${account.kind}`} aria-hidden="true" />}
   </button>;
-  const leaderboardButton = <SoloLeaderboard activeLevel={leaderboardLevel} launcherClass={actionClass} />;
+  const leaderboardButton = <SoloLeaderboard activeLevel={leaderboardLevel} allowLevelSelection={home} launcherClass={actionClass} />;
   return <>
     <div className={`game-controls${home ? " home-controls" : ""}`} role="group" aria-label="Game controls">
       {home ? <button ref={launcher} className="icon-button settings-launch" type="button" onClick={() => settings.current?.showModal()}

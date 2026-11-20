@@ -225,7 +225,7 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
     {confirmation && (confirmation === "leave" || leader) && <ResetDialog action={confirmation} shared
       onCancel={() => setConfirmation(null)} onConfirm={() => confirmation === "leave" ? leave() : reset()}
       onLevels={confirmation === "leave" ? () => leave(true) : undefined} />}
-    <GameControls muted={muted} toggle={toggle} onReset={started && leader ? () => setConfirmation("reset") : undefined}
+    <GameControls muted={muted} toggle={toggle} leaderboardLevel={level} onReset={started && leader ? () => setConfirmation("reset") : undefined}
       resetDisabled={!connected} onLeave={snapshot ? () => setConfirmation("leave") : undefined} />
     <DesktopCursor />
   </div>;
