@@ -32,12 +32,7 @@ export default function GameBar({ level, progress, lifelines, canBoost, onBoost,
     return () => controller.abort();
   }, [expanded]);
   return <nav ref={rootRef} className={`game-navbar${expanded ? " abilities-expanded" : ""}${shared ? " shared-navbar" : ""}`} aria-label="Game status and abilities">
-    <section id={panelId} className="ability-guide" aria-labelledby={`${panelId}-title`} inert={!expanded}>
-      <header><div><span className="guide-eyebrow">A little boost</span><h2 id={`${panelId}-title`}>Plan your next move</h2></div>
-        <button className="guide-close" aria-label="Close ability guide" onClick={() => { setExpanded(false); toggleRef.current?.focus(); }}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
-        </button>
-      </header>
+    <section id={panelId} className="ability-guide" aria-label="Ability details" inert={!expanded}>
       <div className="ability-tips">{tips.map((tip) => <article className={`ability-tip ${tip.tone}`} key={tip.name}>
         <span className="ability-tip-icon"><svg viewBox="0 0 32 32" aria-hidden="true">{tip.icon}</svg></span>
         <div><h3>{tip.name}</h3><p>{tip.text}</p></div>

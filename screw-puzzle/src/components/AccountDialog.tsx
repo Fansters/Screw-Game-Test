@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { PlayerKind } from "./accountContext";
+import { PROFILE_CHANGED } from "../online/casualScores";
 import AccountModal from "./AccountModal";
 import { accountProviders, bootAccount } from "../online/runtime";
 import { saveAccountNickname, startGoogleAccount } from "../online/accounts";
@@ -10,7 +11,7 @@ import { accountError } from "../online/errors";
 import { normalizeNickname } from "../online/nickname";
 
 type Providers = Awaited<ReturnType<typeof accountProviders>>;
-export default function AccountDialog({ open, onClose, onKind }: { open: boolean; onClose: () => void; onKind: (kind: PlayerKind) => void }) {
+export default function AccountDialog({ open, onClose, onKind }: { open: boolean; onClose: () => void; onKind: (kind: PlayerKind, playerId?: string | null) => void }) {
   const [client, setClient] = useState<SupabaseClient>();
   const [user, setUser] = useState<User | null>(null);
   const [providers, setProviders] = useState<Providers>();
@@ -35,7 +36,10 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
       if (result.callbackError) setMessage(result.callbackError);
       const adopt = (next: User | null) => {
         if (!alive) return;
-        setUser(next); onKind(next ? next.is_anonymous ? "guest" : "player" : null);
+        setUser(next);
+        const google = next && !next.is_anonymous && (next.identities?.some(identity => identity.provider === "google") ||
+          Array.isArray(next.app_metadata.providers) && next.app_metadata.providers.includes("google"));
+        onKind(next ? next.is_anonymous ? "guest" : "player" : null, google ? next.id : null);
       };
       const listener = result.client.auth.onAuthStateChange((event, session) => {
         // No Supabase calls/awaits here: its Auth lock is still held.
@@ -87,7 +91,7 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
     event.preventDefault(); if (!client || !userId || profile?.id !== userId) return;
     let value: string;
     try { value = normalizeNickname(nickname); } catch { setMessage("Use 3–20 letters A–Z, numbers, spaces, underscores or hyphens. Start with a letter or number."); return; }
-    await action(async () => { await saveAccountNickname(client, value, userId); setNickname(value); setNotice("Nice name! Your player card is saved."); });
+    await action(async () => { await saveAccountNickname(client, value, userId); setNickname(value); setNotice("Nice name! Your player card is saved."); window.dispatchEvent(new Event(PROFILE_CHANGED)); });
   }
   function closeCard() { onClose(); }
   return <AccountModal open={open} onClose={closeCard}>
@@ -115,7 +119,7 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
             <label htmlFor="account-nickname">Your public player name</label>
             <input id="account-nickname" value={nickname} onChange={event => setNickname(event.target.value)} placeholder="ScrewHero" minLength={3} maxLength={20}
               autoComplete="nickname" required disabled={busy} aria-describedby="nickname-note" />
-            <small id="nickname-note">3–20 letters A–Z, numbers, spaces, _ or -. This name appears with future ranked results.</small>
+            <small id="nickname-note">3–20 letters A–Z, numbers, spaces, _ or -. This name appears with your online leaderboard times.</small>
             <button className="account-button primary" disabled={busy}>Save player name</button>
           </form> : <p role="status">Getting your player name…</p>}
         {confirmOut ? <div className="account-signout-check">
@@ -129,7 +133,7 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
       </>}
       {!permanent && <button className="account-link" disabled={busy} onClick={() => { setNotice(""); setRetry(value => value + 1); }}>Refresh sign-in options</button>}
     </>}
-    <p className="account-footnote">Global rankings are being prepared. Personal times stay on this device.</p>
+    <p className="account-footnote">Solo wins finished with Google signed in are shared on the casual leaderboard. Game progress and local times stay on this device.</p>
     <button className="account-button keep-playing" onClick={closeCard}>Keep playing</button>
   </AccountModal>;
 }

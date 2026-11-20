@@ -54,7 +54,7 @@ export default function GameControls({ muted, toggle, onReset, onLeave, resetDis
     {!home && <dialog ref={menu} id="game-menu" className="help-dialog game-menu" aria-labelledby="game-menu-title">
       <header className="help-header"><h2 id="game-menu-title">Game Menu</h2></header>
       <div className="game-menu-content">
-        <button className="room-button menu-resume" type="button" onClick={closeMenu} autoFocus><span aria-hidden="true">▷</span> Keep playing</button>
+        <button className="room-button menu-resume" type="button" onClick={closeMenu} autoFocus><svg viewBox="0 0 32 32" aria-hidden="true"><path d="m11 7 14 9-14 9Z" /></svg><span>Keep playing</span></button>
         <div className="game-menu-actions">
           {onReset && <button className="menu-action" type="button" disabled={resetDisabled} onClick={() => { closeMenu(); onReset(); }} aria-label="Reset level">
             <svg viewBox="0 0 32 32" aria-hidden="true">{reset}</svg><span>Reset level</span></button>}

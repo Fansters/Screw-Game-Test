@@ -1,4 +1,10 @@
 import { useCallback, useEffect, useEffectEvent, useReducer, useRef, useState } from "react";
+import { useAccountCard } from "./accountContext";
+import { queueFinish } from "../online/casualScores";
+import { casualBoardId } from "../game/casualLeaderboard";
+import OnlineFinishNotice from "./OnlineFinishNotice";
+import { LIFELINE_COUNT } from "../animation/run";
+import { ABILITY_USES } from "../game/abilities";
 import GameScene from "./GameScene";
 import type { HintControls } from "./GameScene";
 import AbilityButtons from "./AbilityButtons";
@@ -29,6 +35,9 @@ export type SoloInitial = { game: GameState; seed: number; checkpoint?: RunCheck
 function freshPuzzle(level: LevelId) { return generateSoloPuzzle(level, crypto.getRandomValues(new Uint32Array(1))[0]); }
 
 export default function SoloGame({ level, initial, audio, onExit }: { level: LevelId; initial: SoloInitial; audio: ReturnType<typeof useGameAudio>; onExit: (levels: boolean) => void }) {
+  const { playerId } = useAccountCard();
+  const [scoreNotice, setScoreNotice] = useState("");
+  const [queuedFinish, setQueuedFinish] = useState<{runId:string;playerId:string;round:number} | null>(null);
   const [run, dispatch] = useReducer(runReducer, initial, saved => ({ ...createRun(saved.game, saved.seed), ...saved.checkpoint, started: true }));
   const [arrival, setArrival] = useState<{ view: CameraView; round: number } | null>(null);
   const [confirmation, setConfirmation] = useState<"reset" | "leave" | null>(null);
@@ -86,12 +95,19 @@ export default function SoloGame({ level, initial, audio, onExit }: { level: Lev
     if (!won || recordedRound.current === round) return;
     recordedRound.current = round;
     recordLevelClear(level);
-    if (elapsedOnWin !== null) recordSoloTime(elapsedOnWin, level);
-  }, [won, round, level, elapsedOnWin]);
+    if (elapsedOnWin !== null) {
+      recordSoloTime(elapsedOnWin, level);
+      // Capture identity only on the first winning render; never claim guest history.
+      if (playerId) void queueFinish(playerId,{runId:run.runId,boardId:casualBoardId(level),level,elapsedMs:Math.round(elapsedOnWin),
+        extraBoxUses:LIFELINE_COUNT-run.lifelines,findMatchUses:ABILITY_USES-run.abilities.finds,resumed:run.resumed,
+        screwCount:run.logical.screws.length}).then(() => setQueuedFinish({runId:run.runId,playerId,round}))
+          .catch(() => setScoreNotice("Your time is saved locally, but couldn’t be queued online."));
+    }
+  }, [won, round, level, elapsedOnWin, playerId, run.runId, run.lifelines, run.abilities.finds, run.resumed, run.logical.screws.length]);
 
   function saveProgress() {
     if (run.logical.status !== "playing") return;
-    writeSoloSave(level, { seed: run.seed, moves, elapsedMs: Math.round(elapsedRunTime(run, performance.now())),
+    writeSoloSave(level, { runId: run.runId, seed: run.seed, moves, elapsedMs: Math.round(elapsedRunTime(run, performance.now())),
       legacyTitanicLayout: run.legacyTitanicLayout });
   }
   const saveCheckpoint = useEffectEvent(saveProgress);
@@ -119,6 +135,7 @@ export default function SoloGame({ level, initial, audio, onExit }: { level: Lev
 
   function returnToTitle(openLevels = false) { setConfirmation(null); onExit(openLevels); }
   function restart() {
+    setScoreNotice("");
     clearSoloSave(level);
     setConfirmation(null);
     const puzzle = freshPuzzle(level);
@@ -152,12 +169,13 @@ export default function SoloGame({ level, initial, audio, onExit }: { level: Lev
     <TransferOverlay frame={frame} getOrigin={getOrigin} />
     <GameOverlay mode={mode} onStart={() => {}} onRestart={restart}
       onLevels={() => returnToTitle(true)} levelTitle={CAMPAIGN_LEVELS.find(({ id }) => id === level)!.title}
-      elapsedMs={elapsedOnWin ?? undefined} />
+      elapsedMs={elapsedOnWin ?? undefined} finishNotice={queuedFinish?.round === round ? <OnlineFinishNotice runId={queuedFinish.runId} playerId={queuedFinish.playerId} /> : undefined} />
     <GameControls muted={muted} toggle={toggle} leaderboardLevel={level} onReset={run.started ? () => setConfirmation("reset") : undefined}
       onLeave={run.started ? () => setConfirmation("leave") : undefined} />
     {confirmation && <ResetDialog action={confirmation} onCancel={() => setConfirmation(null)}
       onConfirm={confirmation === "reset" ? restart : () => { saveProgress(); returnToTitle(); }}
       onLevels={confirmation === "leave" ? () => { saveProgress(); returnToTitle(true); } : undefined} />}
+    {scoreNotice && <span className="score-notice" role="status">{scoreNotice}</span>}
     <DesktopCursor />
   </div>;
 }

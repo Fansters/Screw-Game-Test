@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { createRun, elapsedRunTime, runReducer } from "../src/animation/run.ts";
 import { clearSoloSave, readSoloSave, restoreSoloSave, soloSaveKey, writeSoloSave } from "../src/game/soloSave.ts";
 import { generateSoloPuzzle } from "../src/game/soloLevels.ts";
+import { isRunId } from "../src/game/runId.ts";
 import { isScrewAccessible, planBonusBox, removeScrew } from "../src/game/rules.ts";
 
 test("solo checkpoints restore the same puzzle, tray, bonus box and playing time", (t) => {
@@ -21,13 +22,19 @@ test("solo checkpoints restore the same puzzle, tray, bonus box and playing time
   const waiting = state.screws.find((screw) => !state.boxes.some((box) => box?.color === screw.color) &&
     !screw.solutionAfter?.length && isScrewAccessible(state, screw))!;
   const expected = planBonusBox(removeScrew(state, waiting.id)).finalState;
-  writeSoloSave("campsite", { seed, moves: [waiting.id, "boost"], elapsedMs: 4500 });
+  const runId = createRun(state).runId;
+  writeSoloSave("campsite", { runId, seed, moves: [waiting.id, "boost"], elapsedMs: 4500 });
   assert.equal(readSoloSave("cottage"), null);
   const restored = restoreSoloSave("campsite", readSoloSave("campsite")!)!;
   assert.deepEqual(restored.game, expected);
   assert.equal(restored.checkpoint.lifelines, 2);
+  assert.equal(restored.checkpoint.runId, runId);
+  assert.equal(restored.checkpoint.resumed, true);
   const run = runReducer(createRun(state), { type: "reset", ...restored, enter: true });
   assert.equal(run.display, run.logical);
+  assert.equal(run.runId, runId);
+  assert.notEqual(runReducer(run, {type:"reset",game:state,seed}).runId,runId);
+  assert.ok(isRunId(restoreSoloSave("campsite", {seed,moves:[waiting.id],elapsedMs:100})!.checkpoint.runId));
   assert.deepEqual(run.jobs, []);
   assert.deepEqual(run.releases, {});
   assert.equal(elapsedRunTime(run, 12000), 4500);

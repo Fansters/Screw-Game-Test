@@ -1,3 +1,4 @@
+import { isRunId, newRunId } from "./runId.ts";
 import { LIFELINE_COUNT } from "../animation/run.ts";
 import type { LevelId } from "./campaign.ts";
 import { layoutRevision } from "./layoutVersions.ts";
@@ -5,7 +6,7 @@ import { planBonusBox, removeScrew } from "./rules.ts";
 import { generateSoloPuzzle } from "./soloLevels.ts";
 import { ABILITY_USES, freshAbilities, matchCandidates, settleAbilities } from "./abilities.ts";
 
-type SoloSave = { seed: number; moves: string[]; elapsedMs: number; legacyTitanicLayout?: true };
+type SoloSave = { runId?: string; seed: number; moves: string[]; elapsedMs: number; legacyTitanicLayout?: true };
 const inMemory = new Map<LevelId, SoloSave | null>();
 export const soloSaveKey = (level: LevelId) => `screw-it:solo-save:${level}:${layoutRevision(level)}`;
 const previousTitanicSaveKey = "screw-it:solo-save:titanic:v1";
@@ -15,6 +16,7 @@ function validSave(value: unknown): value is SoloSave {
   return typeof value.seed === "number" && Number.isInteger(value.seed) && value.seed >= 0 && value.seed <= 0xffffffff &&
     typeof value.elapsedMs === "number" && Number.isSafeInteger(value.elapsedMs) && value.elapsedMs >= 0 &&
     Array.isArray(value.moves) && value.moves.every((move) => typeof move === "string") &&
+    (!("runId" in value) || isRunId(value.runId)) &&
     (!("legacyTitanicLayout" in value) || value.legacyTitanicLayout === true);
 }
 
@@ -76,6 +78,7 @@ export function restoreSoloSave(level: LevelId, save: SoloSave) {
     abilities = settleAbilities(abilities, game);
   }
   return { game, seed: save.seed, checkpoint: {
+    runId: save.runId ?? newRunId(), resumed: moves.length > 0 || save.elapsedMs > 0,
     elapsedBefore: save.elapsedMs, moves, lifelines, abilities, legacyTitanicLayout: save.legacyTitanicLayout,
   } };
 }

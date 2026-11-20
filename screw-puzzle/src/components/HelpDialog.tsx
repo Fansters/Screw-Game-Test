@@ -5,7 +5,7 @@ import { MATCH_SIZE, TRAY_CAPACITY } from "../game/rules";
 import { GAME_VERSION } from "../game/version";
 
 const icons = {
-  match: <><path d="M10 4Q12 1 14 4l8 15q1 3-2 3H4q-3 0-2-3Z" /><path d="M12 8h.01M8 15h.01M16 15h.01" strokeWidth="3.5" /></>,
+  match: <><rect x="3" y="3" width="18" height="18" rx="4" /><path d="M12 8h.01M8 15h.01M16 15h.01" strokeWidth="3.5" /></>,
   lifeline: <path d="m13 3-8 11h6l-1 7 9-11h-6l1-7Z" fill="currentColor" strokeWidth="1" />,
   peek: <><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></>,
 };

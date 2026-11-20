@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { AccountContext } from "./accountContext";
 import type { PlayerKind } from "./accountContext";
+import ScoreSync from "./ScoreSync";
 import AccountModal from "./AccountModal";
 import { accountStorageKey, parseOnlineConfig } from "../online/config";
 import { cleanAccountUrl, isAccountReturn } from "../online/browserState";
@@ -19,14 +20,16 @@ export default function AccountProvider({ children }: { children: ReactNode }) {
   const [returning] = useState(() => isAccountReturn(location.href));
   const [open, setOpen] = useState(returning);
   const [active, setActive] = useState(() => open || hasStoredAccount());
-  const [kind, setKind] = useState<PlayerKind>(null);
+  const [identity, setIdentity] = useState<{kind: PlayerKind; playerId: string | null}>({kind:null,playerId:null});
+  const setKind = useCallback((kind: PlayerKind, playerId: string | null = null) => setIdentity({kind,playerId}),[]);
   const close = useCallback(() => setOpen(false), []);
   const show = useCallback(() => { setActive(true); setOpen(true); }, []);
   useEffect(() => {
     if (returning && !config) history.replaceState(history.state, "", cleanAccountUrl(location.href));
   }, [returning]);
-  return <AccountContext value={{ open: show, kind }}>
+  return <AccountContext value={{ open: show, ...identity }}>
     {children}
+    <ScoreSync />
     {active && (config ? <Suspense fallback={open && <AccountModal open onClose={close}><p role="status">Getting your player card…</p></AccountModal>}>
       <AccountDialog open={open} onClose={close} onKind={setKind} />
     </Suspense> : <AccountModal open={open} onClose={close}>

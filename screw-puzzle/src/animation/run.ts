@@ -1,3 +1,4 @@
+import { newRunId } from "../game/runId.ts";
 import { buildSequence, SCREW_SPIN_MS } from "./sequence.ts";
 import type { PlaybackFrame } from "./sequence.ts";
 import { BONUS_SLOT, isScrewAccessible, planBonusBox, planScrewRemoval } from "../game/rules.ts";
@@ -9,13 +10,13 @@ import type { AbilityState } from "../game/abilities.ts";
 
 export type AnimationJob = { id: number; frames: PlaybackFrame[]; finalState: GameState; readyAt: number };
 export const LIFELINE_COUNT = 3;
-export type RunState = { logical: GameState; display: GameState; ready: boolean; started: boolean; jobs: AnimationJob[];
+export type RunState = { runId: string; resumed: boolean; logical: GameState; display: GameState; ready: boolean; started: boolean; jobs: AnimationJob[];
   fallingParts: PartId[]; releases: PartReleases;
   lifelines: number; bonusJob: number | null; abilities: AbilityState;
   moves: string[]; elapsedBefore: number;
   legacyTitanicLayout?: true;
   frameIndex: number; nextJobId: number; round: number; seed: number; timerStartedAt: number | null; timerStoppedAt: number | null };
-export type RunCheckpoint = Pick<RunState, "moves" | "lifelines" | "elapsedBefore" | "legacyTitanicLayout"> & { abilities?: AbilityState };
+export type RunCheckpoint = Pick<RunState, "moves" | "lifelines" | "elapsedBefore" | "legacyTitanicLayout"> & { abilities?: AbilityState; runId?: string; resumed?: boolean };
 export type RunAction = { type: "ready"; round: number } | { type: "start" } | { type: "select"; id: string; now: number; clearedParts?: readonly PartId[] } |
   { type: "fall-finished"; part: PartId; round: number } |
   { type: "dismiss"; part: PartId; now: number } |
@@ -25,7 +26,7 @@ export type RunAction = { type: "ready"; round: number } | { type: "start" } | {
   { type: "resume-clock"; now: number; round: number } |
   { type: "reset"; game: GameState; seed: number; enter?: boolean; checkpoint?: RunCheckpoint };
 export function createRun(game: GameState, seed = 0, round = 0): RunState {
-  return { logical: game, display: game, ready: false, started: false, jobs: [], fallingParts: [], releases: {},
+  return { runId: newRunId(), resumed: false, logical: game, display: game, ready: false, started: false, jobs: [], fallingParts: [], releases: {},
     lifelines: LIFELINE_COUNT, bonusJob: null, abilities: freshAbilities(), moves: [], elapsedBefore: 0,
     frameIndex: -1, nextJobId: 1, round, seed, timerStartedAt: null, timerStoppedAt: null };
 }

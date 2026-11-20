@@ -6,14 +6,14 @@ const MUSIC_GAIN = 0.09;
 const hz = (note: number) => 440 * 2 ** ((note - 69) / 12);
 
 function tone(context: BaseAudioContext, output: AudioNode, at: number, frequency: number,
-  duration: number, volume: number, wave: OscillatorType = "sine", endFrequency = frequency) {
+  duration: number, volume: number, wave: OscillatorType = "sine", endFrequency = frequency, attack = 0.017) {
   const oscillator = context.createOscillator();
   const envelope = context.createGain();
   oscillator.type = wave;
   oscillator.frequency.setValueAtTime(frequency, at);
   oscillator.frequency.exponentialRampToValueAtTime(endFrequency, at + duration);
   envelope.gain.setValueAtTime(0.0001, at);
-  envelope.gain.exponentialRampToValueAtTime(volume, at + Math.min(0.017, duration / 4));
+  envelope.gain.exponentialRampToValueAtTime(volume, at + Math.min(attack, duration / 4));
   envelope.gain.exponentialRampToValueAtTime(0.0001, at + duration);
   oscillator.connect(envelope).connect(output);
   oscillator.start(at);
@@ -23,15 +23,7 @@ function tone(context: BaseAudioContext, output: AudioNode, at: number, frequenc
 // A new instrumental arrangement of Gruber's 1818 Silent Night melody.
 // All voices are synthesized here; no recording or third-party samples are used.
 export async function renderChristmasMusic() {
-  const beat = 60 / 72, bar = beat * 3, sampleRate = 24000;
-  const chords = [
-    [36, 52, 55, 59], [36, 52, 55, 62], [36, 52, 55, 59], [36, 52, 55, 62],
-    [43, 53, 57, 59], [43, 53, 57, 62], [36, 52, 55, 59], [36, 52, 55, 62],
-    [41, 53, 57, 60], [41, 53, 57, 64], [36, 52, 55, 59], [36, 52, 55, 62],
-    [41, 53, 57, 60], [41, 53, 57, 64], [36, 52, 55, 59], [36, 52, 55, 62],
-    [43, 53, 57, 59], [43, 53, 57, 62], [36, 52, 55, 59], [45, 52, 55, 60],
-    [36, 52, 55, 59], [43, 53, 57, 59], [36, 52, 55, 59], [36, 52, 55, 62],
-  ];
+  const beat = 60 / 64, bar = beat * 3, sampleRate = 24000;
   // Bars contain [MIDI pitch, duration in quarter-note beats]. Leave room
   // around the familiar phrases rather than playing a constant bright lead.
   const melody: [number, number][][] = [
@@ -47,46 +39,24 @@ export async function renderChristmasMusic() {
     [[72,.75],[67,.25],[64,.5],[67,.75],[65,.25],[62,.5]],
     [[60,3]], [], [],
   ];
-  const length = Math.round(chords.length * bar * sampleRate), tail = 3;
+  const length = Math.round(melody.length * bar * sampleRate), tail = 3;
   const context = new OfflineAudioContext(1, length + tail * sampleRate, sampleRate);
-  const keys = context.createBiquadFilter(); keys.frequency.value = 1150;
-  const bells = context.createBiquadFilter(); bells.frequency.value = 2800;
-  keys.connect(context.destination); bells.connect(context.destination);
-  const echo = context.createDelay(1), echoGain = context.createGain();
-  echo.delayTime.value = beat * .75; echoGain.gain.value = .14;
-  bells.connect(echo).connect(echoGain).connect(context.destination);
-  const brush = context.createBuffer(1, Math.round(sampleRate * .12), sampleRate);
-  const samples = brush.getChannelData(0); let seed = 19811224;
-  for (let i = 0; i < samples.length; i++) {
-    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-    samples[i] = (seed / 2147483648 - 1) * (1 - Math.exp(-i / 24)) * Math.exp(-i / 400);
-  }
-  for (const [index, [bass, ...notes]] of chords.entries()) {
-    const at = index * bar + .02;
-    for (const [voice, note] of notes.entries()) {
-      tone(context, keys, at + voice * .025, hz(note), 2.1, .073, 'triangle');
-      tone(context, keys, at + voice * .025, hz(note + 12) * 1.0015, 1.1, .009);
-    }
-    tone(context, keys, at, hz(bass), 1.4, .13);
-    tone(context, keys, at + 2 * beat, hz(bass + 7), .65, .065);
-    tone(context, keys, at, 78, .13, .075, 'sine', 40);
-    for (const offset of [.98, 2.46]) {
-      const source = context.createBufferSource(), gain = context.createGain();
-      gain.gain.value = .025; source.buffer = brush;
-      source.connect(gain).connect(keys); source.start(at + offset * beat);
-    }
+  const keys = context.createBiquadFilter(); keys.frequency.value = 1300;
+  keys.connect(context.destination);
+  // One quiet, piano-like carol voice. No accompaniment, bass, beats or echo.
+  for (const [index, notes] of melody.entries()) {
     let offset = 0;
-    for (const [note, duration] of melody[index]) {
-      tone(context, bells, at + offset * beat, hz(note), Math.max(.7, duration * beat * 1.35), .052);
-      tone(context, bells, at + offset * beat, hz(note) * 2.002, .5, .005);
+    for (const [note, duration] of notes) {
+      const at = index * bar + offset * beat + .02, frequency = hz(note);
+      tone(context, keys, at, frequency, Math.max(.8, duration * beat * 1.25), .16, "sine", frequency, .075);
+      tone(context, keys, at, frequency * 2, .7, .008, "sine", frequency * 2, .06);
       offset += duration;
     }
-    if (index % 4 === 3) tone(context, bells, at + 2.5 * beat, hz(84 + index % 3), .7, .007);
   }
   const rendered = await context.startRendering(), loop = context.createBuffer(1, length, sampleRate);
   const data = loop.getChannelData(0), full = rendered.getChannelData(0);
   data.set(full.subarray(0, length));
-  // Fold the final note/echo tails into the opening for a continuous loop.
+  // Fold the final note tails into the opening for a continuous loop.
   for (let i = length; i < full.length; i++) data[i - length] += full[i];
   return loop;
 }
@@ -102,10 +72,15 @@ export function createGameAudio() {
   output.gain.value = 0;
   musicGain.gain.value = MUSIC_GAIN;
   let music: AudioBufferSourceNode | null = null;
-  let playing = false;
+  let playing = false, disposed = false, generation = 0;
   const muted = { music: false, effects: false };
   const lastCue = { remove: -Infinity, blocked: -Infinity };
   const track = renderChristmasMusic().catch(() => null);
+
+  function stopMusic() {
+    const source = music; music = null;
+    if (source) { source.stop(); source.disconnect(); }
+  }
 
   function updateVolume() {
     output.gain.setTargetAtTime(playing && !document.hidden ? MASTER_GAIN : 0, context.currentTime, 0.035);
@@ -123,16 +98,16 @@ export function createGameAudio() {
       gain.gain.setTargetAtTime(value ? 0 : channel === "music" ? MUSIC_GAIN : 1, context.currentTime, 0.035);
     },
     setPlaying(value: boolean) {
-      if (playing === value) return;
+      if (disposed || playing === value) return;
       playing = value;
+      const request = ++generation;
       updateVolume();
       if (!value) {
-        music?.stop(context.currentTime + 0.15);
-        music = null;
+        stopMusic();
         return;
       }
       void track.then((buffer) => {
-        if (!playing || music || !buffer || context.state === "closed") return;
+        if (request !== generation || !playing || music || !buffer || context.state === "closed") return;
         music = context.createBufferSource();
         music.buffer = buffer;
         music.loop = true;
@@ -159,7 +134,8 @@ export function createGameAudio() {
       }
     },
     close() {
-      playing = false;
+      if (disposed) return;
+      disposed = true; playing = false; generation++; stopMusic();
       document.removeEventListener("visibilitychange", updateVolume);
       void context.close().catch(() => {});
     },

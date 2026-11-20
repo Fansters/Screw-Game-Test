@@ -24,8 +24,6 @@ export default function GameUI({ game, frame, completedLifeline, waitingCount = 
           return <section key={box.id} className={`match-box${bonus ? " lifeline-box" : ""}${effect}`}
             style={{ "--screw-color": appearance.color, "--recess-color": appearance.recess } as CSSProperties}
             aria-label={`${appearance.label} ${bonus ? "lifeline" : "matching"} box: ${box.screws.length} of ${MATCH_SIZE}`}>
-
-            <svg className="box-shell" viewBox="0 0 100 92" aria-hidden="true"><path className="box-base" d="M43 6Q50-3 57 6L97 76Q103 89 87 91H13Q-3 89 3 76Z" /><path className="box-rim" d="M43 3Q50-5 57 3L97 73Q103 86 87 88H13Q-3 86 3 73Z" /><path className="box-well" d="M44 16Q50 6 56 16L84 66Q90 77 78 78H22Q10 77 16 66Z" /></svg>
             {readability.labels && <span className="box-color-code">{COLOR_CODES[box.color]}</span>}
             <div className="match-sockets" aria-hidden="true">{Array.from({ length: MATCH_SIZE }, (_, index) => {
               const entry = box.screws[index];

@@ -1,0 +1,45 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { casualBoardId, finishPayload, isCasualFinish, parseCasualBoard } from "../src/game/casualLeaderboard.ts";
+import { FinishOutbox, FINISH_OUTBOX_KEY } from "../src/online/scoreOutbox.ts";
+import { newRunId, isRunId } from "../src/game/runId.ts";
+const player = "00000000-0000-4000-8000-000000000001", other = "00000000-0000-4000-8000-000000000002";
+const finish = () => ({runId:newRunId(),boardId:casualBoardId("cottage"),level:"cottage" as const,elapsedMs:123456,extraBoxUses:2,findMatchUses:1,resumed:true,screwCount:240});
+test("casual results validate current layouts, integer time and ability metadata", () => {
+  const f = finish(); assert.ok(isRunId(f.runId)); assert.notEqual(newRunId(),f.runId);
+  assert.equal(casualBoardId("desert"),"desert:layout-3:casual-1");
+  assert.throws(() => casualBoardId("titanic"));
+  for (const patch of [{elapsedMs:0},{elapsedMs:1.5},{elapsedMs:2592000001},{extraBoxUses:4},{screwCount:231},{resumed:1},{level:"moonbase"},{runId:"bad"}]) assert.equal(isCasualFinish({...f,...patch}),false);
+  assert.deepEqual(finishPayload(f),{run_id:f.runId,board_id:casualBoardId(f.level),elapsed_ms:123456,extra_box_uses:2,find_match_uses:1,resumed:true,screw_count:240});
+  const historical={...f,boardId:"cottage:layout-1:casual-1",screwCount:237};
+  assert.ok(isCasualFinish(historical));
+  assert.equal(finishPayload(historical).board_id,"cottage:layout-1:casual-1","a retried old finish must never move to a newer layout");
+  assert.equal(isCasualFinish({...f,boardId:"zoo:layout-2:casual-1"}),false);
+});
+test("outbox retries are immutable and owned by the account at the finish", () => {
+  let value: string|null=null, events=0;
+  const store={getItem:()=>value,setItem:(_key:string,v:string)=>{value=v;}};
+  const q=new FinishOutbox(store,()=>events++), f=finish();
+  q.add(player,f); q.add(player,f); assert.equal(q.list(player).length,1);
+  assert.throws(()=>q.add(player,{...f,elapsedMs:1}));
+  q.add(other,{...f,runId:newRunId()}); q.update(player,f.runId,"name","Choose a name");
+  assert.equal(new FinishOutbox(store).list(player)[0].status,"name");
+  q.retry(other); assert.equal(q.list(player)[0].status,"name");
+  q.remove(other,f.runId); assert.equal(q.list(player).length,1);
+  q.retry(player); assert.equal(q.list(player)[0].status,"pending");
+  q.remove(player,f.runId); assert.equal(q.list(other).length,1); assert.ok(events>3);
+  assert.equal(FINISH_OUTBOX_KEY,"screw-it:casual-finish-outbox:v1");
+});
+test("denied storage keeps results in memory; malformed persisted results are ignored",()=>{
+  const q=new FinishOutbox({getItem:()=>{throw Error();},setItem:()=>{throw Error();}}),f=finish();
+  q.add(player,f); assert.equal(q.list(player).length,1); q.remove(player,f.runId); assert.equal(q.list(player).length,0);
+  const bad=new FinishOutbox({getItem:()=>JSON.stringify([{playerId:player,finish:{...f,screwCount:0},status:"pending",message:""}]),setItem:()=>{}});
+  assert.equal(bad.list(player).length,0);
+});
+test("public board parsing accepts ties and rejects malformed or wrong-level responses",()=>{
+  const e={rank:1,nickname:"Test Player",elapsed_ms:10000,extra_box_uses:0,find_match_uses:3,resumed:false,created_at:"2026-11-20T12:00:00Z",is_you:true};
+  const b={board_id:casualBoardId("cottage"),open:true,players:2,entries:[e,{...e,nickname:"Friend",is_you:false}],personal:e};
+  const parsed=parseCasualBoard(b,"cottage"); assert.equal(parsed.personal?.isYou,true); assert.deepEqual(parsed.entries.map(e=>e.rank),[1,1]);
+  assert.throws(()=>parseCasualBoard(b,"zoo")); assert.throws(()=>parseCasualBoard({...b,entries:Array(11).fill(e)},"cottage"));
+  assert.throws(()=>parseCasualBoard({...b,entries:[{...e,extra_box_uses:4}]},"cottage"));
+});

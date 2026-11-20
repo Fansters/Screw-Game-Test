@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test": "node --test tests/*.test.ts",
     "test:ranking": "node --test tests/ranking.test.ts tests/accounts.test.ts tests/accountBrowserState.test.ts tests/rankingDatabase.test.ts",
+    "test:leaderboard": "node --test tests/casualLeaderboard.test.ts tests/casualDatabase.test.ts tests/soloSave.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {
