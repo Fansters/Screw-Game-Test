@@ -28,16 +28,14 @@ export default function GameControls({ muted, toggle, onReset, onLeave, resetDis
   function showHelp() { help.current?.showModal(); if (help.current) help.current.scrollTop = 0; }
   function closeMenu() { menu.current?.close(); }
   const actionClass = home ? "room-button home-menu-button" : "menu-action";
-  const common = <>
-    <button className={actionClass} type="button" onClick={showHelp} aria-label="How to play" aria-haspopup="dialog" aria-controls="game-help">
-      <svg viewBox="0 0 32 32" aria-hidden="true">{info}</svg><span>How to play</span>
-    </button>
-    <button className={`${actionClass} account-control`} type="button" aria-label="Player account" aria-haspopup="dialog" onClick={account.open}>
-      <svg viewBox="0 0 32 32" aria-hidden="true">{person}</svg><span>{account.kind === "player" ? "My account" : "Login"}</span>
-      {account.kind && <span className={`account-indicator ${account.kind}`} aria-hidden="true" />}
-    </button>
-    <SoloLeaderboard activeLevel={leaderboardLevel} launcherClass={actionClass} />
-  </>;
+  const helpButton = <button className={actionClass} type="button" onClick={showHelp} aria-label="How to play" aria-haspopup="dialog" aria-controls="game-help">
+    <svg viewBox="0 0 32 32" aria-hidden="true">{info}</svg><span>How to play</span>
+  </button>;
+  const accountButton = <button className={`${actionClass} account-control`} type="button" aria-label="Player account" aria-haspopup="dialog" onClick={account.open}>
+    <svg viewBox="0 0 32 32" aria-hidden="true">{person}</svg><span>{account.kind === "player" ? "My account" : "Login"}</span>
+    {account.kind && <span className={`account-indicator ${account.kind}`} aria-hidden="true" />}
+  </button>;
+  const leaderboardButton = <SoloLeaderboard activeLevel={leaderboardLevel} launcherClass={actionClass} />;
   return <>
     <div className={`game-controls${home ? " home-controls" : ""}`} role="group" aria-label="Game controls">
       {home ? <button ref={launcher} className="icon-button settings-launch" type="button" onClick={() => settings.current?.showModal()}
@@ -51,19 +49,19 @@ export default function GameControls({ muted, toggle, onReset, onLeave, resetDis
       <button className={actionClass} type="button" onClick={onMultiplayer}>
         <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="11" cy="11" r="4" /><path d="M3 26v-3a8 8 0 0 1 16 0v3m3-19a4 4 0 0 1 0 8m1 4a7 7 0 0 1 6 7" /></svg><span>Two-player game</span>
       </button>
-      {common}
+      {helpButton}{accountButton}{leaderboardButton}
     </nav>}
     {!home && <dialog ref={menu} id="game-menu" className="help-dialog game-menu" aria-labelledby="game-menu-title">
-      <header className="help-header"><div><small>A little breather</small><h2 id="game-menu-title">Game menu</h2></div>
-        <form method="dialog"><button className="icon-button" aria-label="Close game menu">×</button></form></header>
+      <header className="help-header"><h2 id="game-menu-title">Game Menu</h2></header>
       <div className="game-menu-content">
         <button className="room-button menu-resume" type="button" onClick={closeMenu} autoFocus><span aria-hidden="true">▷</span> Keep playing</button>
         <div className="game-menu-actions">
-          {common}
-          <button className="menu-action" type="button" onClick={() => settings.current?.showModal()} aria-label="Settings" aria-haspopup="dialog">
-            <svg viewBox="0 0 32 32" aria-hidden="true">{gear}</svg><span>Settings</span></button>
           {onReset && <button className="menu-action" type="button" disabled={resetDisabled} onClick={() => { closeMenu(); onReset(); }} aria-label="Reset level">
             <svg viewBox="0 0 32 32" aria-hidden="true">{reset}</svg><span>Reset level</span></button>}
+          {leaderboardButton}
+          <button className="menu-action" type="button" onClick={() => settings.current?.showModal()} aria-label="Settings" aria-haspopup="dialog">
+            <svg viewBox="0 0 32 32" aria-hidden="true">{gear}</svg><span>Settings</span></button>
+          {helpButton}{accountButton}
           {onLeave && <button className="menu-action" type="button" onClick={() => { closeMenu(); onLeave(); }} aria-label="Exit game">
             <svg viewBox="0 0 32 32" aria-hidden="true">{exit}</svg><span>Exit game</span></button>}
         </div>

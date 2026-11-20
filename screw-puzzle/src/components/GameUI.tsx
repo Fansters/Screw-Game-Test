@@ -5,10 +5,9 @@ import type { CollectionState, MatchBox } from "../game/types";
 import type { PlaybackFrame } from "../animation/sequence";
 import { COLOR_CODES } from "../game/colorLabels";
 import { useReadability } from "./readability";
-import type { queuePreviews } from "../game/abilities";
-export default function GameUI({ game, frame, previews, completedLifeline, waitingCount = game.tray.length }: {
+export default function GameUI({ game, frame, completedLifeline, waitingCount = game.tray.length }: {
   game: CollectionState; frame: PlaybackFrame<CollectionState> | null;
-  waitingCount?: number; completedLifeline?: MatchBox; previews?: ReturnType<typeof queuePreviews>;
+  waitingCount?: number; completedLifeline?: MatchBox;
 }) {
   const readability = useReadability();
   const boxes = completedLifeline && !game.boxes[BONUS_SLOT] ? [...game.boxes, completedLifeline] : game.boxes;
@@ -25,10 +24,8 @@ export default function GameUI({ game, frame, previews, completedLifeline, waiti
           return <section key={box.id} className={`match-box${bonus ? " lifeline-box" : ""}${effect}`}
             style={{ "--screw-color": appearance.color, "--recess-color": appearance.recess } as CSSProperties}
             aria-label={`${appearance.label} ${bonus ? "lifeline" : "matching"} box: ${box.screws.length} of ${MATCH_SIZE}`}>
-            {previews?.[slot]?.box === box.id && <span className="queue-preview" style={{ "--next-color": SCREW_COLORS[previews[slot]!.color].color } as CSSProperties}
-              aria-label={`Next if this box completes first: ${SCREW_COLORS[previews[slot]!.color].label}`}>
-              <span>↳</span><i />{readability.labels && COLOR_CODES[previews[slot]!.color]}
-            </span>}
+
+            <svg className="box-shell" viewBox="0 0 100 92" aria-hidden="true"><path className="box-base" d="M43 6Q50-3 57 6L97 76Q103 89 87 91H13Q-3 89 3 76Z" /><path className="box-rim" d="M43 3Q50-5 57 3L97 73Q103 86 87 88H13Q-3 86 3 73Z" /><path className="box-well" d="M44 16Q50 6 56 16L84 66Q90 77 78 78H22Q10 77 16 66Z" /></svg>
             {readability.labels && <span className="box-color-code">{COLOR_CODES[box.color]}</span>}
             <div className="match-sockets" aria-hidden="true">{Array.from({ length: MATCH_SIZE }, (_, index) => {
               const entry = box.screws[index];

@@ -12,7 +12,7 @@ import { findLooseBlocker } from "../src/scene/loosePhysics.ts";
 import { createPartPhysics } from "../src/scene/partPhysics.ts";
 import type { PartPhysics } from "../src/scene/partPhysics.ts";
 import { SCREW_SCALE } from "../src/game/screwScale.ts";
-import { freshAbilities, matchCandidates, queuePreviews, settleAbilities } from "../src/game/abilities.ts";
+import { freshAbilities, matchCandidates, settleAbilities } from "../src/game/abilities.ts";
 import type { AbilityState } from "../src/game/abilities.ts";
 
 export const RECONNECT_MS = 30_000;
@@ -209,7 +209,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
       }
       return;
     }
-    if (command.type === "start" || command.type === "reset" || command.type === "boost" || command.type === "level" || command.type === "find" || command.type === "peek") {
+    if (command.type === "start" || command.type === "reset" || command.type === "boost" || command.type === "level" || command.type === "find") {
       if (seat !== room.seats[0]) return reject(peer, "Only the room leader can do that.");
     }
     if (command.type === "level") {
@@ -241,12 +241,6 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
         return reject(peer, "That match changed. No hint use was spent; try again.");
       }
       room.abilities = { ...room.abilities, finds: room.abilities.finds - 1, hint: screw.id };
-      publish(room);
-      return;
-    }
-    if (command.type === "peek") {
-      if (room.abilities.peeks === 0 || room.abilities.peekAt !== null || !queuePreviews(room.game).some(Boolean)) return;
-      room.abilities = { ...room.abilities, peeks: room.abilities.peeks - 1, peekAt: room.game.clearedCount };
       publish(room);
       return;
     }

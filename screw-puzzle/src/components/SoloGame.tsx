@@ -2,7 +2,6 @@ import { useCallback, useEffect, useEffectEvent, useReducer, useRef, useState } 
 import GameScene from "./GameScene";
 import type { HintControls } from "./GameScene";
 import AbilityButtons from "./AbilityButtons";
-import { queuePreviews } from "../game/abilities";
 import GameUI from "./GameUI";
 import TransferOverlay from "./TransferOverlay";
 import GameOverlay from "./GameOverlay";
@@ -138,18 +137,16 @@ export default function SoloGame({ level, initial, audio, onExit }: { level: Lev
       view={view} onCameraArrive={cameraArrived} playable={playable} onReady={sceneReady} onScrewSelect={selectScrew}
       onBlockedScrew={() => play("blocked")} projectorRef={project} hint={run.abilities.hint} hintControlsRef={hintControlsRef} />
     {!revealed && <LevelLoading title={CAMPAIGN_LEVELS.find(({ id }) => id === level)!.title} stage={run.ready ? "Positioning camera" : "Warming scene"} />}
-    {run.started && cameraReady && <><GameUI game={run.display} frame={frame} waitingCount={run.logical.tray.length}
-      previews={run.abilities.peekAt !== null ? queuePreviews(run.logical) : undefined} />
+    {run.started && cameraReady && <><GameUI game={run.display} frame={frame} waitingCount={run.logical.tray.length} />
       <GameBar key={run.round} level={level} lifelines={run.lifelines}
       progress={<GameTimer startedAt={timerStartedAt} stoppedAt={timerStoppedAt}
         elapsedBefore={elapsedBefore} removed={removedCount} total={run.logical.screws.length} />}
       abilities={<AbilityButtons abilities={run.abilities} enabled={playable} message={abilityMessage}
-        canPeek={queuePreviews(run.logical).some(Boolean)}
         onFind={() => {
           const screw = hintControlsRef.current.find();
           if (screw) dispatch({ type: "find", screw });
           else setAbilityMessage("No reachable match yet. Try revealing another part. No use spent!");
-        }} onPeek={() => dispatch({ type: "peek" })} />}
+        }} />}
       canBoost={playable && bonusJob === null && run.lifelines > 0 && canOpenBonusBox(run.logical)}
       onBoost={() => dispatch({ type: "boost", now: performance.now() })} /></>}
     <TransferOverlay frame={frame} getOrigin={getOrigin} />

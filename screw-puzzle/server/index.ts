@@ -33,7 +33,6 @@ function parseCommand(data: string): RoomCommand | null {
     case "start":
     case "reset":
     case "boost":
-    case "peek":
     case "find":
     case "dismiss":
     case "ping":

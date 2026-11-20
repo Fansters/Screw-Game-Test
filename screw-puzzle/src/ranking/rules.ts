@@ -5,7 +5,7 @@ import { LEVEL_LAYOUT_VERSIONS } from "../game/layoutVersions.ts";
 // Shared by the future trusted run server, database fixtures and leaderboard UI.
 // Defining a policy does NOT make a browser/local-storage result verified.
 export const RANKED_RULES = Object.freeze({
-  version: 1,
+  version: 2,
   generatorVersion: 1,
   mode: "solo",
   topCount: 10,
@@ -17,7 +17,6 @@ export const RANKED_RULES = Object.freeze({
   reconnectGraceMs: 30_000,
   extraBoxes: 3,
   findMatches: 3,
-  queuePeeks: 3,
   abilityTimePenaltyMs: 0,
   freeReadability: true,
   freePartPreview: true,

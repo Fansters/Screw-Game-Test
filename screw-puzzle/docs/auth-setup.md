@@ -1,6 +1,6 @@
 # Player accounts: setup and deployment
 
-The player-card UI ships in **0.1.27**. Open **Login** below Two-player game on Home, or the player-account tile inside the in-game hamburger menu. It supports Google sign-in, a public nickname, reload/session restoration and confirmed sign-out. New online-guest creation and its Turnstile widget have been removed; existing guest sessions can still link to Google. Casual play needs no account. Email sign-in is deferred: no SMTP or email templates are required for this release. Global score submission remains closed until the trusted ranked-run service is connected.
+The player-card UI ships in **0.1.28**. Open **Login** below Two-player game on Home, or the player-account tile inside the in-game hamburger menu. It supports Google sign-in, a public nickname, reload/session restoration and confirmed sign-out. New online-guest creation and its Turnstile widget have been removed; existing guest sessions can still link to Google. Casual play needs no account. Email sign-in is deferred: no SMTP or email templates are required for this release. Global score submission remains closed until the trusted ranked-run service is connected.
 
 On 2026-11-20, a read-only public settings check reported Google and anonymous sign-in enabled, local Turnstile configuration present, and the live homepage returning 200. This does not verify Google's final redirect or the Turnstile secret/domain setup. No live test users or scores were created. Follow [the live testing checklist](auth-live-testing.md) after deployment.
 

@@ -8,7 +8,6 @@ import LevelLoading from "../components/LevelLoading";
 import { useLevelAssets } from "../components/useLevelAssets";
 import type { HintControls } from "../components/GameScene";
 import AbilityButtons from "../components/AbilityButtons";
-import { queuePreviews } from "../game/abilities";
 import GameTimer from "../components/GameTimer";
 import GameBar from "../components/GameBar";
 import GameUI from "../components/GameUI";
@@ -190,8 +189,7 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
       </span>
       {cameraReady && <>
         <GameUI game={frame?.game ?? game} frame={frame} waitingCount={game.tray.length}
-          completedLifeline={completedLifeline}
-          previews={snapshot.abilities.peekAt !== null ? queuePreviews(game) : undefined} />
+          completedLifeline={completedLifeline} />
         <GameBar key={scene} level={level} lifelines={snapshot.lifelines} shared
           progress={<GameTimer clock={wallClock} startedAt={sampledAt - snapshot.elapsedMs}
             stoppedAt={snapshot.clockRunning ? room.disconnectedAt : sampledAt} removed={removed} total={game.screws.length} />}
@@ -203,12 +201,11 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
               </li>)}
           </ul>}
           abilities={<AbilityButtons abilities={snapshot.abilities} enabled={playable && leader} message={abilityMessage}
-            canPeek={queuePreviews(game).some(Boolean)}
             onFind={() => {
               const screw = hintControlsRef.current.find();
               if (screw) send({ type: "find", round, screw });
               else setAbilityMessage("No reachable match yet. Reveal another part. No use spent!");
-            }} onPeek={() => send({ type: "peek", round })} />}
+            }} />}
           canBoost={playable && leader && !completedLifeline && !room.bonusAnimating && snapshot.lifelines > 0 && canOpenBonusBox(game)}
           onBoost={() => send({ type: "boost", round })}
           ping={snapshot.players.length === 2 && <button className="navbar-ping-button" aria-pressed={pingMode} disabled={!canPing}

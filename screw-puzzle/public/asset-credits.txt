@@ -6,3 +6,8 @@ Changes for Screw Cottage: split the mesh at the lid seam into body, lid and loc
 Game title: Helvetiker Bold (MAGENTA Ltd., 2004), distributed with Three.js examples/fonts.
 Source: https://github.com/mrdoob/three.js/tree/dev/examples/fonts
 License: /fonts/helvetiker-LICENSE.txt (also retained in src/assets/fonts/LICENSE.txt).
+
+Music: "Snowfall at the Cottage" — original synthesized lo-fi instrumental
+arrangement of Franz Xaver Gruber's Silent Night (1818) melody.
+No lyrics, commercial recordings or third-party audio samples are included.
+Historical reference: https://www.si.edu/spotlight/music-anniversaries-in-2018/1818-200-years-ago

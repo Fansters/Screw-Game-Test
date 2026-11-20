@@ -10,7 +10,10 @@ function HomeCamera() {
 export default function HomeScene() {
   return <section className="scene home-scene" aria-label="Screw it! title">
     <div className="home-gallery" aria-hidden="true">
-      {["campsite", "carnival", "desert"].map((name, index) => <img key={name} src={`/images/home/${name}.webp`} alt="" fetchPriority={index === 0 ? "high" : "low"} decoding="async" />)}
+      {["campsite", "carnival", "desert"].map((name, index) => <picture key={name}>
+        <source media="(max-aspect-ratio: 1/1)" srcSet={`/images/home/${name}-portrait.webp`} />
+        <img src={`/images/home/${name}.webp`} alt="" fetchPriority={index === 0 ? "high" : "low"} decoding="async" />
+      </picture>)}
     </div>
     <Canvas frameloop="demand" dpr={[1,1.25]} camera={{ position: TITLE_CAMERA, fov: 42 }}>
       <ambientLight intensity={1.25} /><directionalLight position={[5,10,7]} intensity={2.2} />

@@ -53,7 +53,8 @@ test("ranked boards separate layouts, generation and rules without resetting exi
   assert.equal(layoutRevision("cottage"), "v2");
   assert.equal(layoutRevision("desert"), "v3");
   assert.equal(RANKED_RULES.findMatches, ABILITY_USES);
-  assert.equal(RANKED_RULES.queuePeeks, ABILITY_USES);
+  assert.equal(RANKED_RULES.version, 2);
+  assert.equal("queuePeeks" in RANKED_RULES, false);
   assert.equal(RANKED_RULES.extraBoxes, LIFELINE_COUNT);
 });
 

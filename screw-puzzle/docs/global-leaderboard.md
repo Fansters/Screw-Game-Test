@@ -1,10 +1,12 @@
 # Global leaderboard: agreed rules and implementation stages
 
-## Status of this update (0.1.27)
+## Status of this update (0.1.28)
 
 The player card offers Google sign-in and a public nickname. Ordinary visitors play locally without creating an online identity. New online-guest creation is retired; old guest sessions can still link Google without deletion or merging. No new database migration or hosted Auth configuration change was required. Cloud saves, global top-ten display and trusted ranked gameplay are still pending; all boards remain closed. Logging in currently restores the account/nickname, not game saves or local times.
 
 The owner’s current direction is logged-in social accounts for future cloud saves, friends and public scores. Start future ranked attempts only after Google sign-in and nickname completion; local guests keep local-only results. Do not import browser-local times into verified public records. Additional social providers need explicit account-linking flows, not a separate profile per provider.
+
+The runtime rules manifest is now revision 2 because the ability set changed. Historical closed rules-1 board records and their migrations remain intact; provision rules-2 boards only with the trusted ranked rollout.
 
 ## Step 1: ranked contract
 
@@ -16,7 +18,7 @@ The owner’s current direction is logged-in social accounts for future cloud sa
 | Clock starts | On the first **accepted** screw removal. Loading, shader compilation and camera arrival happen before gameplay. Thinking, orbiting and permitted previews before the first removal are untimed. |
 | Clock stops | When an accepted move makes the logical game won, before its cosmetic animations finish. |
 | Pausing | None after the clock starts. Menus, background tabs, thinking and network interruptions count. Use monotonic server time; never a browser-supplied duration. |
-| Abilities | Three extra-box uses, three Find a Match uses and three Queue Peek uses; no time penalties or separate assisted board. Pre-clock ability uses still consume their normal charges. |
+| Abilities | Three extra-box uses and three Find a Match uses; no time penalties or separate assisted board. Pre-clock ability uses still consume their normal charges. |
 | Free assistance | High-contrast outlines, colour labels, part preview, translucency, camera tools and manual loose-object dismissal remain available. |
 | Disconnect | Up to 30 seconds for automatic reconnection to the same in-memory attempt, with the clock continuing. No offline moves. Repeated disconnect notices do not extend the original deadline. Reconnection at exactly 30 seconds is allowed; later is ineligible. |
 | Refresh/exit/reset | End the unfinished attempt's ranked eligibility. A reset creates a new attempt/seed. No ranked save/resume, including cross-device resume. Casual saving remains separate. |

@@ -2,7 +2,7 @@ import "../src/game/allLevels.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, BoxGeometry, InstancedMesh, Matrix4, Object3D, Vector3, Quaternion } from "three";
-import { freshAbilities, matchCandidates, queuePreviews, settleAbilities } from "../src/game/abilities.ts";
+import { freshAbilities, matchCandidates, settleAbilities } from "../src/game/abilities.ts";
 import { createInitialState, removeScrew } from "../src/game/rules.ts";
 import { createRun, runReducer } from "../src/animation/run.ts";
 import { restoreSoloSave } from "../src/game/soloSave.ts";
@@ -31,65 +31,44 @@ test("hints prioritize completing a box, ignore blocked/removed/non-matching hea
   assert.ok(matchCandidates(game).some((s) => s.color === "green"));
   assert.deepEqual(matchCandidates({ ...game, status: "lost" }), []);
 });
-test("Queue Peek predicts each first replacement independently, skipping the other and bonus active colours", () => {
-  const game = fixture();
-  assert.deepEqual(queuePreviews(game).map((p) => p?.color), ["yellow", "blue"]);
-  game.boxes.push({ id: "bonus", color: "yellow", screws: [] });
-  assert.deepEqual(queuePreviews(game).map((p) => p?.color), ["red", "blue"]);
-  assert.deepEqual(queuePreviews({ ...game, boxQueue: [] }), [null, null]);
-});
-test("abilities reserve one use, never start the clock, and Peek ends on the next completion", () => {
+test("Find a Match reserves one use, never starts the clock and clears its hint after collection", () => {
   let run = { ...createRun(fixture()), started: true, ready: true };
-  run = runReducer(run, { type: "peek" });
-  assert.equal(run.abilities.peeks, 2); assert.equal(run.timerStartedAt, null);
-  assert.equal(runReducer(run, { type: "peek" }), run);
   assert.equal(runReducer(run, { type: "find", screw: "yellow-0" }), run);
   run = runReducer(run, { type: "find", screw: "red-0" });
   assert.equal(run.abilities.finds, 2); assert.equal(run.timerStartedAt, null);
   assert.equal(runReducer(run, { type: "find", screw: "blue-0" }), run);
   for (let i = 0; i < 3; i++) run = runReducer(run, { type: "select", id: `red-${i}`, now: i * 200 });
-  assert.equal(run.abilities.peekAt, null); assert.equal(run.abilities.hint, null);
-  assert.equal(run.abilities.finds, 2);
+  assert.equal(run.abilities.hint, null); assert.equal(run.abilities.finds, 2);
   const reset = runReducer(run, { type: "reset", game: fixture(), seed: 3, enter: true });
   assert.deepEqual(reset.abilities, freshAbilities());
-  assert.equal(settleAbilities({ ...freshAbilities(), hint: "blue-0", peekAt: 0 }, { ...fixture(), status: "lost" }).hint, null);
+  assert.equal(settleAbilities({ ...freshAbilities(), hint: "blue-0" }, { ...fixture(), status: "lost" }).hint, null);
 });
-test("solo saves retain ability charges and active previews, old saves get full charges, hints do not resume the clock", () => {
-  const puzzle = generateSoloPuzzle("cottage", 245);
-  const target = matchCandidates(puzzle.state)[0]; assert.ok(target);
-  const save = { seed: puzzle.seed, moves: [`find:${target.id}`, "peek"], elapsedMs: 0 };
-  const restored = restoreSoloSave("cottage", save)!; assert.ok(restored);
-  assert.deepEqual(restored.checkpoint.abilities, { finds: 2, peeks: 2, hint: target.id, peekAt: 0 });
-  let run = runReducer(createRun(puzzle.state), { type: "reset", ...restored, enter: true });
-  run = runReducer(run, { type: "resume-clock", round: run.round, now: 9000 });
-  assert.equal(run.timerStartedAt, null);
-  assert.deepEqual(restoreSoloSave("cottage", { ...save, moves: [] })!.checkpoint.abilities, freshAbilities());
-  assert.equal(restoreSoloSave("cottage", { ...save, moves: ["peek", "peek"] }), null);
-  assert.equal(restoreSoloSave("cottage", { ...save, moves: ["find:missing"] }), null);
+
+test("old solo saves drop retired actions without losing screw progress, hint charges or elapsed time", () => {
+  const puzzle = generateSoloPuzzle("cottage", 245), target = matchCandidates(puzzle.state)[0]; assert.ok(target);
+  const moves = [`find:${target.id}`, "peek", target.id];
+  const restored = restoreSoloSave("cottage", { seed: puzzle.seed, moves, elapsedMs: 12345 })!; assert.ok(restored);
+  assert.deepEqual(restored.checkpoint.abilities, { finds: 2, hint: null });
+  assert.deepEqual(restored.checkpoint.moves, [`find:${target.id}`, target.id]);
+  assert.equal(restored.checkpoint.elapsedBefore, 12345);
+  assert.equal(restored.game.screws.find(s => s.id === target.id)!.removed, true);
+  assert.equal(restoreSoloSave("cottage", { seed: puzzle.seed, moves: ["peek","peek","peek","peek"], elapsedMs: 0 }), null);
+  assert.equal(restoreSoloSave("cottage", { seed: puzzle.seed, moves: ["find:missing"], elapsedMs: 0 }), null);
+  assert.deepEqual(restoreSoloSave("cottage", { seed: puzzle.seed, moves: [], elapsedMs: 0 })!.checkpoint.abilities, freshAbilities());
 });
-test("each ability stops at three uses and neither consumes the extra-box lifelines", () => {
-  let run = { ...createRun(fixture()), started: true, ready: true };
-  let now = 0;
+
+test("Find a Match stops at three uses without consuming extra-box lifelines", () => {
+  let run = { ...createRun(fixture()), started: true, ready: true }, now = 0;
   for (let use = 0; use < 3; use++) {
     const target = matchCandidates(run.logical)[0]; assert.ok(target);
     run = runReducer(run, { type: "find", screw: target.id });
     run = runReducer(run, { type: "select", id: target.id, now: now += 200 });
   }
-  const beforeFind = run;
   assert.equal(run.abilities.finds, 0);
-  assert.equal(runReducer(run, { type: "find", screw: matchCandidates(run.logical)[0].id }), beforeFind);
-  for (let use = 0; use < 3; use++) {
-    run = runReducer(run, { type: "peek" });
-    const cleared = run.logical.clearedCount;
-    while (run.logical.clearedCount === cleared) {
-      const target = matchCandidates(run.logical)[0]; assert.ok(target);
-      run = runReducer(run, { type: "select", id: target.id, now: now += 200 });
-    }
-  }
-  assert.equal(run.abilities.peeks, 0); assert.equal(run.abilities.peekAt, null);
-  assert.equal(runReducer(run, { type: "peek" }), run);
+  assert.equal(runReducer(run, { type: "find", screw: matchCandidates(run.logical)[0].id }), run);
   assert.equal(run.lifelines, 3);
 });
+
 test("hint camera finds a front-facing actual head and refuses a head enclosed by solid geometry", () => {
   const screw: Screw = { id: "red-0", color: "red", position: [0, 0, 0], normal: [0, 0, 1], removed: false };
   const game: GameState = { ...fixture(), screws: [screw] };

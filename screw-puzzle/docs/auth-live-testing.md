@@ -1,4 +1,4 @@
-# Google and local play: live acceptance checklist (0.1.27)
+# Google and local play: live acceptance checklist (0.1.28)
 
 ## What the setup steps mean
 
@@ -26,8 +26,8 @@ The trophy is the **local** solo leaderboard. Global top-ten display, trusted ra
 2. In Supabase, the Site URL and allowed redirect must include the exact live game root, including the intended `https://` hostname and trailing `/`. Test the canonical production address first, rather than a changing preview deployment address.
 3. In Google, the web client's redirect URI must be `https://eviapvuviucbdgvsjcue.supabase.co/auth/v1/callback`. Enter its Client ID/secret into Supabase's Google provider. Keep manual linking enabled. If Audience is Testing, add the Google accounts being used under Test users.
 4. No Turnstile setup or new variables are needed for this update. Existing `VITE_TURNSTILE_SITE_KEY` is unused. Keep Google secrets and Supabase secret/service-role keys out of `VITE_` variables.
-5. Push the reviewed source to the connected GitHub production branch. Let Vercel's Git integration build/deploy it. No extra manual CLI deploy is required. Changing Vercel variables requires a new build/redeploy. The game uses room protocol 25, introduced when Level 7 was retired. This UI-only update leaves that protocol unchanged: Vercel can update alone if Render already runs protocol 25. A client will refuse an older server.
-6. Wait until Vercel reports Ready for the right commit. Open the live site and confirm the info card shows **0.1.27**. If you still see an old version, reload/clear the old page before testing.
+5. Push the reviewed source to the connected GitHub production branch. Let Vercel's Git integration build/deploy it. No extra manual CLI deploy is required. Changing Vercel variables requires a new build/redeploy. The game uses room protocol 26, introduced by removing the third ability. Removing the retired ability changes the room protocol: deploy both the Vercel frontend and Render room server for protocol 26. A client will refuse an older server.
+6. Wait until Vercel reports Ready for the right commit. Open the live site and confirm the info card shows **0.1.28**. If you still see an old version, reload/clear the old page before testing.
 
 ## Test 1: ordinary anonymous play
 
@@ -75,7 +75,7 @@ Expected: no forced login, no email prompts and no automatic guest creation. Clo
 | Google `redirect_uri_mismatch` | Check Google's authorised redirect URI is the Supabase callback, not the game's URL. |
 | Google access blocked while Testing | Check Audience/Test users and the exact selected Google account. |
 | Return goes to localhost/wrong site | Check Supabase Site URL/allowed redirects and that the clicked page was the live game. |
-| Online-guest button missing | Expected: new online guests were removed in 0.1.27. Ordinary local play remains available. |
+| Online-guest button missing | Expected: new online guests were removed in 0.1.28. Ordinary local play remains available. |
 | Google sign-in works, nickname cannot save | Check browser network errors, applied `player_profiles` migration/RLS and nickname validation/uniqueness. Do not turn off RLS. |
 | No public scores | Expected in this release: trusted ranked sessions and the global UI are the next implementation stage. |
 

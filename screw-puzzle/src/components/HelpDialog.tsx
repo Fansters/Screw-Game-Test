@@ -5,7 +5,7 @@ import { MATCH_SIZE, TRAY_CAPACITY } from "../game/rules";
 import { GAME_VERSION } from "../game/version";
 
 const icons = {
-  match: <><rect x="3" y="3" width="18" height="18" rx="4" /><path d="M12 8h.01M8 15h.01M16 15h.01" strokeWidth="3.5" /></>,
+  match: <><path d="M10 4Q12 1 14 4l8 15q1 3-2 3H4q-3 0-2-3Z" /><path d="M12 8h.01M8 15h.01M16 15h.01" strokeWidth="3.5" /></>,
   lifeline: <path d="m13 3-8 11h6l-1 7 9-11h-6l1-7Z" fill="currentColor" strokeWidth="1" />,
   peek: <><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></>,
 };
@@ -49,10 +49,7 @@ export default function HelpDialog({ dialogRef }: { dialogRef: RefObject<HTMLDia
           Tap a part to see through it, then tap again to restore it. Covered screws still need a clear path.
         </HelpTip>
         <HelpTip icon="match" title="Find a match · 3 uses">
-          The magnifier points to a reachable match. “Show me” moves your camera; you do the unscrewing!
-        </HelpTip>
-        <HelpTip icon="peek" title="Queue Peek · 3 uses">
-          The double-arrow eye previews each box’s next colour if you finish that box first, before waiting screws transfer. It lasts until any box completes. Co-op abilities are leader controlled.
+          The magnifier points to a reachable match. “Show me” moves your camera; you do the unscrewing! In co-op, the leader uses abilities.
         </HelpTip>
       </div>
       <footer className="help-version">Version {GAME_VERSION}</footer>

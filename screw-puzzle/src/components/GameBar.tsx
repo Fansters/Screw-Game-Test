@@ -6,7 +6,6 @@ import type { LevelId } from "../game/types";
 const tips = [
   { name: "Extra box", icon: <path d="m17 4-9 14h7l-1 10 10-15h-8z" />, text: "Open a third matching box. It stays until you fill it.", tone: "gold" },
   { name: "Find a match", icon: <><circle cx="14" cy="14" r="8" /><path d="m20 20 8 8M14 9v10M9 14h10" /></>, text: "Spot a reachable match. Use Show me for a better angle, then tap the screw.", tone: "mint" },
-  { name: "Queue Peek", icon: <><path d="M3 16s4-7 13-7 13 7 13 7-4 7-13 7S3 16 3 16Z" /><path d="m12 12 4 4-4 4m7-8 4 4-4 4" /></>, text: "See each box’s next colour if you finish it first. Lasts until a box completes.", tone: "pink" },
 ];
 
 export default function GameBar({ level, progress, lifelines, canBoost, onBoost, abilities, players, ping, shared = false }: {

@@ -13,7 +13,6 @@ export default function ResetDialog({ action = "reset", onCancel, onConfirm, onL
     event.preventDefault();
     onCancel();
   }}>
-    <span className="confirmation-symbol" aria-hidden="true">{action === "leave" ? "↗" : "↶"}</span>
     <h2 id="confirmation-question">{action === "leave" ? "Leave this game?" : "Restart this level?"}</h2>
     <p id="confirmation-note" className="confirmation-note">{action === "leave" ? shared ? "Your partner can keep playing. This room won’t be saved as a solo game." :
       "Your progress is saved on this device. Pick up where you left off." : "A fresh puzzle, with all your abilities back."}</p>
