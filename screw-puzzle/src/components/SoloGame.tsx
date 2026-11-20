@@ -11,6 +11,7 @@ import GameBar from "./GameBar";
 import DesktopCursor from "./DesktopCursor";
 import ResetDialog from "./ResetDialog";
 import GameControls from "./GameControls";
+import LevelLoading from "./LevelLoading";
 import type { useGameAudio } from "./useGameAudio";
 import type { CameraView } from "../scene/camera";
 import type { PartId } from "../game/types";
@@ -127,14 +128,16 @@ export default function SoloGame({ level, initial, audio, onExit }: { level: Lev
   function selectScrew(id: string, clearedParts?: readonly PartId[]) {
     if (playable) dispatch({ type: "select", id, now: performance.now(), clearedParts });
   }
-  const mode = !run.ready ? "loading" : run.logical.status === "lost" && !run.jobs.length ? "lost" :
+  const mode = !run.ready ? null : run.logical.status === "lost" && !run.jobs.length ? "lost" :
     run.logical.status === "won" && !run.jobs.length && !run.fallingParts.length ? "won" : null;
 
-  return <div className="game-layout" onContextMenu={(event) => event.preventDefault()}>
+  const revealed = run.ready && cameraReady;
+  return <div className={`game-layout solo-layout${revealed ? " level-revealed" : ""}`} onPointerDownCapture={() => audio.enable()} onContextMenu={(event) => event.preventDefault()}>
     <GameScene level={level} logical={run.logical} fallingParts={run.fallingParts} round={run.round} onFallFinished={finishFall}
       releases={run.releases} onLooseDismiss={(part) => dispatch({ type: "dismiss", part, now: performance.now() })}
       view={view} onCameraArrive={cameraArrived} playable={playable} onReady={sceneReady} onScrewSelect={selectScrew}
       onBlockedScrew={() => play("blocked")} projectorRef={project} hint={run.abilities.hint} hintControlsRef={hintControlsRef} />
+    {!revealed && <LevelLoading title={CAMPAIGN_LEVELS.find(({ id }) => id === level)!.title} stage={run.ready ? "Positioning camera" : "Warming scene"} />}
     {run.started && cameraReady && <><GameUI game={run.display} frame={frame} waitingCount={run.logical.tray.length}
       previews={run.abilities.peekAt !== null ? queuePreviews(run.logical) : undefined} />
       <GameBar key={run.round} level={level} lifelines={run.lifelines}

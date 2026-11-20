@@ -32,8 +32,9 @@ export async function startGoogleAccount(auth: AccountAuth, redirectTo: string) 
   const session = await currentSession(auth);
   // Linking preserves the guest UUID and its future server-verified results.
   // Never sign out first, or silently replace a guest with a new OAuth user.
-  const result = session ? await auth.linkIdentity({ provider: "google", options: { redirectTo } }) :
-    await auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
+  const options = { redirectTo, queryParams: { prompt: "select_account" } };
+  const result = session ? await auth.linkIdentity({ provider: "google", options }) :
+    await auth.signInWithOAuth({ provider: "google", options });
   if (result.error) throw result.error;
 }
 
@@ -73,7 +74,7 @@ export async function saveAccountNickname(client: SupabaseClient, value: string,
   const nickname = normalizeNickname(value);
   const { data, error } = await client.auth.getUser();
   if (error) throw error;
-  if (!data.user) throw new Error("Choose an online guest profile or sign in first.");
+  if (!data.user) throw new Error("Sign in with Google first.");
   if (expectedUserId && data.user.id !== expectedUserId) throw Object.assign(new Error("Account identity changed"), { code: "identity_changed" });
   const result = await client.from("player_profiles").upsert({ id: data.user.id, nickname });
   if (result.error) throw result.error;

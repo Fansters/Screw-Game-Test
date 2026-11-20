@@ -1,9 +1,9 @@
 export const SCREW_COLOR_ORDER = ["red", "blue", "yellow", "green", "orange", "purple", "brown", "pink", "grey", "cyan", "black", "lime"] as const;
 export type ScrewColor = typeof SCREW_COLOR_ORDER[number];
 export type GameStatus = "playing" | "won" | "lost";
-export const LEVEL_IDS = ["cottage", "campsite", "desert", "construction", "carnival", "zoo", "space"] as const;
-// Titanic remains an archived model only; it cannot be selected or hosted.
-export type LevelId = typeof LEVEL_IDS[number] | "titanic";
+export const LEVEL_IDS = ["cottage", "campsite", "desert", "construction", "carnival", "zoo"] as const;
+// Archived sources/saves stay readable to tools, but cannot be selected or hosted.
+export type LevelId = typeof LEVEL_IDS[number] | "titanic" | "space";
 export function isLevelId(value: unknown): value is LevelId {
   return LEVEL_IDS.some((id) => id === value);
 }

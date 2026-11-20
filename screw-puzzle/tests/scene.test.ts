@@ -17,13 +17,30 @@ import type { Screw } from "../src/game/types.ts";
 import { pickNearbyHead, pickNearbyScrew, pickSceneTarget } from "../src/scene/picking.ts";
 import { showPartAppearance } from "../src/scene/partAppearance.ts";
 import { findScrewObstructions } from "../src/scene/obstructions.ts";
-import { SCREW_PULL_DISTANCE } from "../src/scene/screwDimensions.ts";
+import { SCREW_HEAD_RADIUS, SCREW_PULL_DISTANCE } from "../src/scene/screwDimensions.ts";
+import { LEVEL_IDS } from "../src/game/types.ts";
+import { soloLevelTemplate } from "../src/game/soloLevels.ts";
 import { SCREW_COLORS } from "../src/game/colors.ts";
 import { CHEST_SURFACES } from "../src/scene/chestModel.ts";
 import { CAMERA_POSES, recenterZoomOut } from "../src/scene/camera.ts";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const material = new MeshBasicMaterial();
+test("wider heads stay separate on neighbouring exposed surfaces in all six levels", () => {
+  for (const level of LEVEL_IDS) {
+    const screws = soloLevelTemplate(level);
+    for (let i = 0; i < screws.length; i += 1) for (let j = i + 1; j < screws.length; j += 1) {
+      const a = screws[i], b = screws[j];
+      if (a.obstructedBy?.includes(b.attachedTo) || b.obstructedBy?.includes(a.attachedTo)) continue;
+      const n = new Vector3(...a.normal), other = new Vector3(...b.normal);
+      const delta = new Vector3(...a.position).addScaledVector(n, .14 * SCREW_SCALE)
+        .sub(new Vector3(...b.position).addScaledVector(other, .14 * SCREW_SCALE));
+      if (n.dot(other) < .8 || Math.abs(delta.dot(n)) >= .28 * SCREW_SCALE) continue;
+      assert.ok(delta.length() >= 2 * SCREW_HEAD_RADIUS * SCREW_SCALE, `${level}: ${a.id} overlaps ${b.id}`);
+    }
+  }
+});
+
 test("similar palette pairs have distinct luminance", () => {
   const luminance = (hex: string) => {
     const channels = hex.slice(1).match(/../g)!.map((channel) => {

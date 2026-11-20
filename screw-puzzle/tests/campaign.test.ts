@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { CAMPAIGN_LEVELS, levelStatus, readLevelProgress, recordLevelClear } from "../src/game/campaign.ts";
 import { SOLO_TIMES_KEY } from "../src/game/leaderboard.ts";
 
-test("all seven levels are playable immediately while completed runs retain their progress", (t) => {
+test("all six levels are playable immediately while completed runs retain their progress", (t) => {
   const saved = new Map<string, string>();
   Object.defineProperty(globalThis, "window", { configurable: true, value: {
     localStorage: {
@@ -13,10 +13,10 @@ test("all seven levels are playable immediately while completed runs retain thei
     },
   } });
   t.after(() => Reflect.deleteProperty(globalThis, "window"));
-  assert.deepEqual(CAMPAIGN_LEVELS.map(({ id }) => id), ["cottage", "campsite", "desert", "construction", "carnival", "zoo", "space"]);
+  assert.deepEqual(CAMPAIGN_LEVELS.map(({ id }) => id), ["cottage", "campsite", "desert", "construction", "carnival", "zoo"]);
   assert.equal(levelStatus(0), "playable");
   assert.equal(levelStatus(5), "playable");
-  assert.equal(levelStatus(6), "playable");
+  assert.equal(levelStatus(6), "coming-soon");
   assert.equal(levelStatus(4), "playable");
   assert.equal(levelStatus(3), "playable");
   assert.equal(levelStatus(1), "playable");

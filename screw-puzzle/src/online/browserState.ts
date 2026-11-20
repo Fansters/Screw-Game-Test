@@ -1,4 +1,6 @@
 import type { EmailChallenge } from "./accounts.ts";
+import { soloRoute } from "../game/soloRoute.ts";
+import type { LevelId } from "../game/types.ts";
 
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 export const sessionStore: Store = {
@@ -9,7 +11,7 @@ export const sessionStore: Store = {
 const FLOW = "screw-it:account-return", EMAIL = "screw-it:email-challenge";
 const TTL = 10 * 60_000;
 const authKeys = ["code", "sb_flow_id", "error", "error_code", "error_description", "access_token", "refresh_token", "id_token", "token_hash", "expires_in", "expires_at", "token_type", "provider_token", "provider_refresh_token"];
-type Intent = { at: number; guestId?: string; room?: string };
+type Intent = { at: number; guestId?: string; room?: string; level?: LevelId };
 function read<T extends { at: number }>(store: Store, key: string, now: number): T | null {
   try {
     const value = JSON.parse(store.getItem(key) ?? "null");
@@ -19,11 +21,12 @@ function read<T extends { at: number }>(store: Store, key: string, now: number):
 export function readAccountIntent(store: Store, now = Date.now()): Intent | null {
   const value = read<Intent>(store, FLOW, now);
   return value ? { at: value.at, guestId: typeof value.guestId === "string" ? value.guestId : undefined,
-    room: typeof value.room === "string" && /^[\w-]{24}$/.test(value.room) ? value.room : undefined } : null;
+    room: typeof value.room === "string" && /^[\w-]{24}$/.test(value.room) ? value.room : undefined,
+    level: typeof value.level === "string" ? soloRoute(`https://game.invalid/?level=${encodeURIComponent(value.level)}`) ?? undefined : undefined } : null;
 }
 export function rememberAccountIntent(store: Store, href: string, guestId?: string, now = Date.now()) {
   const room = new URL(href).searchParams.get("room");
-  store.setItem(FLOW, JSON.stringify({ at: now, guestId, room: room && /^[\w-]{24}$/.test(room) ? room : undefined }));
+  store.setItem(FLOW, JSON.stringify({ at: now, guestId, room: room && /^[\w-]{24}$/.test(room) ? room : undefined, level: soloRoute(href) ?? undefined }));
 }
 export function clearAccountIntent(store: Store) { try { store.removeItem(FLOW); } catch { /* Storage can be unavailable. */ } }
 export function isAccountReturn(href: string) {
@@ -41,6 +44,7 @@ export function cleanAccountUrl(href: string, analytics = false) {
 export function restoreAccountInvite(href: string, store: Store) {
   const url = new URL(href), intent = readAccountIntent(store);
   if (isAccountReturn(href) && intent?.room && !url.searchParams.has("room")) url.searchParams.set("room", intent.room);
+  if (isAccountReturn(href) && intent?.level && !url.searchParams.has("room") && !url.searchParams.has("level")) url.searchParams.set("level", intent.level);
   return url.toString();
 }
 export function rememberEmailChallenge(store: Store, challenge: EmailChallenge, now = Date.now()) {

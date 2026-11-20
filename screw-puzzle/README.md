@@ -1,10 +1,10 @@
 # Screw it!
 
-A mobile-first 3D screw puzzle built with React, Three.js, React Three Fiber and Vite. Christmas Cottage (Level 1) has **240 screws and 166 removable assemblies**. Lakeside Camp (Level 2) has **240 screws and 197 removable assemblies**. Route 66 Gas Stop (Level 3) has **216 screws and 138 removable assemblies**. Construction Crew (Level 4) has **204 screws and 146 removable assemblies**. Carnival Fairground (Level 5) has **240 screws and 212 removable assemblies**. Zoo Adventure Park (Level 6) has **231 screws and 220 removable assemblies**. Moonbase Odyssey (Level 7) has **225 screws and 225 removable assemblies**. Titanic is retired from solo and co-op selection. All levels use twelve screw colors.
+A mobile-first 3D screw puzzle built with React, Three.js, React Three Fiber and Vite. Christmas Cottage (Level 1) has **240 screws and 166 removable assemblies**. Lakeside Camp (Level 2) has **240 screws and 197 removable assemblies**. Route 66 Gas Stop (Level 3) has **216 screws and 138 removable assemblies**. Construction Crew (Level 4) has **204 screws and 146 removable assemblies**. Carnival Fairground (Level 5) has **240 screws and 212 removable assemblies**. Zoo Adventure Park (Level 6) has **231 screws and 220 removable assemblies**. Moonbase Odyssey and Titanic are retired from solo and co-op selection. All levels use twelve screw colors.
 
 ## Run and validate
 
-The player-card button supports Google accounts, protected online guests, guest linking and public nicknames. Email sign-in is deferred; SMTP is not needed for this release. Follow [the auth setup and Vercel checklist](docs/auth-setup.md), then [the live acceptance checklist](docs/auth-live-testing.md). Public ranked submissions remain closed until trusted ranked sessions are connected; see [the leaderboard plan](docs/global-leaderboard.md). The seven levels, local times and casual/co-op saves keep their current behavior.
+The player card offers Google accounts and public nicknames. New online guests are no longer created; existing guests can still link Google. Ordinary local play needs no account. Email sign-in is deferred; SMTP is not needed for this release. Follow [the auth setup and Vercel checklist](docs/auth-setup.md), then [the live acceptance checklist](docs/auth-live-testing.md). Public ranked submissions remain closed until trusted ranked sessions are connected; see [the leaderboard plan](docs/global-leaderboard.md). The six levels, local times and casual/co-op saves keep their current behavior.
 
 ```sh
 npm install
@@ -18,11 +18,13 @@ Use Vite's printed local URL. Tests and the room server use Node's native TypeSc
 
 ## Playing
 
-After the scene loads, green **Start** opens the solo level picker. All seven levels are immediately playable; completing earlier levels is optional. Level clears are stored in the browser. The **Levels** button after a solo win returns to the picker. All screws are resident before gameplay and become visible as geometry falls away.
+Level surfaces use richer colours and directional lighting, with neutrals kept light. Screw caps are 15% wider, including their crosses and optional outlines/labels; shafts, mounting depth and puzzle layouts stay unchanged.
 
-In the two-player menu, **Create game** opens the same level picker. The leader can choose any level, and guests join that selection through the invitation link. All seven levels are available from the first visit. Both players load the selected level before **Start together** becomes available. The leader can **Change level** in the lobby, or return to **Levels** after a win. Reset starts a fresh round of the room's selected level. Each player keeps their own camera while screws, boxes, lifelines, timer and falling objects stay synchronized.
+The home screen uses a responsive floating title, darkened compressed level screenshots and version **0.1.27**. The title uses readable, locally bundled 3D lettering. Green **Start** opens a preview-card gallery: scroll horizontally on desktop/tablet or vertically on phones, then use Play/Resume. Cards show screw totals, completion, local best times and saved progress. The home corner keeps only gear **Settings**; How to play, Login and Leaderboard join Two-player game beneath Start. In levels, the hamburger opens a full Game menu. Settings groups music, effects and free visibility options. Menus keep clocks running. A screw-themed loading screen covers download, geometry/puzzle creation and scene warmup, then reveals the ready level. All six levels are immediately playable; completing earlier levels is optional. Refreshing a casual solo level restores that same level and its saved checkpoint using the ?level= route. Explicit Home clears the route; saved progress remains selectable. Level clears are stored in the browser. The **Levels** button after a solo win returns to the picker. All screws are resident before gameplay and become visible as geometry falls away.
 
-Phone and tablet layouts collect the round controls under a hamburger button. The icon changes to a cross, the controls slide down in order, and closing reverses their order. Hidden controls are excluded from keyboard and touch input. Reduced-motion preferences disable these transitions.
+In the two-player menu, **Create game** opens the same level picker. The leader can choose any level, and guests join that selection through the invitation link. All six levels are available from the first visit. Both players load the selected level before **Start together** becomes available. The leader can **Change level** in the lobby, or return to **Levels** after a win. Reset starts a fresh round of the room's selected level. Each player keeps their own camera while screws, boxes, lifelines, timer and falling objects stay synchronized.
+
+Every in-game screen collects controls under a hamburger button. It opens a centered, keyboard-trapped Game menu with Keep playing, Help, Account, Leaderboard, Settings and the available Reset/Exit actions. Child cards return to the menu when closed. The clock keeps running; co-op partners can continue. Reduced-motion preferences skip arrival animations.
 
 Drag to orbit on desktop and touchscreens. Scroll over a spot to zoom toward it, or pinch around it on a touchscreen. Right-drag or move two fingers together to pan. Zooming back out to the overview recenters on the house. Rotation stops on release. Screws are 15% larger and a 44 CSS-pixel assisted touch target with front-face and occlusion checks. Portrait and landscape layouts account for safe areas and dynamic viewport height.
 
@@ -84,7 +86,7 @@ The construction diorama follows the supplied reference: unfinished brick walls 
 
 The 204 fixings sit on inner walls, joist undersides, frame plates, side panels and naturally covered floor/vehicle surfaces. Spacing tests reject crowded heads. The open scaffold and crane intentionally leave more visible choices than the enclosed cottage. Both opening colors still require a reveal to complete their first triple. The constructor can follow another accessible branch when an active color needs a hidden fixing; every generated route is replayed through the actual rules without lifelines.
 
-All seven levels are available immediately in solo and co-op. Construction has independent solo checkpoints and best times, shared co-op physics, and the Level 4 indicator. Run `node tools/audit_construction.ts` after geometry or fixing changes; tests independently compare that static data against the meshes.
+All six levels are available immediately in solo and co-op. Construction has independent solo checkpoints and best times, shared co-op physics, and the Level 4 indicator. Run `node tools/audit_construction.ts` after geometry or fixing changes; tests independently compare that static data against the meshes.
 
 ## Carnival Fairground (Level 5)
 
@@ -92,7 +94,7 @@ An original procedural fairground follows the supplied reference palette: pink/c
 
 The 240 fasteners secure 212 removable assemblies. Gondola roofs cover body fixings, gondola floors hide seat fasteners, saddles hide horse fixings, and horses conceal carousel platform heads. Games, shelves, kiosk panels and real props cover floor/wall screws. The circular rim, side panels, interior walls and covered paving edges provide varied approach angles. Small components use one fixing; larger frames have widely separated pairs. All parts use Rapier, early tap dismissal and the one-second automatic smoke effect.
 
-Solo checkpoints and best times are separate for Level 5; co-op shares its screws, inventory, scores and falling bodies. All seven levels are immediately selectable. Rebuild cached clearance/exposure after edits with `node tools/audit_carnival.ts`. Tests recompute those results and check the double-radius wheel, complete physical viewing paths, spacing, 30 fresh seeded solutions without lifelines, every physics body, save/resume, and a full shared co-op win.
+Solo checkpoints and best times are separate for Level 5; co-op shares its screws, inventory, scores and falling bodies. All six levels are immediately selectable. Rebuild cached clearance/exposure after edits with `node tools/audit_carnival.ts`. Tests recompute those results and check the double-radius wheel, complete physical viewing paths, spacing, 30 fresh seeded solutions without lifelines, every physics body, save/resume, and a full shared co-op win.
 
 ## Zoo Adventure Park (Level 6)
 

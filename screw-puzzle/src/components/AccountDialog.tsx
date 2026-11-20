@@ -3,15 +3,13 @@ import type { FormEvent } from "react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { PlayerKind } from "./accountContext";
 import AccountModal from "./AccountModal";
-import Turnstile from "./Turnstile";
 import { accountProviders, bootAccount } from "../online/runtime";
-import { continueAsOnlineGuest, saveAccountNickname, startGoogleAccount } from "../online/accounts";
+import { saveAccountNickname, startGoogleAccount } from "../online/accounts";
 import { clearAccountIntent, rememberAccountIntent, sessionStore } from "../online/browserState";
 import { accountError } from "../online/errors";
 import { normalizeNickname } from "../online/nickname";
 
 type Providers = Awaited<ReturnType<typeof accountProviders>>;
-const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim() ?? "";
 export default function AccountDialog({ open, onClose, onKind }: { open: boolean; onClose: () => void; onKind: (kind: PlayerKind) => void }) {
   const [client, setClient] = useState<SupabaseClient>();
   const [user, setUser] = useState<User | null>(null);
@@ -23,8 +21,6 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
   const [busy, setBusy] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [retry, setRetry] = useState(0);
-  const [token, setToken] = useState<string | null>(null);
-  const [captchaRound, setCaptchaRound] = useState(0);
   const [confirmOut, setConfirmOut] = useState(false);
   const anonymous = user?.is_anonymous === true;
   const permanent = Boolean(user && !anonymous);
@@ -81,12 +77,11 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
     return () => { alive = false; };
   }, [client, userId, open]);
 
-  function resetVerification() { setToken(null); setCaptchaRound(value => value + 1); }
   async function action(task: () => Promise<void>) {
     if (busy || initializing) return;
     setBusy(true); setMessage(""); setNotice("");
     try { await task(); } catch (error) { setMessage(accountError(error)); }
-    finally { setBusy(false); resetVerification(); }
+    finally { setBusy(false); }
   }
   async function saveName(event: FormEvent) {
     event.preventDefault(); if (!client || !userId || profile?.id !== userId) return;
@@ -94,7 +89,7 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
     try { value = normalizeNickname(nickname); } catch { setMessage("Use 3–20 letters A–Z, numbers, spaces, underscores or hyphens. Start with a letter or number."); return; }
     await action(async () => { await saveAccountNickname(client, value, userId); setNickname(value); setNotice("Nice name! Your player card is saved."); });
   }
-  function closeCard() { resetVerification(); onClose(); }
+  function closeCard() { onClose(); }
   return <AccountModal open={open} onClose={closeCard}>
     <div className={`player-pass${anonymous ? " guest-pass" : ""}`}>
       <span className="player-avatar" aria-hidden="true">{confirmed ? "★" : anonymous ? "✦" : "?"}</span>
@@ -111,15 +106,7 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
           try { await startGoogleAccount(client.auth, callbackUrl); } catch (error) { clearAccountIntent(sessionStore); throw error; }
         })}><span aria-hidden="true">G</span> {anonymous ? "Keep this guest with Google" : "Continue with Google"}</button>
         {providers && !providers.google && <p className="account-hint">Google sign-in isn’t available yet.</p>}
-        {!user && <div className="account-guest-area">
-          {open && siteKey && providers?.anonymous && <Turnstile key={captchaRound} siteKey={siteKey} onToken={setToken} />}
-          <button className="account-button" disabled={busy || !providers?.anonymous || !siteKey || !token} onClick={() => void action(async () => {
-            const next = await continueAsOnlineGuest(client.auth, token ?? undefined);
-            setUser(next); onKind(next ? next.is_anonymous ? "guest" : "player" : null);
-            setNotice("Your online guest is ready. Link Google later to keep it.");
-          })}>Create an online guest</button>
-          {providers && (!providers.anonymous || !siteKey) && <p className="account-hint">Online guests aren’t available yet. You can play without an account.</p>}
-        </div>}
+        {!user && <p className="account-hint">No account needed to play. Your progress and personal times stay on this device.</p>}
       </>}
       {user && <>
         {user.email && <p className="account-email-private">{user.email}<span>Private · never shown on the leaderboard</span></p>}

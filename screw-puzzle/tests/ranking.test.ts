@@ -46,8 +46,8 @@ test("refresh, exit, reset, loss, expired grace and invalid clock input cannot p
 
 test("ranked boards separate layouts, generation and rules without resetting existing local keys", () => {
   assert.deepEqual(RANKED_BOARDS.map(board => board.level), [...LEVEL_IDS]);
-  assert.equal(new Set(RANKED_BOARDS.map(board => board.id)).size, 7);
-  assert.equal(rankedBoardId("space"), "space:layout-3:generator-1:rules-1:solo");
+  assert.equal(new Set(RANKED_BOARDS.map(board => board.id)).size, 6);
+  assert.throws(() => rankedBoardId("space"));
   assert.throws(() => rankedBoardId("titanic"));
   for (const level of [...LEVEL_IDS, "titanic"] as const) assert.equal(layoutRevision(level), `v${LEVEL_LAYOUT_VERSIONS[level]}`);
   assert.equal(layoutRevision("cottage"), "v2");
@@ -62,7 +62,7 @@ test("the top ten contains each player's best result, shared millisecond ties an
   const scores = Array.from({ length: 14 }, (_, i) => ({ id: `r${i}`, playerId: `p${i}`, boardId, elapsedMs: 1000 + i * 100, verifiedAt: 100 + i }));
   scores.push({ ...scores[0], id: "slower", elapsedMs: 9999 });
   scores.push({ ...scores[1], id: "tied", elapsedMs: 1000 });
-  scores.push({ ...scores[0], id: "other-board", boardId: rankedBoardId("space"), elapsedMs: 1 });
+  scores.push({ ...scores[0], id: "other-board", boardId: rankedBoardId("zoo"), elapsedMs: 1 });
   scores.push({ ...scores[0], id: "invalid", elapsedMs: -1 });
   const ranked = topVerifiedResults(scores, boardId);
   assert.equal(ranked.length, 10);

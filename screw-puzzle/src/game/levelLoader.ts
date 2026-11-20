@@ -29,10 +29,7 @@ async function build(level: LevelId, stage: (value: LoadStage) => void) {
       const [m,a] = await Promise.all([import("../scene/zooModel.ts"),import("../scene/zooAudit.ts")]);
       stage("Building geometry"); installLevel(level,m.createZooModel(),{blockers:a.ZOO_BLOCKERS,exposed:a.ZOO_EXPOSED_IDS}); return;
     }
-    case "space": {
-      const [m,a] = await Promise.all([import("../scene/spaceModel.ts"),import("../scene/spaceAudit.ts")]);
-      stage("Building geometry"); installLevel(level,m.createSpaceModel(),{blockers:a.SPACE_BLOCKERS,exposed:a.SPACE_EXPOSED_IDS});
-    }
+    case "space": throw new Error("This level has been retired. Choose another level.");
   }
 }
 type Entry = { users: number; promise: Promise<void>; timer?: ReturnType<typeof setTimeout>; listeners: Set<(stage: LoadStage) => void> };

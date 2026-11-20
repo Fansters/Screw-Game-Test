@@ -154,9 +154,10 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
   const result = game?.status === "lost" && !frame ? "lost" : game?.status === "won" && !frame && !fallingParts.length ? "won" : null;
   const sampledAt = (snapshot?.serverTime ?? 0) - clockOffset;
   const completedLifeline = room.completedLifeline?.round === round ? room.completedLifeline.box : undefined;
-  return <div className="game-layout" onContextMenu={(event) => event.preventDefault()}>
+  const revealed = Boolean(game && localReady && cameraReady);
+  return <div className={`game-layout online-layout${revealed ? " level-revealed" : ""}`} onContextMenu={(event) => event.preventDefault()}>
     {!game && <HomeScene />}
-    {snapshot && !assets?.ready && <LevelLoading title={levelTitle} stage={assets?.stage} error={assets?.error} />}
+    {snapshot && !revealed && <LevelLoading title={levelTitle} stage={assets?.ready ? "Warming scene" : assets?.stage} error={assets?.error} />}
     {game && <GameScene key={scene} level={level} logical={game} fallingParts={fallingParts} round={round}
       onlineParts={onlineParts} looseNow={looseNow} onLooseDismiss={(part) => send({ type: "dismiss", round, part })}
       view={view} playable={playable} orbitable={orbitable} onCameraArrive={cameraArrived} onReady={sceneReady}
@@ -224,7 +225,7 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
     </>}
     {pingScrew && <span className="room-ping" role="status">{room.ping?.own ? "You" : "Your partner"} pinged a {pingScrew.color} screw</span>}
     {started && room.error && <span className="room-ping" role="status">{room.error}</span>}
-    {confirmation && (confirmation === "leave" || leader) && <ResetDialog action={confirmation}
+    {confirmation && (confirmation === "leave" || leader) && <ResetDialog action={confirmation} shared
       onCancel={() => setConfirmation(null)} onConfirm={() => confirmation === "leave" ? leave() : reset()}
       onLevels={confirmation === "leave" ? () => leave(true) : undefined} />}
     <GameControls muted={muted} toggle={toggle} onReset={started && leader ? () => setConfirmation("reset") : undefined}

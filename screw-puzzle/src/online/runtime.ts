@@ -1,6 +1,6 @@
 import { createOnlineClient } from "./client.ts";
 import { parseOnlineConfig } from "./config.ts";
-import { accountError } from "./errors.ts";
+import { accountError, accountReturnError } from "./errors.ts";
 import { cleanAccountUrl, clearAccountIntent, clearEmailChallenge, isAccountReturn, readAccountIntent, sessionStore } from "./browserState.ts";
 
 let boot: ReturnType<typeof initialize> | undefined;
@@ -22,7 +22,7 @@ async function initialize() {
         throw Object.assign(new Error("Account identity changed"), { code: "identity_changed" });
       }
       const code = url.searchParams.get("code"), flowId = url.searchParams.get("sb_flow_id");
-      if (!code || url.searchParams.has("error") || new URLSearchParams(url.hash.slice(1)).has("error")) throw new Error("Sign-in return failed");
+      if (!code || accountReturnError(url.href).code) throw accountReturnError(url.href);
       const { data, error } = await client.auth.exchangeCodeForSession(code, flowId ? { flowId } : undefined);
       if (error) throw error;
       const expected = intent?.guestId ?? (before.data.session?.user.is_anonymous ? before.data.session.user.id : undefined);

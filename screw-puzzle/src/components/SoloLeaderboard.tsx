@@ -9,7 +9,7 @@ const scoreDate = new Intl.DateTimeFormat(undefined, { month: "short", day: "num
 
 const trophy = <path d="M11 6h10v7a5 5 0 0 1-10 0V6Zm0 3H6v2a5 5 0 0 0 5 5m10-7h5v2a5 5 0 0 1-5 5m-5 2v7m-5 1h10" />;
 
-export default function SoloLeaderboard({ activeLevel }: { activeLevel: LevelId }) {
+export default function SoloLeaderboard({ activeLevel, launcherClass = "icon-button" }: { activeLevel: LevelId; launcherClass?: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [times, setTimes] = useState<SoloTime[]>([]);
   const [level, setLevel] = useState(activeLevel);
@@ -22,9 +22,10 @@ export default function SoloLeaderboard({ activeLevel }: { activeLevel: LevelId 
   }
 
   return <>
-    <button className="icon-button" type="button" onClick={showLeaderboard} aria-label="Solo leaderboard"
+    <button className={launcherClass} type="button" onClick={showLeaderboard} aria-label="Solo leaderboard"
       aria-haspopup="dialog" aria-controls="solo-leaderboard" title="Solo leaderboard">
       <svg viewBox="0 0 32 32" aria-hidden="true">{trophy}</svg>
+      {launcherClass !== "icon-button" && <span>Leaderboard</span>}
     </button>
     <dialog ref={dialog} id="solo-leaderboard" className="help-dialog leaderboard-dialog" aria-labelledby="leaderboard-title">
       <header className="help-header leaderboard-header">

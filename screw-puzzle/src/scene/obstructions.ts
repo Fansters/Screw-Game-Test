@@ -3,7 +3,7 @@ import type { Object3D } from "three";
 import type { LevelId, PartId } from "../game/types.ts";
 import { LEVEL_MODELS, partLevel, onLevelRelease } from "./levelModels.ts";
 import { geometryFor } from "./geometry.ts";
-import { SCREW_PULL_DISTANCE } from "./screwDimensions.ts";
+import { SCREW_HEAD_CLEARANCE_RADIUS, SCREW_PULL_DISTANCE } from "./screwDimensions.ts";
 
 // Geometry-derived clearance is independent of color, camera, and React. Cache it
 // in level data; camera picking separately prevents clicks through solid objects.
@@ -44,7 +44,7 @@ export function findScrewObstructions(screw: { position: [number, number, number
   const samples = [face];
   for (let index = 0; index < 8; index += 1) {
     const angle = index * Math.PI / 4;
-    samples.push(face.clone().addScaledVector(across, Math.cos(angle) * scale * 0.24).addScaledVector(up, Math.sin(angle) * scale * 0.24));
+    samples.push(face.clone().addScaledVector(across, Math.cos(angle) * scale * SCREW_HEAD_CLEARANCE_RADIUS).addScaledVector(up, Math.sin(angle) * scale * SCREW_HEAD_CLEARANCE_RADIUS));
   }
   const ray = new Raycaster();
   const blocked = new Set<PartId>();

@@ -6,6 +6,7 @@ import { COLOR_CODES } from "../game/colorLabels";
 import { SCREW_COLOR_ORDER } from "../game/types";
 import type { GameState } from "../game/types";
 import { useReadability } from "./readability";
+import { SCREW_HEAD_WIDTH_SCALE } from "../scene/screwDimensions";
 
 // Four extra instanced draws at most. Labels/outlines use the head's animated
 // matrix and normal depth testing: covered screws never show through a wall.
@@ -23,14 +24,14 @@ export default function ScrewReadability({ game, head }: { game: GameState; head
       context.fillText(COLOR_CODES[color], x + 64, 67);
     });
     const texture = new CanvasTexture(canvas);
-    const plane = new PlaneGeometry(.40, .40); plane.translate(0, 0, .174);
+    const plane = new PlaneGeometry(.40 * SCREW_HEAD_WIDTH_SCALE, .40 * SCREW_HEAD_WIDTH_SCALE); plane.translate(0, 0, .174);
     plane.setAttribute("code", new InstancedBufferAttribute(Float32Array.from(screws, (screw) => SCREW_COLOR_ORDER.indexOf(screw.color)), 1));
     const material = new ShaderMaterial({ uniforms: { atlas: { value: texture } }, transparent: true, side: DoubleSide,
       vertexShader: `attribute float code; varying vec2 vUv; void main(){ vUv=vec2((uv.x+code)/12.,uv.y); gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(position,1.); }`,
       fragmentShader: `uniform sampler2D atlas; varying vec2 vUv; void main(){ vec4 c=texture2D(atlas,vUv); if(c.a<.5)discard; gl_FragColor=c; }`,
     });
-    const white = new RingGeometry(.245, .286, 32); white.translate(0, 0, .162);
-    const dark = new RingGeometry(.231, .249, 32); dark.translate(0, 0, .166);
+    const white = new RingGeometry(.245 * SCREW_HEAD_WIDTH_SCALE, .286 * SCREW_HEAD_WIDTH_SCALE, 32); white.translate(0, 0, .162);
+    const dark = new RingGeometry(.231 * SCREW_HEAD_WIDTH_SCALE, .249 * SCREW_HEAD_WIDTH_SCALE, 32); dark.translate(0, 0, .166);
     return { texture, plane, material, white, dark };
   }, [screws]);
   useEffect(() => () => { Object.values(resources).forEach((resource) => resource.dispose()); }, [resources]);

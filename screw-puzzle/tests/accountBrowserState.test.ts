@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { cleanAccountUrl, clearEmailChallenge, isAccountReturn, readAccountIntent, readEmailChallenge, rememberAccountIntent, rememberEmailChallenge, restoreAccountInvite } from "../src/online/browserState.ts";
-import { accountError } from "../src/online/errors.ts";
+import { accountError, accountReturnError } from "../src/online/errors.ts";
 function storage() {
   const data = new Map<string,string>();
   return { data, getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key,value); }, removeItem: (key: string) => { data.delete(key); } };
@@ -18,6 +18,10 @@ test("auth returns preserve room invitations while analytics and final URLs disc
   assert.equal(cleanAccountUrl("https://game.example/?arbitrary=private#id_token=private", true), "https://game.example/");
   assert.equal(isAccountReturn("https://game.example/?room=ordinary"), false);
   assert.equal(restoreAccountInvite("https://game.example/", store), "https://game.example/");
+  rememberAccountIntent(store, "https://game.example/?level=desert", "guest-id");
+  assert.equal(new URL(restoreAccountInvite(callback, store)).searchParams.get("level"), "desert");
+  rememberAccountIntent(store, "https://game.example/?level=space", "guest-id");
+  assert.equal(new URL(restoreAccountInvite(callback, store)).searchParams.has("level"), false);
 });
 test("guest linking intent and email challenges expire and never retain entered codes or passwords", () => {
   const store = storage();
@@ -40,4 +44,8 @@ test("account error text is actionable without echoing untrusted provider messag
   assert.match(accountError({ code: "23505" }), /name is taken/);
   assert.match(accountError({ code: "otp_expired" }), /expired/);
   assert.ok(!accountError({ message: "<script>private-code</script>" }).includes("private-code"));
+  const conflict = accountReturnError("https://game.example/?error=server_error&error_code=identity_already_exists&error_description=private-token");
+  assert.match(accountError(conflict), /Choose a different Google account/);
+  assert.ok(!accountError(conflict).includes("private-token"));
+  assert.match(accountError(accountReturnError("https://game.example/#error=access_denied")), /cancelled/);
 });

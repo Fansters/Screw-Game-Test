@@ -1,10 +1,10 @@
 # Global leaderboard: agreed rules and implementation stages
 
-## Status of this update (0.1.23)
+## Status of this update (0.1.27)
 
-Step 1 is implemented as shared, tested policy, clock and ranking helpers. The `screw-it` cloud project and both database migrations are connected and verified. The player-card UI integrates the SDK, nickname editor, Google/guest linking, Turnstile, session restoration and PKCE callback handling. The owner deferred email sign-in; the UI exposes no email code, resend or email-linking flow, and SMTP is unnecessary for this release. Google and anonymous sign-in are now enabled in live public settings. Follow [the auth setup guide](auth-setup.md) and [live testing checklist](auth-live-testing.md) to finish deployment/acceptance. The global leaderboard tab and trusted ranked-run service are subsequent steps. All seven boards remain closed; no public submissions are enabled.
+The player card offers Google sign-in and a public nickname. Ordinary visitors play locally without creating an online identity. New online-guest creation is retired; old guest sessions can still link Google without deletion or merging. No new database migration or hosted Auth configuration change was required. Cloud saves, global top-ten display and trusted ranked gameplay are still pending; all boards remain closed. Logging in currently restores the account/nickname, not game saves or local times.
 
-The current game remains casual/local play with its existing timer, co-op rules and save/resume. Existing local times must never be imported into the public verified leaderboard.
+The owner’s current direction is logged-in social accounts for future cloud saves, friends and public scores. Start future ranked attempts only after Google sign-in and nickname completion; local guests keep local-only results. Do not import browser-local times into verified public records. Additional social providers need explicit account-linking flows, not a separate profile per provider.
 
 ## Step 1: ranked contract
 
@@ -21,7 +21,7 @@ The current game remains casual/local play with its existing timer, co-op rules 
 | Disconnect | Up to 30 seconds for automatic reconnection to the same in-memory attempt, with the clock continuing. No offline moves. Repeated disconnect notices do not extend the original deadline. Reconnection at exactly 30 seconds is allowed; later is ineligible. |
 | Refresh/exit/reset | End the unfinished attempt's ranked eligibility. A reset creates a new attempt/seed. No ranked save/resume, including cross-device resume. Casual saving remains separate. |
 | Failure/restart | A lost game cannot submit. A server restart ends unfinished ranked attempts; already verified database records survive. |
-| Publication | Guests may play and retain a future server-verified finish privately. Public results require Google/verified email and a chosen nickname. Linking a new identity to the same guest UUID preserves its result. |
+| Publication | Ordinary visitors play locally. Future ranked attempts and public records require a signed-in social account (Google currently) and a chosen nickname. Existing guest-to-Google linking preserves the old account ID, but local times are never treated as verified records. |
 | Precision and ties | Store integer milliseconds, flooring the nonnegative server duration. Equal milliseconds share competition rank, e.g. 1, 1, 3. Sort equal times by earliest verification and then run UUID for stable display. Show at most ten accounts, including at a tied boundary. |
 
 The first-screw start intentionally allows untimed planning before the first move. Fresh random puzzles intentionally permit easier/harder attempts. These are selected gameplay rules, not assumptions to change silently later.
@@ -64,10 +64,10 @@ Live checks confirmed seven closed boards, RLS on all three tables, denied brows
 ### C. Configure authentication providers
 
 1. Configure the production Site URL and exact development/production redirect destinations. Do not use unrestricted production redirect wildcards. The future OAuth callback handler must exchange its PKCE code before cleaning URL parameters.
-2. Enable manual identity linking for guest upgrades. Create anonymous users only from an explicit online-guest action, never automatically for every site visitor.
-3. Configure CAPTCHA/Turnstile before enabling anonymous sign-ins. The integrated widget supplies tokens; Supabase must verify them. Follow [the setup steps](auth-setup.md).
+2. Keep manual identity linking for existing guest upgrades. New anonymous creation is no longer offered; never create users automatically for site visitors.
+3. Google-only player UI needs no Turnstile widget. Leave existing hosted settings/accounts intact; provider removal or guest cleanup is a separate decision. Follow [the setup steps](auth-setup.md).
 4. Enable Google using a Google Cloud OAuth web client. Configure Google's authorised Supabase callback and the allowed application origins using Supabase's provider instructions. Keep Google's client secret in Supabase's provider configuration, never Vercel browser variables or Git.
-5. Email sign-in is deferred by the owner. Do not require email delivery, SMTP or email-template setup for the Google/online-guest release. Existing email helpers/tests are groundwork only, with no UI actions calling them.
+5. Email sign-in is deferred by the owner. Do not require email delivery, SMTP or email-template setup for the Google-only release. Existing email helpers/tests are groundwork only, with no UI actions calling them.
 
 An identity already attached to another account is a separate merge case. Do not sign a guest out automatically or transfer records based on an email supplied by the browser. Keep the guest identity/results until a later server flow verifies control of both accounts. `accounts.ts` propagates the linking error without replacing that identity; it does not implement cross-account merging.
 
@@ -91,7 +91,7 @@ The future ranked service's `SUPABASE_SECRET_KEY` belongs only in Render's secre
 ## Step 3: trusted ranked sessions (next, before opening public boards)
 
 1. Add an explicit Ranked versus Casual choice. Reuse the existing level loading, game rules and server physics; keep casual saves and existing room pause behavior independent.
-2. The server creates an attempt ID, fresh seed, current board version and cryptographically random continuation secret after authenticating the guest/account. It must choose a current board from its own manifest, not accept an arbitrary client-supplied board/version. An older board may remain readable for history without accepting new attempts. Keep the continuation secret in tab memory only: persisting it in local/session storage would accidentally permit ranked refresh/resume.
+2. The server creates an attempt ID, fresh seed, current board version and cryptographically random continuation secret after authenticating a signed-in, non-anonymous social account with a nickname. It must choose a current board from its own manifest, not accept an arbitrary client-supplied board/version. An older board may remain readable for history without accepting new attempts. Keep the continuation secret in tab memory only: persisting it in local/session storage would accidentally permit ranked refresh/resume.
 3. Start the clock on the first legal accepted removal. Validate all moves, charges, layers, loose covers and terminal state on the server. Do not accept a claimed client `won`, elapsed time, seed or arbitrary replay as a public result.
 4. Allow same-page reconnection for the approved grace while time continues. Refresh cannot recover the in-memory continuation secret. Account sign-in after an already saved win can still publish the same identity's verified result; that is claiming a finish, not resuming play.
 5. Persist a validated finish once with its attempt UUID. Retry storage safely after transient failures without overwriting the result or creating duplicates. Do not show a public-success message until persistence is confirmed.

@@ -7,6 +7,7 @@ import type { LevelId } from "../game/campaign";
 import type { PartId } from "../game/types";
 import { LEVEL_MODELS, partPivot } from "../scene/levelModels";
 import { modelBatches } from "../scene/modelBatches";
+import { levelMaterialColor } from "../scene/levelColors";
 import { SPACE_GLASS_COLOR } from "../scene/spacePalette";
 import { FALL_DURATION_MS } from "../game/fallTiming";
 import { showPartAppearance } from "../scene/partAppearance";
@@ -77,7 +78,7 @@ export default function House({ level, removedParts, fallingParts, fadedPart, ou
     {parts.map((part) => <FallingPart key={part} id={part} hidden={removedParts.includes(part)} active={fallingParts.includes(part)}
       faded={part === fadedPart} outlined={part === outlinedPart} readPhysics={readPhysics} looseNow={looseNow} onFallFinished={onFallFinished}>
       {batchesByPart.get(part)!.map((batch) => <mesh key={`${batch.color}:${batch.smooth}`} geometry={batch.geometry}>
-        <meshStandardMaterial color={batch.color} roughness={part.startsWith("space-") && batch.color === SPACE_GLASS_COLOR ? .15 : part.startsWith("ship-water-") || /^zoo-(pool-water|stream|cascade)/.test(part) ? 0.24 : 0.8}
+        <meshStandardMaterial color={levelMaterialColor(batch.color)} roughness={part.startsWith("space-") && batch.color === SPACE_GLASS_COLOR ? .15 : part.startsWith("ship-water-") || /^zoo-(pool-water|stream|cascade)/.test(part) ? 0.24 : 0.8}
           side={/^space-(radar-bowl|comms-dish-)/.test(part) ? DoubleSide : FrontSide}
           transparent={part.startsWith("space-") && batch.color === SPACE_GLASS_COLOR}
           opacity={part.startsWith("space-") && batch.color === SPACE_GLASS_COLOR ? .38 : 1}

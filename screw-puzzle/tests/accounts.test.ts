@@ -41,9 +41,11 @@ test("Google upgrades link to the existing guest while fresh sign-ins use OAuth"
   const guest = authFixture({ id: "same-guest", is_anonymous: true });
   await startGoogleAccount(guest.auth, "https://game.example");
   assert.equal(guest.calls[0].name, "link");
+  assert.deepEqual(guest.calls[0].args[0], { provider: "google", options: { redirectTo: "https://game.example", queryParams: { prompt: "select_account" } } });
   const fresh = authFixture();
   await startGoogleAccount(fresh.auth, "https://game.example");
   assert.equal(fresh.calls[0].name, "oauth");
+  assert.deepEqual(fresh.calls[0].args[0], guest.calls[0].args[0]);
 });
 
 test("guest email upgrades use the email-change challenge and never silently switch existing accounts", async () => {

@@ -43,7 +43,7 @@ for (const section of ROOF_SECTIONS) {
 }
 for (const [part, x, y] of [["window-upper-left", -1.5, 1.15], ["window-upper-right", 1.5, 1.15],
   ["window-lower-left", -1.5, -0.65], ["window-lower-right", 1.5, -0.65]] as const) place([x, y + 0.34, 2.14], [0, 0, 1], part);
-for (const [x, y] of [[0, -1.28], [-0.35, -0.48]]) place([x, y, 2.145], [0, 0, 1], "door");
+for (const [x, y] of [[0, -1.18], [-0.35, -0.48]]) place([x, y, 2.145], [0, 0, 1], "door");
 for (const x of [-0.43, 0.43]) place([x, -1.605, 2.28], [0, 1, 0], "steps");
 for (const side of [-1, 1]) place([side * 3.265, -1.65, 1.9], [side, 0, 0], side === -1 ? "planter-left" : "planter-right");
 

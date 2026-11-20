@@ -1,89 +1,78 @@
-import { Children, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { CSSProperties } from "react";
+import { useRef } from "react";
 import type { AudioChannel } from "../game/audio";
 import type { LevelId } from "../game/campaign";
-import AudioButton from "./AudioButton";
+import SettingsDialog from "./SettingsDialog";
 import HelpDialog from "./HelpDialog";
 import SoloLeaderboard from "./SoloLeaderboard";
-import { updateReadability, useReadability } from "./readability";
 import { useAccountCard } from "./accountContext";
 
-export default function GameControls({ muted, toggle, onReset, onLeave, resetDisabled, leaderboardLevel }: {
+const gearOutline = Array.from({ length: 32 }, (_, index) => {
+  const angle = index * Math.PI / 16, radius = index % 4 === 1 || index % 4 === 2 ? 13 : 10;
+  return `${16 + Math.cos(angle) * radius},${16 + Math.sin(angle) * radius}`;
+}).join(" ");
+const gear = <><polygon points={gearOutline} /><circle cx="16" cy="16" r="5" /></>;
+const info = <path d="M16 10h.01M14 15h2v7m-2 0h4" />;
+const person = <><circle cx="16" cy="11" r="5" /><path d="M6 27v-3a10 10 0 0 1 20 0v3" /></>;
+const reset = <path d="M7 13a10 10 0 1 1 0 7M7 6v7h7" />;
+const exit = <path d="M15 5H7a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h8m-3-11h15m-6-6 6 6-6 6" />;
+
+export default function GameControls({ muted, toggle, onReset, onLeave, resetDisabled, leaderboardLevel = "cottage",
+  home = false, showHomeActions = true, onMultiplayer }: {
   muted: Record<AudioChannel, boolean>; toggle: (channel: AudioChannel) => void;
-  onReset?: () => void; onLeave?: () => void; resetDisabled?: boolean;
-  leaderboardLevel?: LevelId;
+  onReset?: () => void; onLeave?: () => void; resetDisabled?: boolean; leaderboardLevel?: LevelId;
+  home?: boolean; showHomeActions?: boolean; onMultiplayer?: () => void;
 }) {
-  const help = useRef<HTMLDialogElement>(null);
+  const help = useRef<HTMLDialogElement>(null), settings = useRef<HTMLDialogElement>(null), menu = useRef<HTMLDialogElement>(null);
+  const launcher = useRef<HTMLButtonElement>(null);
   const account = useAccountCard();
-  const readabilityDialog = useRef<HTMLDialogElement>(null);
-  const readability = useReadability();
-  const controls = useRef<HTMLDivElement>(null);
-  const [expanded, setExpanded] = useState(false);
-  const compact = useSyncExternalStore(subscribeCompact, isCompact);
-  useEffect(() => {
-    if (!expanded) return;
-    const close = (event: PointerEvent) => {
-      if (!controls.current?.contains(event.target as Node)) setExpanded(false);
-    };
-    document.addEventListener("pointerdown", close);
-    return () => document.removeEventListener("pointerdown", close);
-  }, [expanded]);
-  function showHelp() {
-    const dialog = help.current;
-    if (!dialog) return;
-    dialog.showModal();
-    dialog.scrollTop = 0;
-  }
-  const buttons = Children.toArray([
-      <button className="icon-button" type="button" onClick={showHelp} aria-label="How to play"
-        aria-haspopup="dialog" aria-controls="game-help" title="How to play">
-        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 10h.01M14 15h2v7m-2 0h4" /></svg>
-      </button>,
-      leaderboardLevel && <SoloLeaderboard key="leaderboard" activeLevel={leaderboardLevel} />,
-      <button key="account" className="icon-button account-control" type="button" aria-label="Player account" title="Player account" aria-haspopup="dialog"
-        onClick={() => { setExpanded(false); account.open(); }}>
-        <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="11" r="5" /><path d="M6 27v-3a10 10 0 0 1 20 0v3" /></svg>
-        {account.kind && <span className={`account-indicator ${account.kind}`} aria-hidden="true" />}
-      </button>,
-      <button key="readability" className="icon-button" onClick={() => readabilityDialog.current?.showModal()} aria-label="Readability settings" title="Readability settings" aria-haspopup="dialog">
-        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 16s4-8 13-8 13 8 13 8-4 8-13 8S3 16 3 16Z" /><circle cx="16" cy="16" r="4" /></svg>
-      </button>,
-      <AudioButton key="music" channel="music" muted={muted.music} onToggle={() => toggle("music")} />,
-      <AudioButton key="effects" channel="effects" muted={muted.effects} onToggle={() => toggle("effects")} />,
-      onReset && <button className="icon-button" disabled={resetDisabled} onClick={onReset} aria-label="Reset level" title="Reset game">
-        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 13a10 10 0 1 1 0 7M7 6v7h7" /></svg>
-      </button>,
-      onLeave && <button className="icon-button" onClick={onLeave} aria-label="Exit game" title="Exit game">
-        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M15 5H7a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h8m-3-11h15m-6-6 6 6-6 6" /></svg>
-      </button>,
-  ]);
-  return <>
-    <div ref={controls} className={`game-controls${expanded ? " expanded" : ""}`} role="group" aria-label="Game controls"
-      onKeyDown={(event) => { if (event.key === "Escape") setExpanded(false); }}>
-      <button className="icon-button controls-toggle" type="button" aria-label={expanded ? "Close game menu" : "Open game menu"}
-        aria-expanded={expanded} aria-controls="game-control-actions" onClick={() => setExpanded((open) => !open)}>
-        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 9h18" /><path d="M7 16h18" /><path d="M7 23h18" /></svg>
-      </button>
-      <div id="game-control-actions" className="control-actions" inert={compact && !expanded}>
-        {buttons.map((button, index) => <div key={index} className="control-item" style={{
-          "--control-index": index, "--control-reverse": buttons.length - index - 1,
-        } as CSSProperties}>{button}</div>)}
-      </div>
-    </div>
-    <HelpDialog dialogRef={help} />
-    <dialog ref={readabilityDialog} className="help-dialog readability-dialog" aria-labelledby="readability-title">
-      <header className="help-header"><h2 id="readability-title">See every colour</h2><form method="dialog"><button className="icon-button" aria-label="Close readability settings">×</button></form></header>
-      <div className="help-content">
-        <label><input type="checkbox" checked={readability.outlines} onChange={(event) => updateReadability({ ...readability, outlines: event.target.checked })} /> High-contrast screw outlines</label>
-        <label><input type="checkbox" checked={readability.labels} onChange={(event) => updateReadability({ ...readability, labels: event.target.checked })} /> Colour codes on screws & boxes</label>
-        <p>Free, always. Saved on this device.</p>
-      </div>
-    </dialog>
+  function showHelp() { help.current?.showModal(); if (help.current) help.current.scrollTop = 0; }
+  function closeMenu() { menu.current?.close(); }
+  const actionClass = home ? "room-button home-menu-button" : "menu-action";
+  const common = <>
+    <button className={actionClass} type="button" onClick={showHelp} aria-label="How to play" aria-haspopup="dialog" aria-controls="game-help">
+      <svg viewBox="0 0 32 32" aria-hidden="true">{info}</svg><span>How to play</span>
+    </button>
+    <button className={`${actionClass} account-control`} type="button" aria-label="Player account" aria-haspopup="dialog" onClick={account.open}>
+      <svg viewBox="0 0 32 32" aria-hidden="true">{person}</svg><span>{account.kind === "player" ? "My account" : "Login"}</span>
+      {account.kind && <span className={`account-indicator ${account.kind}`} aria-hidden="true" />}
+    </button>
+    <SoloLeaderboard activeLevel={leaderboardLevel} launcherClass={actionClass} />
   </>;
-}
-const compactQuery = window.matchMedia("(max-width: 1024px), (pointer: coarse)");
-function isCompact() { return compactQuery.matches; }
-function subscribeCompact(callback: () => void) {
-  compactQuery.addEventListener("change", callback);
-  return () => compactQuery.removeEventListener("change", callback);
+  return <>
+    <div className={`game-controls${home ? " home-controls" : ""}`} role="group" aria-label="Game controls">
+      {home ? <button ref={launcher} className="icon-button settings-launch" type="button" onClick={() => settings.current?.showModal()}
+        aria-label="Settings" title="Settings" aria-haspopup="dialog" aria-controls="game-settings"><svg viewBox="0 0 32 32" aria-hidden="true">{gear}</svg></button> :
+        <button ref={launcher} className="icon-button game-menu-launch" type="button" aria-label="Open game menu" title="Game menu"
+          aria-haspopup="dialog" aria-controls="game-menu" onClick={() => menu.current?.showModal()}>
+          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 9h18M7 16h18M7 23h18" /></svg>
+        </button>}
+    </div>
+    {home && showHomeActions && <nav className="home-actions" aria-label="More ways to play">
+      <button className={actionClass} type="button" onClick={onMultiplayer}>
+        <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="11" cy="11" r="4" /><path d="M3 26v-3a8 8 0 0 1 16 0v3m3-19a4 4 0 0 1 0 8m1 4a7 7 0 0 1 6 7" /></svg><span>Two-player game</span>
+      </button>
+      {common}
+    </nav>}
+    {!home && <dialog ref={menu} id="game-menu" className="help-dialog game-menu" aria-labelledby="game-menu-title">
+      <header className="help-header"><div><small>A little breather</small><h2 id="game-menu-title">Game menu</h2></div>
+        <form method="dialog"><button className="icon-button" aria-label="Close game menu">×</button></form></header>
+      <div className="game-menu-content">
+        <button className="room-button menu-resume" type="button" onClick={closeMenu} autoFocus><span aria-hidden="true">▷</span> Keep playing</button>
+        <div className="game-menu-actions">
+          {common}
+          <button className="menu-action" type="button" onClick={() => settings.current?.showModal()} aria-label="Settings" aria-haspopup="dialog">
+            <svg viewBox="0 0 32 32" aria-hidden="true">{gear}</svg><span>Settings</span></button>
+          {onReset && <button className="menu-action" type="button" disabled={resetDisabled} onClick={() => { closeMenu(); onReset(); }} aria-label="Reset level">
+            <svg viewBox="0 0 32 32" aria-hidden="true">{reset}</svg><span>Reset level</span></button>}
+          {onLeave && <button className="menu-action" type="button" onClick={() => { closeMenu(); onLeave(); }} aria-label="Exit game">
+            <svg viewBox="0 0 32 32" aria-hidden="true">{exit}</svg><span>Exit game</span></button>}
+        </div>
+        <p className="menu-clock-note">The timer keeps running while you browse.</p>
+      </div>
+    </dialog>}
+    <HelpDialog dialogRef={help} />
+    <SettingsDialog dialogRef={settings} muted={muted} toggle={toggle} onClose={() => {
+      if (!menu.current?.open) launcher.current?.focus();
+    }} />
+  </>;
 }

@@ -4,7 +4,7 @@ import { geometryFor } from "./geometry.ts";
 import { LEVEL_MODELS, partLevel, partPivot, onLevelRelease } from "./levelModels.ts";
 import type { Vector } from "./houseModel.ts";
 import { findScrewObstructions } from "./obstructions.ts";
-import { SCREW_PULL_DISTANCE } from "./screwDimensions.ts";
+import { SCREW_HEAD_RADIUS, SCREW_PULL_DISTANCE } from "./screwDimensions.ts";
 
 export const LOOSE_LIFETIME_MS = 1000;
 export const SMOKE_DURATION_MS = 560;
@@ -79,7 +79,7 @@ export function smokeScale(part: PartId) {
 export function findLooseBlocker(loose: LooseParts, screw: Screw, scale: number, now: number): PartId | undefined {
   const base = new Vector3(...screw.position);
   const tip = base.clone().addScaledVector(new Vector3(...screw.normal), scale * (0.144 + SCREW_PULL_DISTANCE) + 0.01);
-  const probe = new Box3().setFromPoints([base, tip]).expandByScalar(scale * 0.26);
+  const probe = new Box3().setFromPoints([base, tip]).expandByScalar(scale * (SCREW_HEAD_RADIUS + 0.01));
   const root = new Object3D();
   const bounds = new Box3();
   const worldPosition = new Vector3();

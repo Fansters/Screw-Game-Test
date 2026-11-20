@@ -422,7 +422,8 @@ for (const s of [-1, 1]) {
   const oar = owner(`oar-${s}`, [-1.85, .79, 4.26 + s * .21]);
   beam(oar, [-2.99, .80, 4.26 + s * .08], [-.75, .80, 4.26 + s * .08], .027, paleWood);
   soft(oar, [-.77, .80, 4.26 + s * .08], [.48, .06, .15], cream);
-  screw(oar, [-1.85, .83, 4.26 + s * .08]);
+  // Stagger the fixings along the shafts so their wider caps stay separate.
+  screw(oar, [-1.85 + s * .18, .83, 4.26 + s * .08]);
 }
 
 // Warm lanterns, trail signs and stepping stones connect the separate activities.

@@ -11,7 +11,11 @@ body,
 }
 
 body {
-	font-family: Arial, sans-serif;
+	font-family: "Segoe UI", ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+	font-weight: 500;
+	line-height: 1.45;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
 	overflow: hidden;
 	overscroll-behavior: none;
 }
