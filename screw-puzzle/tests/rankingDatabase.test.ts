@@ -46,9 +46,9 @@ test("Supabase migration enforces ownership, server-only writes, private identit
     return (await asRole<{ board: PublicBoard }>("service_role", "", "select public.get_ranked_leaderboard($1) as board", [boardId])).rows[0].board;
   }
   const boardRows = (await asRole<{ id: string; active: boolean }>("anon", "", "select id,active from public.ranking_boards")).rows;
-  // The historical migration retains the retired board; the runtime manifest
-  // excludes it without deleting old database records or rewriting history.
-  assert.deepEqual(boardRows.map(row => row.id).sort(), [...RANKED_BOARDS.map(board => legacyBoard(board.id)), "space:layout-3:generator-1:rules-1:solo"].sort());
+  // The closed foundation catalog retains the retired board and predates the
+  // castle. New casual levels must not rewrite or backfill that historical schema.
+  assert.deepEqual(boardRows.map(row => row.id).sort(), [...RANKED_BOARDS.filter(board => board.level !== "castle").map(board => legacyBoard(board.id)), "space:layout-3:generator-1:rules-1:solo"].sort());
   assert.ok(boardRows.every(row => !row.active), "no public boards before the trusted run service exists");
   assert.deepEqual(await publicBoard(), { board_id: boardId, open: false, entries: [] });
   await assert.rejects(asRole("anon", "", "select public.get_ranked_leaderboard($1)", [boardId]));

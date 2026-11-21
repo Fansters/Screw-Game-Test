@@ -46,3 +46,12 @@ test("levels load independently, share concurrent requests and release/rebuild g
   await delay(750);
   assert.deepEqual(loadedLevelIds(), []);
 });
+test("high-detail castle geometry loads on demand and is released before rebuilding",async()=>{
+  const lease=await acquireLevel("castle"),model=LEVEL_MODELS.castle;
+  const geometry=new Set(model.pieces.flatMap(piece=>piece.geometry?[piece.geometry]:[]));let disposed=0;
+  geometry.forEach(g=>g.addEventListener("dispose",()=>disposed++));
+  const template=levelData("castle").template;assert.equal(template.length,225);
+  lease.release();await delay(750);assert.equal(LEVEL_MODELS.castle,undefined);assert.equal(disposed,geometry.size);
+  const next=await acquireLevel("castle");assert.notEqual(LEVEL_MODELS.castle,model);assert.deepEqual(levelData("castle").template,template);
+  next.release();await delay(750);assert.deepEqual(loadedLevelIds(),[]);
+});

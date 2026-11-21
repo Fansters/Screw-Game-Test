@@ -262,7 +262,7 @@ function SceneContents({ level = "cottage", logical, fallingParts, round, playab
     <PerspectiveCamera makeDefault position={TITLE_CAMERA} fov={42} near={0.1} far={65} zoom={Math.min(1, size.width / size.height / (level === "titanic" ? 1.12 : 0.85))} />
     <ambientLight intensity={0.55} /><hemisphereLight args={["#fff7e7", "#8cabb5", 0.9]} />
     <directionalLight position={[5, 10, 7]} intensity={2.3} /><directionalLight position={[-6, 5, -5]} intensity={0.85} color="#d7eeff" />
-    {(level !== "titanic" || view === "title") && <FloatingTitle menu={view === "title"} height={level === "space" ? 8.8 : level === "carnival" ? 9.4 : level === "zoo" ? 7.4 : undefined} />}
+    {(level !== "titanic" || view === "title") && <FloatingTitle menu={view === "title"} height={level === "castle" ? 8.6 : level === "space" ? 8.8 : level === "carnival" ? 9.4 : level === "zoo" ? 7.4 : undefined} />}
     <House key={`house-${round}`} level={level} removedParts={logical.removedParts} fallingParts={fallingParts}
       outlinedPart={outlinedPart} fadedPart={fadedPart} readPhysics={() => physicsFrame.current} looseNow={looseNow}
       onFallFinished={(part) => onFallFinished(part, round)} />

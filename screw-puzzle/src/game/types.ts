@@ -1,7 +1,7 @@
 export const SCREW_COLOR_ORDER = ["red", "blue", "yellow", "green", "orange", "purple", "brown", "pink", "grey", "cyan", "black", "lime"] as const;
 export type ScrewColor = typeof SCREW_COLOR_ORDER[number];
 export type GameStatus = "playing" | "won" | "lost";
-export const LEVEL_IDS = ["cottage", "campsite", "desert", "construction", "carnival", "zoo"] as const;
+export const LEVEL_IDS = ["cottage", "campsite", "desert", "construction", "carnival", "zoo", "castle"] as const;
 // Archived sources/saves stay readable to tools, but cannot be selected or hosted.
 export type LevelId = typeof LEVEL_IDS[number] | "titanic" | "space";
 export function isLevelId(value: unknown): value is LevelId {
@@ -66,9 +66,10 @@ export type DesertPartId = `desert-${string}`;
 export type ConstructionPartId = `site-${string}`;
 export type CarnivalPartId = `fair-${string}`;
 export type ZooPartId = `zoo-${string}`;
+export type CastlePartId = `castle-${string}`;
 export type SpacePartId = `space-${string}`;
 export type CampsitePartId = `camp-${string}`;
-export type PartId = typeof PART_IDS[number] | TitanicPartId | CampsitePartId | DesertPartId | ConstructionPartId | CarnivalPartId | ZooPartId | SpacePartId;
+export type PartId = typeof PART_IDS[number] | TitanicPartId | CampsitePartId | DesertPartId | ConstructionPartId | CarnivalPartId | ZooPartId | SpacePartId | CastlePartId;
 
 export type Screw = {
   id: string;

@@ -18,6 +18,8 @@ import { CARNIVAL_BLOCKERS, CARNIVAL_EXPOSED_IDS } from "../scene/carnivalAudit.
 import { createZooModel } from "../scene/zooModel.ts";
 import { ZOO_BLOCKERS, ZOO_EXPOSED_IDS } from "../scene/zooAudit.ts";
 import { createSpaceModel } from "../scene/spaceModel.ts";
+import { createCastleModel } from "../scene/castleModel.ts";
+import { CASTLE_BLOCKERS, CASTLE_EXPOSED_IDS } from "../scene/castleAudit.ts";
 import { SPACE_BLOCKERS, SPACE_EXPOSED_IDS } from "../scene/spaceAudit.ts";
 const cottage=createCottageModel(); installLevel("cottage",cottage,undefined,()=>createCottageTemplate(cottage));
 export const PIECES=cottage.model.pieces, PART_PIVOTS=cottage.model.pivots, FRONT_OPENINGS=cottage.FRONT_OPENINGS, resizeFurniturePoint=cottage.resizeFurniturePoint;
@@ -46,3 +48,5 @@ export const SPACE_BASE_SEGMENTS=space.SPACE_BASE_SEGMENTS;
 export const SPACE_SEGMENTS=space.SPACE_SEGMENTS;
 export const SPACE_RINGS=space.SPACE_RINGS;
 export const SPACE_CURVED_GEOMETRY=space.SPACE_CURVED_GEOMETRY;
+const castle=createCastleModel(); installLevel("castle",castle,{blockers:CASTLE_BLOCKERS,exposed:CASTLE_EXPOSED_IDS});
+export const CASTLE_MODEL=castle.model, CASTLE_MOUNTS=castle.mounts;

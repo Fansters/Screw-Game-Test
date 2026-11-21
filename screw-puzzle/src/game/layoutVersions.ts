@@ -4,7 +4,7 @@ import type { LevelId } from "./types.ts";
 // Keep these independent of cosmetic app releases and the room wire protocol.
 export const LEVEL_LAYOUT_VERSIONS: Readonly<Record<LevelId, number>> = Object.freeze({
   cottage: 2, campsite: 2, desert: 3, construction: 2,
-  carnival: 2, zoo: 2, space: 3, titanic: 2,
+  carnival: 2, zoo: 2, castle: 1, space: 3, titanic: 2,
 });
 
 export const layoutRevision = (level: LevelId) => `v${LEVEL_LAYOUT_VERSIONS[level]}`;
