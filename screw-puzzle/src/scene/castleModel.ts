@@ -20,12 +20,19 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 import type { CastlePartId, Screw } from "../game/types.ts";
 import type { Piece, Vector } from "./houseModel.ts";
 
-// Deliberately high visual detail for this level's performance trial. Geometry
-// stays shared, batched by owner/material, and is created only on level demand.
+// Balanced detail targeting roughly 300k scenery triangles instead of the
+// original stress-test preset. Keep object dimensions, fixing positions and
+// removable owners intact; only primitive subdivisions change.
 export const CASTLE_DETAIL = {
-  radialSegments: 64,
-  sphereRings: 32,
-  bevelSegments: 4,
+  radialSegments: 18,
+  sphereRings: 8,
+  bevelSegments: 1,
+  curveSegments: 12,
+  tubeSegments: 12,
+  tubeSides: 6,
+  ringSegments: 20,
+  ringSides: 6,
+  arcSegments: 12,
   hexRadius: 6.4,
 } as const;
 export function createCastleModel() {
@@ -70,10 +77,14 @@ export function createCastleModel() {
       CASTLE_DETAIL.sphereRings,
     ),
   );
-  const cylinder = smooth(new CylinderGeometry(1, 1, 1, 64)),
-    cone = smooth(new ConeGeometry(1, 1, 64));
-  const ring = smooth(new TorusGeometry(1, 0.1, 12, 64));
-  const leaves = smooth(new SphereGeometry(1, 32, 16));
+  const cylinder = smooth(
+      new CylinderGeometry(1, 1, 1, CASTLE_DETAIL.radialSegments),
+    ),
+    cone = smooth(new ConeGeometry(1, 1, CASTLE_DETAIL.radialSegments));
+  const ring = smooth(
+    new TorusGeometry(1, 0.1, CASTLE_DETAIL.ringSides, CASTLE_DETAIL.ringSegments),
+  );
+  const leaves = smooth(new SphereGeometry(1, 12, 6));
   const structural: CastlePartId[] = [],
     roofParts: CastlePartId[] = [],
     courtyard: CastlePartId[] = [];
@@ -161,9 +172,9 @@ export function createCastleModel() {
       smooth(
         new TubeGeometry(
           new CatmullRomCurve3(p.map((v) => new Vector3(...v))),
-          36,
+          CASTLE_DETAIL.tubeSegments,
           r,
-          12,
+          CASTLE_DETAIL.tubeSides,
           false,
         ),
       ),
@@ -203,8 +214,8 @@ export function createCastleModel() {
         bevelEnabled: bevel > 0,
         bevelSize: bevel,
         bevelThickness: bevel,
-        bevelSegments: 4,
-        curveSegments: 32,
+        bevelSegments: CASTLE_DETAIL.bevelSegments,
+        curveSegments: CASTLE_DETAIL.curveSegments,
       }).rotateX(-Math.PI / 2),
     );
     shape(part, g, [0, bottom, 0], [1, 1, 1], c);
@@ -222,12 +233,12 @@ export function createCastleModel() {
     c: string,
   ) {
     const pts: [number, number][] = [];
-    for (let i = 0; i <= 24; i++) {
-      const t = a + ((b - a) * i) / 24;
+    for (let i = 0; i <= CASTLE_DETAIL.arcSegments; i++) {
+      const t = a + ((b - a) * i) / CASTLE_DETAIL.arcSegments;
       pts.push([x + outer * Math.cos(t), z + outer * Math.sin(t)]);
     }
-    for (let i = 24; i >= 0; i--) {
-      const t = a + ((b - a) * i) / 24;
+    for (let i = CASTLE_DETAIL.arcSegments; i >= 0; i--) {
+      const t = a + ((b - a) * i) / CASTLE_DETAIL.arcSegments;
       pts.push([x + inner * Math.cos(t), z + inner * Math.sin(t)]);
     }
     polygon(part, pts, bottom, height, c, 0);
@@ -280,8 +291,8 @@ export function createCastleModel() {
           bevelEnabled: true,
           bevelSize: 0.01,
           bevelThickness: 0.006,
-          bevelSegments: 3,
-          curveSegments: 40,
+          bevelSegments: CASTLE_DETAIL.bevelSegments,
+          curveSegments: CASTLE_DETAIL.curveSegments,
         }),
       ),
       [x, y, z],
@@ -504,8 +515,8 @@ export function createCastleModel() {
           bevelEnabled: true,
           bevelSize: 0.018,
           bevelThickness: 0.018,
-          bevelSegments: 4,
-          curveSegments: 64,
+          bevelSegments: CASTLE_DETAIL.bevelSegments,
+          curveSegments: CASTLE_DETAIL.curveSegments,
         }),
       ),
       [0, 2.13, -2.32],
@@ -534,8 +545,8 @@ export function createCastleModel() {
           bevelEnabled: true,
           bevelThickness: 0.015,
           bevelSize: 0.015,
-          bevelSegments: 4,
-          curveSegments: 48,
+          bevelSegments: CASTLE_DETAIL.bevelSegments,
+          curveSegments: CASTLE_DETAIL.curveSegments,
         }),
       ),
       [0, 0.05, -2.16],
@@ -667,8 +678,8 @@ export function createCastleModel() {
                 bevelEnabled: true,
                 bevelSize: 0.018,
                 bevelThickness: 0.018,
-                bevelSegments: 4,
-                curveSegments: 48,
+                bevelSegments: CASTLE_DETAIL.bevelSegments,
+                curveSegments: CASTLE_DETAIL.curveSegments,
               }),
             ),
             at,
@@ -802,7 +813,7 @@ export function createCastleModel() {
             0.025,
             r - 0.18,
             1.6,
-            48,
+            CASTLE_DETAIL.curveSegments,
             1,
             false,
             a,
@@ -818,7 +829,7 @@ export function createCastleModel() {
               br + 0.01,
               br + 0.03,
               0.045,
-              32,
+              CASTLE_DETAIL.curveSegments,
               1,
               false,
               a,
@@ -911,8 +922,8 @@ export function createCastleModel() {
           bevelEnabled: true,
           bevelThickness: 0.007,
           bevelSize: 0.012,
-          bevelSegments: 4,
-          curveSegments: 32,
+          bevelSegments: CASTLE_DETAIL.bevelSegments,
+          curveSegments: CASTLE_DETAIL.curveSegments,
         }),
       ),
       [x, y, z],
@@ -1062,7 +1073,9 @@ export function createCastleModel() {
     shape(
       p,
       smooth(
-        new CylinderGeometry(0.03, 1.2, 0.63, 24, 1, false, a, Math.PI / 4),
+        new CylinderGeometry(
+          0.03, 1.2, 0.63, CASTLE_DETAIL.curveSegments, 1, false, a, Math.PI / 4,
+        ),
       ),
       [sx, 2.16, sz],
       [1, 1, 1],
@@ -1218,7 +1231,7 @@ export function createCastleModel() {
           [0.13, -0.03],
           [0, -0.03],
         ].map((p) => new Vector2(...p)),
-        64,
+        CASTLE_DETAIL.radialSegments,
       ),
     ),
     pivots[cup],
@@ -1344,7 +1357,12 @@ export function createCastleModel() {
     const helmet = owner(`training-helmet-${k}`, [x, 1.53, z]);
     shape(
       helmet,
-      smooth(new SphereGeometry(1, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2)),
+      smooth(
+        new SphereGeometry(
+          1, CASTLE_DETAIL.radialSegments, CASTLE_DETAIL.sphereRings,
+          0, Math.PI * 2, 0, Math.PI / 2,
+        ),
+      ),
       pivots[helmet],
       [0.23, 0.22, 0.22],
       steel,

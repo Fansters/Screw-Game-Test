@@ -28,7 +28,7 @@ test("castle has a hexagonal foundation, detailed courtyard objects and 225 vari
     parts = CASTLE_MODEL.parts;
   assert.equal(t.length, 225);
   assert.equal(parts.length, 222);
-  assert.equal(CASTLE_DETAIL.radialSegments, 64);
+  assert.equal(CASTLE_DETAIL.radialSegments, 18);
   for (const name of [
     "foundation-0",
     "foundation-5",
