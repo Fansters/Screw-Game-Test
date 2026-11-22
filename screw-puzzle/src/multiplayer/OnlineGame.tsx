@@ -175,7 +175,6 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
   const hintOwner = snapshot && hintSlot !== undefined && hintSlot >= 0 ? boxOwner(snapshot.players, hintSlot) : undefined;
   const blockNotice = room.blocked?.round === round && room.blocked.sequence !== expiredBlock ? room.blocked.reason : null;
   return <div className={`game-layout online-layout${revealed ? " level-revealed" : ""}`} onContextMenu={(event) => event.preventDefault()}>
-    {snapshot && <ConnectionStatus connected={connected} sample={room.latency} />}
     {!game && <HomeScene />}
     {snapshot && (loadedView !== loadingKey || !revealed) && <LevelLoading key={loadingKey} title={levelTitle}
       stage={assets?.ready ? localReady ? "Positioning camera" : "Warming scene" : assets?.stage} error={assets?.error}
@@ -215,7 +214,7 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
       {cameraReady && <>
         <GameUI game={frame?.game ?? game} frame={frame} waitingCount={game.tray.length}
           completedLifeline={completedLifeline} owners={owners} />
-        <GameBar key={scene} level={level} lifelines={snapshot.lifelines} shared
+        <GameBar key={scene} level={level} lifelines={snapshot.lifelines} shared connection={<ConnectionStatus connected={connected} sample={room.latency} />}
           progress={<GameTimer clock={wallClock} startedAt={sampledAt - snapshot.elapsedMs}
             stoppedAt={snapshot.clockRunning ? room.disconnectedAt : sampledAt} removed={removed} total={game.screws.length} />}
           players={<ul className="player-counts" aria-label="Screws removed by each player">
@@ -241,7 +240,7 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
           </button>} />
         <TransferOverlay frame={frame} getOrigin={getOrigin} />
       </>}
-      <GameOverlay mode={result} elapsedMs={snapshot.elapsedMs} timeLabel="Team time" levelTitle={levelTitle}
+      <GameOverlay mode={result} lossReason={game.lossReason} elapsedMs={snapshot.elapsedMs} timeLabel="Team time" levelTitle={levelTitle}
         onStart={start} onRestart={leader && connected ? () => setConfirmation("reset") : undefined}
         onLevels={leader && connected ? () => { reset(true); setLevelsOpen(true); } : undefined} />
     </>}

@@ -8,9 +8,9 @@ const tips = [
   { name: "Find a match", icon: <><circle cx="14" cy="14" r="8" /><path d="m20 20 8 8M14 9v10M9 14h10" /></>, text: "Spot a reachable match. Use Show me for a better angle, then tap the screw.", tone: "mint" },
 ];
 
-export default function GameBar({ level, progress, lifelines, canBoost, onBoost, abilities, players, ping, shared = false }: {
+export default function GameBar({ level, progress, lifelines, canBoost, onBoost, abilities, players, ping, connection, shared = false }: {
   level: LevelId; progress: ReactNode; lifelines: number; canBoost: boolean; onBoost: () => void;
-  abilities: ReactNode; players?: ReactNode; ping?: ReactNode; shared?: boolean;
+  abilities: ReactNode; players?: ReactNode; ping?: ReactNode; connection?: ReactNode; shared?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
@@ -57,6 +57,7 @@ export default function GameBar({ level, progress, lifelines, canBoost, onBoost,
       <span className="level-indicator-hud" aria-label={`Current level ${number}: ${title}`}><span>Level</span><strong>{number}</strong></span>
       <span className="navbar-level-title">{title}</span>
       {ping && <div className="navbar-ping" onClickCapture={() => setExpanded(false)}>{ping}</div>}
+      {connection}
     </div>
   </nav>;
 }

@@ -3,9 +3,11 @@ import type { LevelId } from "./types.ts";
 import { LEVEL_LAYOUT_VERSIONS } from "./layoutVersions.ts";
 import { LEVEL_PRESENTATION } from "./levelPresentation.ts";
 import { isRunId } from "./runId.ts";
+import { isAvatar, isCountry } from "./playerIdentity.ts";
+import type { AvatarId } from "./playerIdentity.ts";
 
 export type CasualFinish = { runId: string; boardId: string; level: LevelId; elapsedMs: number; extraBoxUses: number; findMatchUses: number; resumed: boolean; screwCount: number };
-export type CasualEntry = { rank: number; nickname: string; elapsedMs: number; extraBoxUses: number; findMatchUses: number; resumed: boolean; completedAt: string; isYou: boolean };
+export type CasualEntry = { rank: number; nickname: string; avatar?: AvatarId; country?: string | null; elapsedMs: number; extraBoxUses: number; findMatchUses: number; resumed: boolean; completedAt: string; isYou: boolean };
 export type CasualBoard = { boardId: string; open: boolean; entries: CasualEntry[]; personal: CasualEntry | null; players: number };
 const integer = (value: unknown, min: number, max: number): value is number => typeof value === "number" && Number.isSafeInteger(value) && value >= min && value <= max;
 export const isPlayerId = (id: unknown): id is string => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -32,7 +34,7 @@ function entry(value: unknown): CasualEntry {
   if (!e || !integer(e.rank,1,Number.MAX_SAFE_INTEGER) || typeof e.nickname !== "string" || e.nickname.length > 20 ||
     !integer(e.elapsed_ms,1,2592000000) || !integer(e.extra_box_uses,0,3) || !integer(e.find_match_uses,0,3) ||
     typeof e.resumed !== "boolean" || typeof e.created_at !== "string" || !Number.isFinite(Date.parse(e.created_at))) throw new Error("Invalid board response.");
-  return { rank:e.rank,nickname:e.nickname,elapsedMs:e.elapsed_ms,extraBoxUses:e.extra_box_uses,findMatchUses:e.find_match_uses,
+  return { rank:e.rank,nickname:e.nickname,avatar:isAvatar(e.avatar) ? e.avatar : "fox",country:isCountry(e.country) ? e.country : null,elapsedMs:e.elapsed_ms,extraBoxUses:e.extra_box_uses,findMatchUses:e.find_match_uses,
     resumed:e.resumed,completedAt:e.created_at,isYou:e.is_you===true };
 }
 export function parseCasualBoard(value: unknown, level: LevelId): CasualBoard {

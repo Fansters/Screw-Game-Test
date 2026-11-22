@@ -3,14 +3,14 @@ import type { LooseParts } from "../scene/loosePhysics.ts";
 import type { AbilityState } from "../game/abilities.ts";
 
 // Both peers use the same ordered screw IDs and part geometry.
-export const ROOM_LEVEL_VERSION = 30;
+export const ROOM_LEVEL_VERSION = 31;
 export const ROOM_PHYSICS_DELAY_MS = 62.5;
 export const ROOM_VERSION_MESSAGE = "The room and game versions differ. Refresh the game, or wait for the server update to finish.";
 export const COMPLETED_LIFELINE_MS = 320;
 export const PING_COOLDOWN_MS = 600;
 
 export type CollectionMove = Exclude<MoveEvent<CollectionState>, { kind: "detach" }>;
-export type RoomGame = Pick<GameState, "boxes" | "boxQueue" | "tray" | "clearedCount" | "status" | "removedParts"> & {
+export type RoomGame = Pick<GameState, "boxes" | "boxQueue" | "tray" | "clearedCount" | "status" | "lossReason" | "removedParts"> & {
   colors: ScrewColor[];
   removed: string[];
 };

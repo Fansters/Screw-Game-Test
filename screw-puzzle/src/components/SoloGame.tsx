@@ -30,6 +30,7 @@ import type { LevelId } from "../game/campaign";
 import { clearSoloSave, writeSoloSave } from "../game/soloSave";
 import type { GameState } from "../game/types";
 import type { RunCheckpoint } from "../animation/run";
+import { LOOSE_LIFETIME_MS, SMOKE_DURATION_MS } from "../scene/loosePhysics";
 export type SoloInitial = { game: GameState; seed: number; checkpoint?: RunCheckpoint };
 function freshPuzzle(level: LevelId) { return generateSoloPuzzle(level, crypto.getRandomValues(new Uint32Array(1))[0]); }
 
@@ -70,6 +71,12 @@ export default function SoloGame({ level, initial, audio, onExit, onLoadingStage
   const index = run.frameIndex;
   const { bonusJob } = run;
   const removedCount = run.logical.screws.filter((screw) => screw.removed).length;
+  useEffect(() => {
+    if (!run.ready || !run.started || run.logical.status !== "playing" || run.jobs.length || run.fallingParts.length) return;
+    const settledAt = Math.max(0, ...Object.values(run.releases).map(release => release ? (release.dismissedAt ?? release.releasedAt + LOOSE_LIFETIME_MS) + SMOKE_DURATION_MS : 0));
+    const timer = window.setTimeout(() => dispatch({ type: "check-dead-end", round: run.round, now: performance.now() }), Math.max(0, settledAt - performance.now()) + 80);
+    return () => window.clearTimeout(timer);
+  }, [run.ready, run.started, run.logical, run.jobs.length, run.fallingParts.length, run.releases, run.lifelines, run.round]);
   // Appending another click does not restart the currently playing animation timer.
   useEffect(() => {
     if (jobId === undefined || readyAt === undefined) return;
@@ -169,7 +176,7 @@ export default function SoloGame({ level, initial, audio, onExit, onLoadingStage
       canBoost={playable && bonusJob === null && run.lifelines > 0 && canOpenBonusBox(run.logical)}
       onBoost={() => dispatch({ type: "boost", now: performance.now() })} /></>}
     <TransferOverlay frame={frame} getOrigin={getOrigin} />
-    <GameOverlay mode={mode} onStart={() => {}} onRestart={restart}
+    <GameOverlay mode={mode} lossReason={run.logical.lossReason} onStart={() => {}} onRestart={restart}
       onLevels={() => returnToTitle(true)} levelTitle={CAMPAIGN_LEVELS.find(({ id }) => id === level)!.title}
       elapsedMs={elapsedOnWin ?? undefined} finishNotice={<FinishLeaderboard level={level} elapsedMs={elapsedOnWin ?? 0}
         receipt={finishedRun?.round === round ? finishedRun : undefined} />} />

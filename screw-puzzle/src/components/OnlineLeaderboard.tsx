@@ -7,13 +7,15 @@ import { retryFinishes } from "../online/casualScores";
 import { useAccountCard } from "./accountContext";
 import { usePendingFinishes } from "./usePendingFinishes";
 import { useOnlineLeaderboard } from "./useOnlineLeaderboard";
+import PlayerAvatar from "./PlayerAvatar";
+import { countryFlag, countryName } from "../game/playerIdentity";
 
 export type FinishReceipt = { runId: string; playerId: string | null; error: boolean };
 function OnlineRow({ entry, ownRow }: { entry: CasualEntry; ownRow: RefObject<HTMLTableRowElement | null> }) {
   return <tr ref={entry.isYou ? ownRow : undefined} className={entry.isYou ? "leaderboard-you" : undefined} aria-label={entry.isYou ? "Your best result" : undefined}>
     <th scope="row"><span className="leaderboard-rank">{entry.rank}</span></th>
-    <td><span className="leaderboard-name">{entry.nickname}{entry.isYou && <small> · You</small>}</span>
-      <small className="leaderboard-details">Extra boxes {entry.extraBoxUses} · Hints {entry.findMatchUses}{entry.resumed ? " · Resumed" : ""}</small></td>
+    <td><div className="leaderboard-player"><PlayerAvatar avatar={entry.avatar} /><div><span className="leaderboard-name">{entry.nickname}{entry.isYou && <small> · You</small>}{entry.country && <span className="country-flag" role="img" aria-label={countryName(entry.country)} title={countryName(entry.country)}>{countryFlag(entry.country)}</span>}</span>
+      <small className="leaderboard-details" title="Extra boxes used · Find a Match uses">{entry.extraBoxUses} boosts · {entry.findMatchUses} hints{entry.resumed ? " · Resumed" : ""}</small></div></div></td>
     <td><strong>{formatRunTime(entry.elapsedMs, true)}</strong></td>
   </tr>;
 }
@@ -38,7 +40,7 @@ export default function OnlineLeaderboard({ level, finish }: { level: LevelId; f
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
   }, [canCenter, runId, board]);
   return <div className="online-leaderboard">
-    {!finish && <p className="leaderboard-note">Best time per player · All abilities welcome · Resumed runs count</p>}
+    {!finish && <p className="leaderboard-note">One player. One best. Your next personal best?</p>}
     {finish?.error && <p className="leaderboard-pending" role="status">Couldn’t queue this result for upload. Your finishing time is shown above.</p>}
     {finish?.playerId && !sameAccount && <p className="leaderboard-pending">Sign back into the account that finished this run to see its result.</p>}
     {pending.length > 0 && <div className="leaderboard-pending" role="status">
@@ -56,10 +58,9 @@ export default function OnlineLeaderboard({ level, finish }: { level: LevelId; f
         <tbody>{board.entries.map(entry => <OnlineRow key={entry.rank + ":" + entry.nickname} entry={entry} ownRow={ownRow} />)}</tbody>
       </table> : <p className="leaderboard-empty">The first spot is waiting for you! Finish this world while signed in with Google.</p>}
       {board.personal && !board.entries.some(entry => entry.isYou) && <table className="leaderboard-times online-times"><caption>Your best · outside the top 10</caption><tbody><OnlineRow entry={board.personal} ownRow={ownRow} /></tbody></table>}
-      {!finish && <p className="leaderboard-note">Equal times share a rank. Fresh random puzzles keep each attempt different.</p>}
     </>)}
     {((finish && !finish.playerId) || (!finish && !account.playerId)) && <div className="leaderboard-signin">
-      <p>{finish ? "This run was played as a guest. Sign in before your next finish to save a time." : "Everyone can play and view the board. Sign in with Google before you finish to save your time."}</p>
+      <p>{finish ? "Guest run · Sign in before your next finish to save a time." : "Sign in to put your time on the board."}</p>
       {!account.playerId && <button type="button" onClick={account.open}>Sign in with Google</button>}
     </div>}
   </div>;

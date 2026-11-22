@@ -3,7 +3,8 @@ import { buildSequence, SCREW_SPIN_MS } from "./sequence.ts";
 import type { PlaybackFrame } from "./sequence.ts";
 import { BONUS_SLOT, isScrewAccessible, planBonusBox, planScrewRemoval } from "../game/rules.ts";
 import type { GameState, PartId } from "../game/types.ts";
-import { LOOSE_LIFETIME_MS } from "../scene/loosePhysics.ts";
+import { LOOSE_LIFETIME_MS, SMOKE_DURATION_MS } from "../scene/loosePhysics.ts";
+import { hasNoSafeMove } from "../game/deadEnd.ts";
 import type { PartReleases } from "../scene/loosePhysics.ts";
 import { freshAbilities, matchCandidates, settleAbilities } from "../game/abilities.ts";
 import type { AbilityState } from "../game/abilities.ts";
@@ -18,6 +19,7 @@ export type RunState = { runId: string; resumed: boolean; logical: GameState; di
   frameIndex: number; nextJobId: number; round: number; seed: number; timerStartedAt: number | null; timerStoppedAt: number | null };
 export type RunCheckpoint = Pick<RunState, "moves" | "lifelines" | "elapsedBefore" | "legacyTitanicLayout"> & { abilities?: AbilityState; runId?: string; resumed?: boolean };
 export type RunAction = { type: "ready"; round: number } | { type: "start" } | { type: "select"; id: string; now: number; clearedParts?: readonly PartId[] } |
+  { type: "check-dead-end"; now: number; round: number } |
   { type: "fall-finished"; part: PartId; round: number } |
   { type: "dismiss"; part: PartId; now: number } |
   { type: "boost"; now: number } |
@@ -39,6 +41,12 @@ export function settledParts(run: Pick<RunState, "logical" | "fallingParts">): P
 export function currentFrame(run: RunState): PlaybackFrame | null { return run.jobs[0]?.frames[run.frameIndex] ?? null; }
 
 export function runReducer(run: RunState, action: RunAction): RunState {
+  if (action.type === "check-dead-end") {
+    if (action.round !== run.round || !run.started || !run.ready || run.jobs.length || run.fallingParts.length ||
+      Object.values(run.releases).some(release => release && action.now < (release.dismissedAt ?? release.releasedAt + LOOSE_LIFETIME_MS) + SMOKE_DURATION_MS) || !hasNoSafeMove(run.logical, run.lifelines)) return run;
+    const game: GameState = { ...run.logical, status: "lost", lossReason: "no-moves" };
+    return { ...run, logical: game, display: game, timerStoppedAt: action.now };
+  }
   if (action.type === "reset") return { ...createRun(action.game, action.seed, run.round + 1), ...action.checkpoint,
     started: action.enter ?? false, nextJobId: run.nextJobId + 1 };
   if (action.type === "ready") return action.round === run.round && !run.ready ? { ...run, ready: true } : run;

@@ -20,6 +20,8 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
     save: mode === "solo" ? readSoloSave(id) : null,
   })));
   const [active, setActive] = useState(0);
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
+  const tabs = ["easy", "medium", "hard"] as const;
   const frame = useRef(0);
   const navigation = useRef<number | null>(null);
   const stopSettling = useRef<() => void>(() => {});
@@ -27,7 +29,7 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
     const element = dialog.current, list = track.current;
     element?.showModal();
     function nearestCard() {
-      if (!list) return 0;
+      if (!list || list.hidden) return navigation.current ?? 0;
       const box = list.getBoundingClientRect();
       const center = box.left + box.width / 2;
       let closest = 0, distance = Infinity;
@@ -39,7 +41,7 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
       });
       return closest;
     }
-    function measure() { setActive(navigation.current ?? nearestCard()); }
+    function measure() { if (!list?.hidden) setActive(navigation.current ?? nearestCard()); }
     const changed = () => { cancelAnimationFrame(frame.current); frame.current = requestAnimationFrame(measure); };
     let wheelEnd: ReturnType<typeof setTimeout> | undefined;
     let suppressClick = false;
@@ -167,13 +169,19 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
     browse(event.key === "Home" ? 0 : event.key === "End" ? CAMPAIGN_LEVELS.length - 1 : active + (event.key === forwards ? 1 : -1), true);
   }
 
-  return <dialog ref={dialog} className="help-dialog level-select level-gallery" aria-labelledby="level-select-title"
+  return <dialog ref={dialog} className={`help-dialog level-select level-gallery difficulty-${difficulty}`} aria-labelledby="level-select-title"
     onCancel={event => { event.preventDefault(); onBack(); }}>
     <header className="level-gallery-header">
       <h2 id="level-select-title">Choose your world</h2>
       <button className="icon-button" type="button" aria-label="Back from level select" onClick={onBack} autoFocus>×</button>
     </header>
-    <ol ref={track} className="level-list" aria-label="Level previews" onKeyDown={keyNavigate}>
+    <div className="world-atmosphere" aria-hidden="true">{Array.from({length:6},(_,index) => <span key={index} style={{"--prop":index} as CSSProperties}><svg viewBox="0 0 48 72"><path d="M19 34h10v30l-5 5-5-5z" fill="currentColor" opacity=".6"/><circle cx="24" cy="24" r="19" fill="currentColor"/><path d="M14 24h20M24 14v20" stroke="#fff" strokeWidth="5" strokeLinecap="round"/></svg></span>)}</div>
+    <div className="difficulty-tabs" role="tablist" aria-label="World difficulty">{tabs.map((tab,index) => <button key={tab} id={`difficulty-${tab}`} role="tab" type="button" aria-selected={difficulty === tab} aria-controls={`worlds-${tab}`} tabIndex={difficulty === tab ? 0 : -1}
+      onClick={() => {stopSettling.current(); setDifficulty(tab);}} onKeyDown={event => {
+        const next = event.key === "ArrowRight" ? (index+1)%3 : event.key === "ArrowLeft" ? (index+2)%3 : event.key === "Home" ? 0 : event.key === "End" ? 2 : null;
+        if (next === null) return; event.preventDefault(); stopSettling.current(); setDifficulty(tabs[next]); document.getElementById(`difficulty-${tabs[next]}`)?.focus();
+      }}>{tab}</button>)}</div>
+    <ol ref={track} id="worlds-medium" role="tabpanel" aria-labelledby="difficulty-medium" hidden={difficulty !== "medium"} className="level-list" aria-label="Level previews" onKeyDown={keyNavigate}>
       {CAMPAIGN_LEVELS.map(({ id, title }, index) => {
         const playable = levelStatus(index) === "playable", { save } = details[index];
         const presentation = LEVEL_PRESENTATION[id], removed = savedScrewCount(save?.moves ?? []);
@@ -204,7 +212,8 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
         </li>;
       })}
     </ol>
-    <footer className="level-gallery-footer">
+    {tabs.filter(tab => tab !== "medium").map(tab => <section key={tab} id={`worlds-${tab}`} role="tabpanel" aria-labelledby={`difficulty-${tab}`} hidden={difficulty !== tab} className="difficulty-empty"><span aria-hidden="true">{tab === "easy" ? "✿" : "✦"}</span><h3>{tab === "easy" ? "Little adventures ahead" : "A bigger challenge awaits"}</h3><p>New {tab} worlds are on their way.</p></section>)}
+    <footer className="level-gallery-footer" hidden={difficulty !== "medium"}>
       <button className="icon-button level-previous" type="button" aria-label="Previous level" disabled={active === 0} onClick={() => browse(active - 1)}><svg viewBox="0 0 32 32" aria-hidden="true">{arrow}</svg></button>
       <div className="level-dots" aria-label="Go to level">{CAMPAIGN_LEVELS.map(({ id, title }, index) =>
         <button type="button" key={id} aria-label={`Show level ${index + 1}: ${title}`} aria-current={active === index ? "true" : undefined} onClick={() => browse(index)}><span /></button>)}</div>

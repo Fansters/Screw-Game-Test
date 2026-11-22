@@ -79,3 +79,15 @@ Share the step, device/browser, visible message and app version when reporting a
 ## Nickname checks
 
 Choose an available name in My account after Google sign-in. Rename it more than once; your results must keep the same times and show the new name. A name already taken, including a different capitalization, must be refused. Renaming frees the previous name. No rename cooldown has been added.
+
+## Player card and difficulty tabs — 0.1.38
+
+1. Open Login without signing in: ordinary local play still works. Click outside the player card to dismiss it, or use its visible X.
+2. Sign in with your real Google account. Open My account: check the member-since month and the compact profile banner. Choose Customize your card, pick an animal, edit your available nickname, and optionally select your country. Save.
+3. Reopen the card on this device and another device signed into the same account. The saved nickname, avatar and country should match. Unfinished puzzle progress still stays on its original device.
+4. Open Leaderboard. Your existing result should display the chosen avatar/country. Choose Not shared and save: the country should disappear from public results after refresh. Your result/time must remain unchanged.
+5. On desktop/phone, check the X and backdrop dismissal. Clicking/dragging inside the card must keep it open. Keyboard Escape and tab focus should still work.
+6. Open level select: Medium is selected and has all nine worlds. Easy/Hard show distinct gentle colour themes and no playable cards. Return to Medium, swipe horizontally and play normally.
+7. In co-op, check the RTT badge inside the bottom navbar, beside the ping action. A disconnected partner must still pause the room rather than end it. A true dead end with four waiting screws, no safe move and no usable extra box ends both clients only after loose objects clear. Reset starts a fresh playable round.
+
+The automated account UI checks use an intercepted Google session and fake browser-only rows, never invented live records. Local PostgreSQL tests cover profile ownership and public projection; a live read confirms the applied migration. Real OAuth and physical-device interaction remain the owner's live checks after deploying the matching frontend/room server (protocol 31). No new environment variables.

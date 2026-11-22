@@ -14,8 +14,34 @@ import { initPartPhysics } from "../src/scene/partPhysics.ts";
 import { LOOSE_LIFETIME_MS, loosePartPose, mergeLooseParts, SMOKE_DURATION_MS } from "../src/scene/loosePhysics.ts";
 import { freshAbilities, matchCandidates } from "../src/game/abilities.ts";
 import { boxOwner, reservedFor } from "../src/multiplayer/boxOwnership.ts";
+import { canOpenBonusBox, isScrewAccessible, planScrewRemoval } from "../src/game/rules.ts";
+import type { GameState } from "../src/game/types.ts";
 
 await initPartPhysics();
+
+test("server confirms a team dead end after physical settling, publishes it to both seats, and reset clears it", t => {
+  const { leader, guest, advance, tickPhysics, close }=fixture(4,"castle");t.after(close);
+  const template=soloLevelTemplate("castle");
+  for(let move=0;move<200 && leader.state().game.status==="playing";move++) {
+    const state=leader.state(), {colors,removed,...collection}=state.game;
+    const game:GameState={...collection,screws:template.map((s,index)=>({...s,color:colors[index],removed:removed.includes(s.id)}))};
+    const safe=game.screws.filter(s=>isScrewAccessible(game,s)&&planScrewRemoval(game,s.id).finalState.status!=="lost");
+    if(game.tray.length===4 && state.lifelines>0 && canOpenBonusBox(game)) leader.send({type:"boost",round:0});
+    else if(safe.length) {
+      const target=safe.find(s=>!game.boxes.some(b=>b?.color===s.color))??safe[0];
+      leader.collect({type:"select",round:0,screw:target.id});
+    }
+    advance(100);tickPhysics();
+    assert.notEqual(leader.state().game.status,"lost","never declare a dead end during a pending collection/fall");
+    advance(1800);tickPhysics();
+  }
+  assert.equal(leader.state().game.status,"lost");assert.equal(leader.state().game.lossReason,"no-moves");
+  assert.equal(leader.state().lifelines,0);assert.equal(leader.state().game.tray.length,4);
+  assert.equal(guest.state().game.lossReason,"no-moves");assert.equal(leader.state().clockRunning,false);
+  const elapsed=leader.state().elapsedMs;advance(5000);tickPhysics();assert.equal(leader.state().elapsedMs,elapsed);
+  leader.send({type:"reset",round:0});advance(2000);tickPhysics();
+  assert.equal(guest.state().game.status,"playing");assert.equal(guest.state().game.lossReason,undefined);
+});
 
 test("standard box colours are reserved on the server, without spending a move, time or an ability", t => {
   const { leader, guest, close } = fixture(245);

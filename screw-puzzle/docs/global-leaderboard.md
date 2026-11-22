@@ -61,3 +61,11 @@ A replay can prove that a move sequence is legal, but cannot independently prove
 Google identifies the account, not its public nickname. Players choose a unique 3–20 character name using letters A–Z, numbers, spaces, underscores or hyphens; it must start with a letter or number. Names are trimmed/normalized, and uniqueness is case-insensitive. There is no application rename limit or cooldown. Updating the name keeps the same account/results and changes its display on existing boards; the old name becomes available again. The database unique index settles simultaneous claims, and owner-only policies prevent changing someone else’s name. No live account/profile data was changed for this UI release.
 
 Release 0.1.37 adds the ninth board, `oasis:layout-1:casual-1`, for exactly 198 screws. Migration `20261122195849_add_oasis_casual_board.sql` is applied. This is a catalog addition with no permission, account or historical-score changes.
+
+## Player pass (0.1.38)
+
+Profiles now store an allowlisted avatar ID and an optional ISO country code. Country starts as null; players explicitly choose whether to publish it, and can remove it with Not shared. No IP/location inference or uploaded avatar URLs are used. Membership date comes from Auth's server-created account timestamp; it is not editable. Nickname/avatar/country save together after verifying the current account, and existing owner-only RLS still applies. The public leaderboard projection includes only the selected avatar/country plus its existing safe result fields. Email and account/run IDs remain private.
+
+The applied migration is 20261122214726_player_card_identity.sql. Existing records default to fox and no country, with no score changes. Database permission tests verify invalid avatars/countries, other-player edits and timestamp edits are rejected, and clearing country removes it from public results.
+
+Frontend version 0.1.38 uses room protocol 31. Deploy matching Vercel and Render revisions. No new environment variables: retain VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY and VITE_ROOM_SERVER.

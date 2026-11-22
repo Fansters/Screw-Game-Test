@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeNickname } from "./nickname.ts";
+import { isAvatar, isCountry } from "../game/playerIdentity.ts";
+import type { AvatarId } from "../game/playerIdentity.ts";
 
 export type AccountAuth = Pick<SupabaseClient["auth"], "getSession" | "signInAnonymously" | "signInWithOAuth" |
   "linkIdentity" | "updateUser" | "signInWithOtp" | "verifyOtp" | "setSession">;
@@ -70,12 +72,13 @@ export async function verifyEmailAccount(auth: AccountAuth, challenge: EmailChal
   return data.user;
 }
 
-export async function saveAccountNickname(client: SupabaseClient, value: string, expectedUserId?: string) {
+export async function saveAccountNickname(client: SupabaseClient, value: string, expectedUserId?: string, appearance?: { avatar: AvatarId; country: string | null }) {
   const nickname = normalizeNickname(value);
+  if (appearance && (!isAvatar(appearance.avatar) || appearance.country !== null && !isCountry(appearance.country))) throw new Error("Choose an available avatar and country.");
   const { data, error } = await client.auth.getUser();
   if (error) throw error;
   if (!data.user) throw new Error("Sign in with Google first.");
   if (expectedUserId && data.user.id !== expectedUserId) throw Object.assign(new Error("Account identity changed"), { code: "identity_changed" });
-  const result = await client.from("player_profiles").upsert({ id: data.user.id, nickname });
+  const result = await client.from("player_profiles").upsert({ id: data.user.id, nickname, ...(appearance ? { avatar: appearance.avatar, country: appearance.country } : {}) });
   if (result.error) throw result.error;
 }

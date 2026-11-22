@@ -97,6 +97,7 @@ export type GameState = {
   boxQueue: BoxTarget[];
   clearedCount: number;
   status: GameStatus;
+  lossReason?: "no-moves";
   removedParts: PartId[];
 };
 

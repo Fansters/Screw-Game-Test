@@ -8,7 +8,8 @@ import { BONUS_SLOT, isScrewAccessible, planBonusBox, planScrewRemoval } from ".
 import type { CollectionState, GameState, LevelId, MatchBox, MoveEvent, PartId } from "../src/game/types.ts";
 import type { CollectionMove, RoomCommand, RoomGame, RoomNotice, RoomSnapshot } from "../src/multiplayer/protocol.ts";
 import { PING_COOLDOWN_MS, ROOM_LEVEL_VERSION, ROOM_PHYSICS_DELAY_MS, ROOM_VERSION_MESSAGE } from "../src/multiplayer/protocol.ts";
-import { findLooseBlocker } from "../src/scene/loosePhysics.ts";
+import { findLooseBlocker, LOOSE_LIFETIME_MS, SMOKE_DURATION_MS } from "../src/scene/loosePhysics.ts";
+import { hasNoSafeMove } from "../src/game/deadEnd.ts";
 import { createPartPhysics } from "../src/scene/partPhysics.ts";
 import type { PartPhysics } from "../src/scene/partPhysics.ts";
 import { SCREW_SCALE } from "../src/game/screwScale.ts";
@@ -30,6 +31,7 @@ type Room = {
   startedAt: number | null; lifelines: number; fallStarts: Map<PartId, number>;
   elapsedMs: number; clockSince: number | null; physics?: PartPhysics; physicsRevision: number;
   abilities: AbilityState;
+  checkDeadEndAfter?: number;
 };
 
 function wireGame({ screws, ...game }: GameState): RoomGame {
@@ -81,6 +83,14 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
   function tickPhysics() {
     const time = now();
     for (const room of rooms.values()) {
+      if (room.checkDeadEndAfter !== undefined && time >= room.checkDeadEndAfter && !paused(room)) {
+        room.checkDeadEndAfter = undefined;
+        if (room.startedAt !== null && hasNoSafeMove(room.game, room.lifelines)) {
+          room.game = { ...room.game, status: "lost", lossReason: "no-moves" };
+          stopClock(room, time);
+          publish(room);
+        }
+      }
       const physics = room.physics;
       if (!physics) continue;
       physics.advance(time);
@@ -157,6 +167,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     room.lifelines = LIFELINE_COUNT;
     room.abilities = freshAbilities();
     room.fallStarts.clear();
+    room.checkDeadEndAfter = undefined;
     room.physics = undefined;
     room.physicsRevision = 0;
     room.elapsedMs = 0;
@@ -300,6 +311,10 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     const moves = events.flatMap((event) => event.kind === "detach" ? [] :
       [{ ...event, before: collection(event.before), after: collection(event.after) }]);
     room.game = game;
+    // A round-tagged Room owns this deadline; resetting must clear it. Wait
+    // through the newest fall/smoke and collection animation before declaring
+    // a dead end. Evaluation runs once per mutation, never on every tick.
+    room.checkDeadEndAfter = Math.max(now() + 700, ...[...room.fallStarts.values()].map(at => at + LOOSE_LIFETIME_MS + SMOKE_DURATION_MS + ROOM_PHYSICS_DELAY_MS));
     room.abilities = settleAbilities(room.abilities, game);
     if (game.status !== "playing") stopClock(room, now());
     publish(room, moves, matched, completedLifeline);

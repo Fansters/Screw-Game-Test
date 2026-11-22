@@ -9,6 +9,9 @@ import { saveAccountNickname, startGoogleAccount } from "../online/accounts";
 import { clearAccountIntent, rememberAccountIntent, sessionStore } from "../online/browserState";
 import { accountError } from "../online/errors";
 import { normalizeNickname } from "../online/nickname";
+import { AVATARS, COUNTRY_CODES, countryName, isAvatar, isCountry } from "../game/playerIdentity";
+import type { AvatarId } from "../game/playerIdentity";
+import PlayerAvatar from "./PlayerAvatar";
 
 type Providers = Awaited<ReturnType<typeof accountProviders>>;
 export default function AccountDialog({ open, onClose, onKind }: { open: boolean; onClose: () => void; onKind: (kind: PlayerKind, playerId?: string | null) => void }) {
@@ -17,6 +20,9 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
   const [providers, setProviders] = useState<Providers>();
   const [profile, setProfile] = useState<{ id: string; error?: string }>();
   const [nickname, setNickname] = useState("");
+  const [avatar, setAvatar] = useState<AvatarId>("fox");
+  const [country, setCountry] = useState("");
+  const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -73,10 +79,13 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
   useEffect(() => {
     if (!client || !userId || !open) return;
     let alive = true;
-    void Promise.resolve(client.from("player_profiles").select("nickname").eq("id", userId).maybeSingle()).then(({ data, error }) => {
+    void Promise.resolve(client.from("player_profiles").select("nickname,avatar,country").eq("id", userId).maybeSingle()).then(({ data, error }) => {
       if (!alive) return;
       setProfile({ id: userId, error: error ? accountError(error) : undefined });
       setNickname(typeof data?.nickname === "string" ? data.nickname : "");
+      setAvatar(isAvatar(data?.avatar) ? data.avatar : "fox");
+      setCountry(isCountry(data?.country) ? data.country : "");
+      setEditing(!data?.nickname);
     }).catch(() => { if (alive) setProfile({ id: userId, error: "Your player name couldn’t load. Please reopen your card to try again." }); });
     return () => { alive = false; };
   }, [client, userId, open]);
@@ -91,15 +100,16 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
     event.preventDefault(); if (!client || !userId || profile?.id !== userId) return;
     let value: string;
     try { value = normalizeNickname(nickname); } catch { setMessage("Use 3–20 letters A–Z, numbers, spaces, underscores or hyphens. Start with a letter or number."); return; }
-    await action(async () => { await saveAccountNickname(client, value, userId); setNickname(value); setNotice("Nice name! Your player card is saved."); window.dispatchEvent(new Event(PROFILE_CHANGED)); });
+    await action(async () => { await saveAccountNickname(client, value, userId, { avatar, country: country || null }); setNickname(value); setEditing(false); setNotice("Player card saved."); window.dispatchEvent(new Event(PROFILE_CHANGED)); });
   }
   function closeCard() { onClose(); }
   return <AccountModal open={open} onClose={closeCard}>
-    <div className={`player-pass${anonymous ? " guest-pass" : ""}`}>
-      <span className="player-avatar" aria-hidden="true">{confirmed ? "★" : anonymous ? "✦" : "?"}</span>
-      <div><strong>{permanent ? "Welcome, player!" : anonymous ? "Your guest adventure" : "Make it yours"}</strong>
-        <span>{confirmed ? "Verified account" : permanent ? "Player account" : anonymous ? "Guest · saved in this browser" : "Play freely. Sign in whenever you like."}</span></div>
+    <div className={`player-pass player-banner${anonymous ? " guest-pass" : ""}`}>
+      <span className="player-avatar"><PlayerAvatar avatar={profile?.id === userId ? avatar : "fox"} /></span>
+      <div><span className="player-eyebrow">SCREW IT! · PLAYER PASS</span><strong>{permanent && profile?.id === userId ? nickname || "Your next adventure" : anonymous ? "Guest explorer" : "Hello, adventurer"}</strong>
+        <span>{confirmed ? "Google connected" : permanent ? "Player account" : "Play freely. Make it yours."}</span></div>
     </div>
+    {permanent && <dl className="player-meta"><div><dt>Member since</dt><dd>{new Intl.DateTimeFormat("en", { month: "short", year: "numeric" }).format(new Date(user!.created_at))}</dd></div><div><dt>Country</dt><dd>{profile?.id === userId && country ? countryName(country) : "Not shared"}</dd></div></dl>}
     {message && <p className="account-message error" role="alert">{message}</p>}
     {notice && <p className="account-message" role="status">{notice}</p>}
     {initializing ? <p role="status">Opening your player card…</p> : !client ?
@@ -113,15 +123,19 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
         {!user && <p className="account-hint">No account needed to play. Sign in with Google to save times on the leaderboard.</p>}
       </>}
       {user && <>
-        {user.email && <p className="account-email-private">{user.email}<span>Private · never shown on the leaderboard</span></p>}
         {profile && profile.id === userId ? profile.error ? <p className="account-message error" role="alert">{profile.error}</p> :
-          <form className="account-form nickname-form" onSubmit={saveName}>
-            <label htmlFor="account-nickname">Your public player name</label>
+          <><button type="button" className="account-button profile-edit-toggle" aria-expanded={editing} aria-controls="profile-editor" onClick={() => setEditing(value => !value)}>{editing ? "Done customizing" : "Customize your card"}</button>
+          <form id="profile-editor" hidden={!editing} className="account-form nickname-form" onSubmit={saveName}>
+            <fieldset className="avatar-picker" disabled={busy}><legend>Pick your sidekick</legend><div>{AVATARS.map(id => <button key={id} type="button" className={avatar === id ? "avatar-choice selected" : "avatar-choice"} aria-label={`Choose ${id} avatar`} aria-pressed={avatar === id} onClick={() => setAvatar(id)}><PlayerAvatar avatar={id} /></button>)}</div></fieldset>
+            <label htmlFor="account-nickname">Player name</label>
             <input id="account-nickname" value={nickname} onChange={event => setNickname(event.target.value)} placeholder="ScrewHero" minLength={3} maxLength={20}
               autoComplete="nickname" required disabled={busy} aria-describedby="nickname-note" />
-            <small id="nickname-note">3–20 letters A–Z, numbers, spaces, _ or -. This name appears with your online leaderboard times.</small>
-            <button className="account-button primary" disabled={busy}>Save player name</button>
-          </form> : <p role="status">Getting your player name…</p>}
+            <small id="nickname-note">Public · 3–20 letters, numbers, spaces, _ or -</small>
+            <label htmlFor="account-country">Country <small>optional</small></label>
+            <select id="account-country" value={country} disabled={busy} onChange={event => setCountry(event.target.value)} aria-describedby="country-note"><option value="">Not shared</option>{[...COUNTRY_CODES].sort((a,b) => countryName(a).localeCompare(countryName(b))).map(code => <option key={code} value={code}>{countryName(code)}</option>)}</select>
+            <small id="country-note">Selected country appears on the leaderboard. No location tracking.</small>
+            <button className="account-button primary" disabled={busy}>{busy ? "Saving…" : "Save player card"}</button>
+          </form></> : <p role="status">Getting your player name…</p>}
         {confirmOut ? <div className="account-signout-check">
           <p>{anonymous ? "Forget this guest? Link Google first if you want to keep this profile. Signing out cannot be undone for a guest." : "Sign out on this device? Your online scores stay with your account, and your saved puzzle stays here."}</p>
           <button className="account-button danger" disabled={busy} onClick={() => void action(async () => {
@@ -133,7 +147,7 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
       </>}
       {!permanent && <button className="account-link" disabled={busy} onClick={() => { setNotice(""); setRetry(value => value + 1); }}>Refresh sign-in options</button>}
     </>}
-    <p className="account-footnote">Solo wins finished with Google signed in are shared on the leaderboard. Unfinished game progress stays on this device.</p>
+    <p className="account-footnote">Online times follow your account. Unfinished puzzles stay on this device.</p>
     <button className="account-button keep-playing" onClick={closeCard}>Keep playing</button>
   </AccountModal>;
 }

@@ -3,9 +3,10 @@ import type { ReactNode } from "react";
 import { TRAY_CAPACITY } from "../game/rules";
 import { formatRunTime } from "../game/runTime";
 
-export default function GameOverlay({ mode, onStart, onRestart, onLevels, elapsedMs, finishNotice, timeLabel = "Your time", levelTitle = "The cottage" }: {
+export default function GameOverlay({ mode, onStart, onRestart, onLevels, elapsedMs, finishNotice, lossReason, timeLabel = "Your time", levelTitle = "The cottage" }: {
   mode: "loading" | "start" | "lost" | "won" | null; onStart: () => void; onRestart?: () => void;
   onLevels?: () => void; elapsedMs?: number; finishNotice?: ReactNode; timeLabel?: string; levelTitle?: string;
+  lossReason?: "no-moves";
 }) {
   if (!mode) return null;
   if (mode === "loading") return <div className="game-overlay loading"><span className="loading-spinner" role="status" aria-label="Loading level" /></div>;
@@ -20,7 +21,7 @@ export default function GameOverlay({ mode, onStart, onRestart, onLevels, elapse
           <span>{timeLabel}</span> <strong>{formatRunTime(elapsedMs, true)}</strong>
         </p>}
         {mode === "won" && finishNotice}
-        {mode === "lost" && <p className="loss-caption">{levelTitle} wins this round.</p>}
+        {mode === "lost" && <p className="loss-caption">{lossReason === "no-moves" ? "No safe moves left. No extra box available." : `${levelTitle} wins this round.`}</p>}
         {(onRestart || (mode === "won" && onLevels)) && <div className="result-actions">
           {onRestart && <button className="word-button again-word" type="button" aria-label="Play again" onClick={onRestart}><PixelWord text="AGAIN" /></button>}
           {mode === "won" && onLevels && <button className="room-button" type="button" onClick={onLevels}>Levels</button>}

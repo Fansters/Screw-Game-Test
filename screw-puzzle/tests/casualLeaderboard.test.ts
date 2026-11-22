@@ -48,6 +48,9 @@ test("public board parsing accepts ties and rejects malformed or wrong-level res
   const e={rank:1,nickname:"Test Player",elapsed_ms:10000,extra_box_uses:0,find_match_uses:3,resumed:false,created_at:"2026-11-20T12:00:00Z",is_you:true};
   const b={board_id:casualBoardId("cottage"),open:true,players:2,entries:[e,{...e,nickname:"Friend",is_you:false}],personal:e};
   const parsed=parseCasualBoard(b,"cottage"); assert.equal(parsed.personal?.isYou,true); assert.deepEqual(parsed.entries.map(e=>e.rank),[1,1]);
+  const identity=parseCasualBoard({...b,entries:[{...e,avatar:"frog",country:"LV"},{...e,avatar:"https://bad.example",country:"INVALID"}]},"cottage");
+  assert.equal(identity.entries[0].avatar,"frog"); assert.equal(identity.entries[0].country,"LV");
+  assert.equal(identity.entries[1].avatar,"fox"); assert.equal(identity.entries[1].country,null);
   assert.throws(()=>parseCasualBoard(b,"zoo")); assert.throws(()=>parseCasualBoard({...b,entries:Array(11).fill(e)},"cottage"));
   assert.throws(()=>parseCasualBoard({...b,entries:[{...e,extra_box_uses:4}]},"cottage"));
 });
