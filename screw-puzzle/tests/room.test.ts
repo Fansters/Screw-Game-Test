@@ -13,8 +13,111 @@ import { ROOM_LEVEL_VERSION, ROOM_PHYSICS_DELAY_MS, ROOM_VERSION_MESSAGE } from 
 import { initPartPhysics } from "../src/scene/partPhysics.ts";
 import { LOOSE_LIFETIME_MS, loosePartPose, mergeLooseParts, SMOKE_DURATION_MS } from "../src/scene/loosePhysics.ts";
 import { freshAbilities, matchCandidates } from "../src/game/abilities.ts";
+import { boxOwner, reservedFor } from "../src/multiplayer/boxOwnership.ts";
 
 await initPartPhysics();
+
+test("standard box colours are reserved on the server, without spending a move, time or an ability", t => {
+  const { leader, guest, close } = fixture(245);
+  t.after(close);
+  const puzzle = generateSoloPuzzle("cottage", 245).state;
+  const opening = leader.state();
+  assert.equal(boxOwner(opening.players, 0)?.id, leader.seat().player);
+  assert.equal(boxOwner(opening.players, 1)?.id, guest.seat().player);
+  for (const [slot, owner, partner] of [[0, leader, guest], [1, guest, leader]] as const) {
+    const target = matchCandidates(puzzle).find(screw => screw.color === opening.game.boxes[slot]!.color)!;
+    assert.ok(target);
+    const before = owner.state();
+    partner.send({ type: "select", round: 0, screw: target.id });
+    assert.deepEqual(partner.notices.at(-1), { type: "rejected",
+      reason: `That colour belongs to Player ${slot + 1}. Ping it for your partner!`, screw: target.id });
+    assert.deepEqual(owner.state(), before);
+    partner.send({ type: "ping", round: 0, screw: target.id });
+    assert.equal(owner.notices.at(-1)?.type, "ping");
+    owner.send({ type: "select", round: 0, screw: target.id });
+    assert.ok(partner.state().game.removed.includes(target.id));
+    assert.equal(partner.state().game.tray.length, 0);
+    partner.send({ type: "select", round: 0, screw: target.id });
+    assert.equal(partner.state().game.removed.length, slot + 1);
+  }
+  assert.deepEqual(leader.state().players.map(p => p.collected), [1, 1]);
+});
+
+test("either player can collect other colours into the tray and fill the leader's shared bonus box", t => {
+  const { leader, guest, close } = fixture(1);
+  t.after(close);
+  const puzzle = generateSoloPuzzle("cottage", 1).state;
+  const available = puzzle.screws.filter(s => !s.obstructedBy?.length && !puzzle.boxes.some(b => b?.color === s.color));
+  const color = available.find(s => available.filter(other => other.color === s.color).length >= 3)!.color;
+  const targets = available.filter(s => s.color === color).slice(0, 3);
+  leader.send({ type: "select", round: 0, screw: targets[0].id });
+  guest.send({ type: "select", round: 0, screw: targets[1].id });
+  assert.equal(leader.state().game.tray.length, 2);
+  guest.send({ type: "boost", round: 0 });
+  assert.equal(guest.notices.at(-1)?.type, "rejected");
+  leader.send({ type: "boost", round: 0 });
+  const boosted = leader.state();
+  assert.equal(boosted.game.boxes[2]?.color, color);
+  assert.equal(boosted.game.boxes[2]?.screws.length, 2);
+  assert.equal(boosted.game.tray.length, 0);
+  for (const player of boosted.players) assert.equal(reservedFor(boosted.game, boosted.players, player.id, color), undefined);
+  guest.send({ type: "select", round: 0, screw: targets[2].id });
+  assert.equal(leader.state().game.boxes.length, 2);
+  assert.equal(leader.state().game.clearedCount, 3);
+  assert.deepEqual(leader.state().players.map(p => p.collected), [1, 2]);
+});
+
+test("reconnect retains the assigned side; a departing leader releases both boxes to the remaining player", t => {
+  const { leader, guest, room, makePeer, close } = fixture(245);
+  t.after(close);
+  const target = matchCandidates(generateSoloPuzzle("cottage", 245).state)
+    .find(s => s.color === leader.state().game.boxes[0]!.color)!;
+  const token = leader.seat().token;
+  leader.disconnect();
+  guest.send({ type: "select", round: 0, screw: target.id });
+  assert.equal(guest.state().game.removed.length, 0);
+  const refreshed = makePeer();
+  refreshed.send({ type: "join", room, token, levelVersion: ROOM_LEVEL_VERSION });
+  assert.equal(boxOwner(refreshed.state().players, 0)?.id, refreshed.seat().player);
+  guest.send({ type: "select", round: 0, screw: target.id });
+  assert.equal(guest.notices.at(-1)?.type, "rejected");
+  refreshed.send({ type: "leave" });
+  assert.equal(guest.state().leader, guest.seat().player);
+  assert.equal(boxOwner(guest.state().players, 0)?.number, 2);
+  assert.equal(boxOwner(guest.state().players, 1)?.number, 2);
+  guest.send({ type: "select", round: 0, screw: target.id });
+  assert.ok(guest.state().game.removed.includes(target.id));
+  const replacement = makePeer();
+  replacement.send({ type: "join", room, levelVersion: ROOM_LEVEL_VERSION });
+  assert.equal(boxOwner(guest.state().players, 0)?.id, replacement.seat().player);
+  assert.equal(boxOwner(guest.state().players, 1)?.id, guest.seat().player);
+  assert.equal(guest.state().paused, true);
+  assert.equal(guest.state().clockRunning, false);
+  replacement.send({ type: "ready", round: 0 });
+  assert.equal(guest.state().paused, false);
+  assert.equal(guest.state().clockRunning, true);
+});
+
+test("replacements reserve the new colour immediately, even before its collection animation finishes", t => {
+  const { leader, guest, advance, close } = fixture(245);
+  t.after(close);
+  const puzzle = generateSoloPuzzle("cottage", 245);
+  const initial = leader.state().game.boxes.map(box => box!.id);
+  let replaced = -1;
+  for (const screw of puzzle.solution) {
+    leader.collect({ type: "select", round: 0, screw });
+    advance(1800);
+    replaced = leader.state().game.boxes.findIndex((box, slot) => box && box.id !== initial[slot]);
+    if (replaced >= 0) break;
+  }
+  assert.ok(replaced >= 0);
+  const state = leader.state(), color = state.game.boxes[replaced]!.color;
+  const target = puzzle.state.screws.find(s => s.color === color && !state.game.removed.includes(s.id))!;
+  const partner = replaced === 0 ? guest : leader;
+  partner.send({ type: "select", round: 0, screw: target.id });
+  assert.equal(partner.notices.at(-1)?.type, "rejected");
+  assert.deepEqual(leader.state(), state);
+});
 
 test("co-op abilities are leader-controlled, shared, preserved on reconnect and cleared by round reset", (t) => {
   const { leader, guest, makePeer, room, advance, close } = fixture(245);
@@ -34,7 +137,7 @@ test("co-op abilities are leader-controlled, shared, preserved on reconnect and 
   guest.disconnect();
   const refreshed = makePeer(); refreshed.send({ type: "join", room, token, levelVersion: ROOM_LEVEL_VERSION });
   assert.deepEqual(refreshed.state().abilities, leader.state().abilities);
-  refreshed.send({ type: "select", round: 0, screw: target });
+  refreshed.collect({ type: "select", round: 0, screw: target });
   assert.equal(leader.state().abilities.hint, null);
   assert.equal(leader.state().abilities.finds, 2);
   leader.send({ type: "reset", round: 0 });
@@ -43,7 +146,7 @@ test("co-op abilities are leader-controlled, shared, preserved on reconnect and 
   assert.deepEqual(refreshed.state().abilities, freshAbilities());
   leader.send({ type: "ready", round: 1 }); refreshed.send({ type: "ready", round: 1 });
   for (const screw of generateSoloPuzzle("cottage", 245).solution) {
-    advance(1800); refreshed.send({ type: "select", round: 1, screw });
+    advance(1800); refreshed.collect({ type: "select", round: 1, screw });
     if (leader.state().game.clearedCount > 0) break;
   }
   assert.ok(leader.state().game.clearedCount > 0);
@@ -51,14 +154,27 @@ test("co-op abilities are leader-controlled, shared, preserved on reconnect and 
   assert.equal(refreshed.state().leader, refreshed.seat().player);
 });
 
-function fixture(seed?: number, level: LevelId = "cottage", start = true) {
+function fixture(seed = 245, level: LevelId = "cottage", start = true) {
   let time = 20_000;
-  const server = createRoomServer(() => time, seed === undefined ? undefined : () => seed);
+  const server = createRoomServer(() => time, () => seed);
+  const peers = new Map<string, { send: (notice: RoomNotice) => void; close: () => void }>();
   function makePeer() {
     const notices: RoomNotice[] = [];
-    const peer = { send: (notice: RoomNotice) => notices.push(notice), close: () => server.disconnect(peer) };
+    const peer = { send: (notice: RoomNotice) => {
+      notices.push(notice);
+      if (notice.type === "joined") peers.set(notice.player, peer);
+    }, close: () => server.disconnect(peer) };
     return {
       send: (command: RoomCommand) => server.receive(peer, command),
+      // Physics/solution tests delegate a move to its actual collector. Tests
+      // of permissions below use raw send(), including deliberate wrong seats.
+      collect: (command: Extract<RoomCommand, { type: "select" | "ping" }>) => {
+        const state = notices.findLast(notice => notice.type === "state")!.snapshot;
+        const actor = notices.findLast(notice => notice.type === "joined")!.player;
+        const index = soloLevelTemplate(state.level).findIndex(screw => screw.id === command.screw);
+        const owner = index < 0 ? undefined : reservedFor(state.game, state.players, actor, state.game.colors[index]);
+        server.receive(owner ? peers.get(owner.id)! : peer, command);
+      },
       notices,
       state: () => notices.findLast((notice) => notice.type === "state")!.snapshot,
       seat: () => notices.findLast((notice) => notice.type === "joined")!,
@@ -136,8 +252,8 @@ test("both seats finish the campsite with shared physics, pings, duplicate prote
   for (const [index, screw] of solution.entries()) {
     const peer = index % 2 ? guest : leader;
     const count = leader.state().game.removedParts.length;
-    peer.send({ type: "select", round: 0, screw });
-    (index % 2 ? leader : guest).send({ type: "select", round: 0, screw });
+    peer.collect({ type: "select", round: 0, screw });
+    (index % 2 ? leader : guest).collect({ type: "select", round: 0, screw });
     assert.equal(leader.state().game.removed.length, index + 1);
     assert.deepEqual(leader.state(), guest.state());
     const part = leader.state().game.removedParts[count];
@@ -166,7 +282,7 @@ test("both players finish the campsite and can select a different level afterwar
   assert.equal(leader.state().level, "campsite");
   const { solution } = generateSoloPuzzle("campsite", leader.state().seed);
   for (const [index, screw] of solution.entries()) {
-    (index % 2 ? guest : leader).send({ type: "select", round: 0, screw });
+    (index % 2 ? guest : leader).collect({ type: "select", round: 0, screw });
     assert.equal(guest.state().game.removed.length, index + 1, screw);
     advance(LOOSE_LIFETIME_MS + ROOM_PHYSICS_DELAY_MS + 10);
   }
@@ -186,9 +302,9 @@ test("both players use one puzzle, while only its leader can spend a lifeline or
   assert.equal(extra.notices.at(-1)?.type, "rejected");
   const state = leader.state();
   const screws = DEMO_LEVEL.filter((screw) => !screw.obstructedBy?.length).slice(0, 2);
-  leader.send({ type: "select", round: 0, screw: screws[0].id });
-  guest.send({ type: "select", round: 0, screw: screws[0].id });
-  guest.send({ type: "select", round: 0, screw: screws[1].id });
+  leader.collect({ type: "select", round: 0, screw: screws[0].id });
+  guest.collect({ type: "select", round: 0, screw: screws[0].id });
+  guest.collect({ type: "select", round: 0, screw: screws[1].id });
   assert.deepEqual(leader.state(), guest.state());
   assert.deepEqual(guest.state().game.removed, screws.map((screw) => screw.id));
   assert.deepEqual(guest.state().players.map(({ number, collected }) => [number, collected]), [[1, 1], [2, 1]]);
@@ -204,7 +320,7 @@ test("both players use one puzzle, while only its leader can spend a lifeline or
   assert.equal(guest.state().round, 1);
   assert.equal(guest.state().game.removed.length, 0);
   assert.deepEqual(guest.state().players.map(({ collected }) => collected), [0, 0]);
-  leader.send({ type: "select", round: 0, screw: screws[0].id });
+  leader.collect({ type: "select", round: 0, screw: screws[0].id });
   assert.equal(leader.state().game.removed.length, 0);
 });
 
@@ -215,29 +331,29 @@ test("a cover unlocks from a shared fall timestamp and pings go to the partner",
     screw.obstructedBy?.length === 1 && screw.obstructedBy[0] === "chimney-snow")!;
   guest.send({ type: "ping", round: 0, screw: snow.id });
   assert.deepEqual(leader.notices.at(-1), { type: "ping", round: 0, screw: snow.id, player: guest.seat().player });
-  guest.send({ type: "select", round: 0, screw: snow.id });
+  guest.collect({ type: "select", round: 0, screw: snow.id });
   const state = leader.state();
   assert.equal(guest.state().fallStarts["chimney-snow"], state.serverTime);
   assert.equal(guest.state().fallStarts["chimney-snow"], state.fallStarts["chimney-snow"]);
   advance(ROOM_PHYSICS_DELAY_MS / 2);
-  leader.send({ type: "select", round: 0, screw: chimney.id });
+  leader.collect({ type: "select", round: 0, screw: chimney.id });
   assert.equal(leader.notices.at(-1)?.type, "rejected");
   advance(450);
   guest.send({ type: "dismiss", round: 0, part: "chimney-snow" });
   advance(ROOM_PHYSICS_DELAY_MS);
-  leader.send({ type: "select", round: 0, screw: chimney.id });
+  leader.collect({ type: "select", round: 0, screw: chimney.id });
   assert.ok(guest.state().game.removed.includes(chimney.id));
 });
 
 test("refresh restores the seat and puzzle, then an expired leader hands off the same round", () => {
   const { leader, guest, room, makePeer, advance } = fixture();
   const screws = DEMO_LEVEL.filter((screw) => !screw.obstructedBy?.length).slice(0, 2);
-  leader.send({ type: "select", round: 0, screw: screws[0].id });
+  leader.collect({ type: "select", round: 0, screw: screws[0].id });
   advance(500);
   leader.disconnect();
   assert.equal(guest.state().paused, true);
   assert.equal(guest.state().clockRunning, false);
-  guest.send({ type: "select", round: 0, screw: screws[1].id });
+  guest.collect({ type: "select", round: 0, screw: screws[1].id });
   assert.equal(guest.state().game.removed.length, 1);
   advance(2000);
   const refreshed = makePeer();
@@ -252,7 +368,7 @@ test("refresh restores the seat and puzzle, then an expired leader hands off the
   advance(RECONNECT_MS);
   assert.equal(guest.state().leader, guest.seat().player);
   assert.equal(guest.state().paused, false);
-  guest.send({ type: "select", round: 0, screw: screws[1].id });
+  guest.collect({ type: "select", round: 0, screw: screws[1].id });
   assert.equal(guest.state().game.removed.length, 2);
   assert.deepEqual(guest.state().players.map(({ number, collected }) => [number, collected]), [[2, 1]]);
   guest.send({ type: "reset", round: 0 });
@@ -265,7 +381,7 @@ test("both seats can finish the same seeded cottage", () => {
   for (const [index, screw] of solution.entries()) {
     const peer = index % 2 ? guest : leader;
     const count = leader.state().game.removedParts.length;
-    peer.send({ type: "select", round: 0, screw });
+    peer.collect({ type: "select", round: 0, screw });
     advance(ROOM_PHYSICS_DELAY_MS + FALL_DURATION_MS);
     const part = leader.state().game.removedParts[count];
     if (part) peer.send({ type: "dismiss", round: 0, part });
@@ -287,7 +403,7 @@ test("rapid moves from both seats replay the third screw before completing and r
   for (const [index, screw] of solution.entries()) {
     const peer = index % 2 ? guest : leader;
     const count = leader.state().game.removedParts.length;
-    peer.send({ type: "select", round: 0, screw });
+    peer.collect({ type: "select", round: 0, screw });
     advance(ROOM_PHYSICS_DELAY_MS + FALL_DURATION_MS);
     const notice = leader.notices.at(-1)!;
     assert.deepEqual(notice, guest.notices.at(-1));
@@ -335,7 +451,7 @@ test("both browsers receive the filled lifeline for animation when opening compl
   assert.ok(color);
   const waiting = available.filter((screw) => screw.color === color).slice(0, 3);
   assert.equal(waiting.length, 3);
-  for (const screw of waiting) guest.send({ type: "select", round: 0, screw: screw.id });
+  for (const screw of waiting) guest.collect({ type: "select", round: 0, screw: screw.id });
   leader.send({ type: "boost", round: 0 });
   for (const peer of [leader, guest]) {
     const notice = peer.notices.findLast((notice) => notice.type === "state")!;
@@ -353,7 +469,7 @@ test("both seats see the same loose lantern and one shared poof", () => {
   const screw = DEMO_LEVEL.find((screw) => screw.attachedTo === part)!;
   guest.send({ type: "dismiss", round: 0, part });
   assert.deepEqual(leader.state().looseParts, {});
-  leader.send({ type: "select", round: 0, screw: screw.id });
+  leader.collect({ type: "select", round: 0, screw: screw.id });
   const motion = leader.state().looseParts[part]!;
   assert.equal(motion.releasedAt, leader.state().serverTime);
   guest.send({ type: "dismiss", round: 0, part });
@@ -375,7 +491,7 @@ test("both seats interpolate the same compact pose stream, including after a rec
   const part = "roof-bauble";
   const screw = DEMO_LEVEL.find((candidate) => candidate.attachedTo === part)!;
   const invite = guest.seat();
-  leader.send({ type: "select", round: 0, screw: screw.id });
+  leader.collect({ type: "select", round: 0, screw: screw.id });
   const { looseParts, serverTime } = leader.state();
   const releasedAt = serverTime;
   assert.equal(looseParts[part]?.releasedAt, releasedAt);
@@ -422,15 +538,15 @@ test("reset restarts in place, waits for both scenes, and rejects old round inpu
   assert.equal(guest.state().lifelines, 3);
   assert.equal(guest.state().elapsedMs, 0);
   const first = generateSoloPuzzle("campsite", leader.state().seed).solution[0];
-  leader.send({ type: "select", round: 0, screw: first });
-  leader.send({ type: "select", round: 1, screw: first });
+  leader.collect({ type: "select", round: 0, screw: first });
+  leader.collect({ type: "select", round: 1, screw: first });
   assert.equal(guest.state().game.removed.length, 0);
   leader.send({ type: "ready", round: 1 });
-  leader.send({ type: "select", round: 1, screw: first });
+  leader.collect({ type: "select", round: 1, screw: first });
   assert.equal(guest.state().game.removed.length, 0);
   guest.send({ type: "ready", round: 1 });
   assert.equal(guest.state().paused, false);
-  guest.send({ type: "select", round: 1, screw: first });
+  guest.collect({ type: "select", round: 1, screw: first });
   assert.equal(guest.state().game.removed.length, 1);
   assert.deepEqual(leader.state(), guest.state());
 });
@@ -458,7 +574,7 @@ test("both seats select, refresh, solve and restart Route 66 with one shared lev
   refreshed.send({ type: "join", room, token, levelVersion: ROOM_LEVEL_VERSION });
   assert.equal(refreshed.state().level, "desert");
   for (const [index, screw] of solution.entries()) {
-    (index % 2 ? refreshed : leader).send({ type: "select", round: 0, screw });
+    (index % 2 ? refreshed : leader).collect({ type: "select", round: 0, screw });
     assert.equal(leader.state().game.removed.length, index + 1, screw);
     assert.deepEqual(leader.state(), refreshed.state());
     advance(LOOSE_LIFETIME_MS + ROOM_PHYSICS_DELAY_MS + 10);
@@ -484,7 +600,7 @@ test("both seats select, refresh, solve and restart Construction Crew with one s
   refreshed.send({ type: "join", room, token, levelVersion: ROOM_LEVEL_VERSION });
   assert.equal(refreshed.state().level, "construction");
   for (const [index, screw] of solution.entries()) {
-    (index % 2 ? refreshed : leader).send({ type: "select", round: 0, screw });
+    (index % 2 ? refreshed : leader).collect({ type: "select", round: 0, screw });
     assert.equal(leader.state().game.removed.length, index + 1, screw);
     assert.deepEqual(leader.state(), refreshed.state());
     advance(LOOSE_LIFETIME_MS + ROOM_PHYSICS_DELAY_MS + 10);
@@ -510,7 +626,7 @@ test("both seats select, refresh, solve and restart Carnival Fairground with one
   refreshed.send({ type: "join", room, token, levelVersion: ROOM_LEVEL_VERSION });
   assert.equal(refreshed.state().level, "carnival");
   for (const [index, screw] of solution.entries()) {
-    (index % 2 ? refreshed : leader).send({ type: "select", round: 0, screw });
+    (index % 2 ? refreshed : leader).collect({ type: "select", round: 0, screw });
     assert.equal(leader.state().game.removed.length, index + 1, screw);
     assert.deepEqual(leader.state(), refreshed.state());
     advance(LOOSE_LIFETIME_MS + ROOM_PHYSICS_DELAY_MS + 10);
@@ -536,7 +652,7 @@ test("both seats select, refresh, solve and restart Zoo Adventure Park with one 
   refreshed.send({ type: "join", room, token, levelVersion: ROOM_LEVEL_VERSION });
   assert.equal(refreshed.state().level, "zoo");
   for (const [index, screw] of solution.entries()) {
-    (index % 2 ? refreshed : leader).send({ type: "select", round: 0, screw });
+    (index % 2 ? refreshed : leader).collect({ type: "select", round: 0, screw });
     assert.equal(leader.state().game.removed.length, index + 1, screw);
     assert.deepEqual(leader.state(), refreshed.state());
     advance(LOOSE_LIFETIME_MS + ROOM_PHYSICS_DELAY_MS + 10);
@@ -561,7 +677,7 @@ test("both seats select, refresh, solve and restart Royal Castle Courtyard with 
   refreshed.send({ type: "join", room, token, levelVersion: ROOM_LEVEL_VERSION });
   assert.equal(refreshed.state().level, "castle");
   for (const [index, screw] of solution.entries()) {
-    (index % 2 ? refreshed : leader).send({ type: "select", round: 0, screw });
+    (index % 2 ? refreshed : leader).collect({ type: "select", round: 0, screw });
     assert.equal(leader.state().game.removed.length, index + 1, screw);
     assert.deepEqual(leader.state(), refreshed.state());
     advance(LOOSE_LIFETIME_MS + ROOM_PHYSICS_DELAY_MS + 10);
@@ -597,7 +713,7 @@ test("both seats select, refresh, solve and restart Arctic Expedition with one s
   refreshed.send({ type: "join", room, token, levelVersion: ROOM_LEVEL_VERSION });
   assert.equal(refreshed.state().level, "arctic");
   for (const [index, screw] of solution.entries()) {
-    (index % 2 ? refreshed : leader).send({ type: "select", round: 0, screw });
+    (index % 2 ? refreshed : leader).collect({ type: "select", round: 0, screw });
     assert.equal(leader.state().game.removed.length, index + 1, screw);
     assert.deepEqual(leader.state(), refreshed.state());
     advance(LOOSE_LIFETIME_MS + ROOM_PHYSICS_DELAY_MS + 10);

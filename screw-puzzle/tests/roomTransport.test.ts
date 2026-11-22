@@ -20,6 +20,10 @@ test("WebSocket input accepts screw actions for every playable level and rejects
 });
 
 for (const level of ["castle", "arctic"] as const) test(`real ${level} WebSocket guests can remove and ping screws without being disconnected`, { timeout: 30_000 }, async t => {
+  // Build the Node fixtures before opening sockets. A synchronous geometry
+  // import here used to block this test client's automatic heartbeat replies.
+  await import("../src/game/allLevels.ts");
+  const { generateSoloPuzzle } = await import("../src/game/soloLevels.ts");
   const child = spawn(process.execPath, ["server/index.ts"], {
     cwd: new URL("..", import.meta.url), windowsHide: true,
     env: { ...process.env, PORT: "0", ROOM_ORIGINS: "" }, stdio: ["ignore", "pipe", "pipe"],
@@ -73,14 +77,21 @@ for (const level of ["castle", "arctic"] as const) test(`real ${level} WebSocket
   await host.wait(n => n.type === "state" && n.snapshot.canStart);
   host.send({ type: "start", round: 0 });
   await guest.wait(n => n.type === "state" && n.snapshot.started && !n.snapshot.paused);
-  await import("../src/game/allLevels.ts");
-  const { generateSoloPuzzle } = await import("../src/game/soloLevels.ts");
-  const screw = generateSoloPuzzle(level, joined.snapshot.seed).solution[0];
+  const puzzle = generateSoloPuzzle(level, joined.snapshot.seed);
+  const screw = puzzle.solution[0];
   host.send({ type: "ping", round: 0, screw });
   await guest.wait(n => n.type === "ping" && n.screw === screw);
   host.send({ type: "find", round: 0, screw });
   await host.wait(n => n.type === "state" && n.snapshot.abilities.finds === 2);
-  guest.send({ type: "select", round: 0, screw });
+  const color = puzzle.state.screws.find(s => s.id === screw)!.color;
+  const slot = puzzle.state.boxes.findIndex(box => box?.color === color);
+  const collector = slot === 0 ? host : guest, partner = slot === 0 ? guest : host;
+  if (slot >= 0) {
+    partner.send({ type: "select", round: 0, screw });
+    const rejected = await partner.wait(n => n.type === "rejected" && n.screw === screw);
+    assert.ok(rejected.type === "rejected" && rejected.reason.includes("belongs to Player"));
+  }
+  collector.send({ type: "select", round: 0, screw });
   for (const client of [host, guest]) {
     const accepted = await client.wait(n => n.type === "state" && n.snapshot.game.removed.includes(screw));
     assert.equal(accepted.type, "state");

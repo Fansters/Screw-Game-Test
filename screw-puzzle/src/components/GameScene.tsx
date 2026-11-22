@@ -34,7 +34,7 @@ type GameSceneProps = { logical: GameState; fallingParts: PartId[]; round: numbe
   onLooseDismiss: (part: PartId) => void;
   pingMode?: boolean; pingScrew?: Screw; pingSequence?: number; onScrewPing?: (id: string) => void;
   rejectedScrew?: { screw: string; sequence: number } | null;
-  hint?: string | null; hintControlsRef?: MutableRefObject<HintControls>;
+  hint?: string | null; hintControlsRef?: MutableRefObject<HintControls>; hintCollector?: string;
   view: CameraView; onCameraArrive: (view: CameraView, round: number) => void;
   onReady: (round: number) => void;
   onFallFinished: (part: PartId, round: number) => void;
@@ -286,7 +286,7 @@ export default function GameScene(props: GameSceneProps) {
       <Suspense fallback={null}><SceneContents {...props} outlinedPart={activePreview?.part} onPreview={setPreview} hintMarkerRef={hintMarkerRef} /></Suspense>
     </Canvas>
     <div ref={hintMarkerRef} hidden className="match-hint-marker" aria-hidden="true"><span className="hint-ring" /><span className="hint-pointer">▼</span><span className="hint-edge">➜</span></div>
-    {hinted && <div className="hint-action"><span role="status">{hintWaiting === hinted.id ? "Parts settling… try again" : `${SCREW_COLORS[hinted.color].label} match found`}</span>
+    {hinted && <div className="hint-action"><span role="status">{hintWaiting === hinted.id ? "Parts settling… try again" : `${props.hintCollector ? `${props.hintCollector} · ` : ""}${SCREW_COLORS[hinted.color].label} match found`}</span>
       <button className="room-button" onClick={() => setHintWaiting(props.hintControlsRef?.current.show() ? null : hinted.id)}>Show me</button></div>}
     {activePreview && <output className="part-preview" style={{
       left: `clamp(115px, ${activePreview.x}px, calc(100vw - 115px))`, top: Math.max(72, activePreview.y - 24),

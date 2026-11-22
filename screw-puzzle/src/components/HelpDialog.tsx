@@ -41,6 +41,7 @@ export default function HelpDialog({ dialogRef }: { dialogRef: RefObject<HTMLDia
       <div className="help-tips">
         <HelpTip icon="match" title="Match and clear">
           Match {MATCH_SIZE} of a color and clear every screw to win. If all {TRAY_CAPACITY} waiting slots stay full, the round ends.
+          {" "}Co-op: P1 owns the left box, P2 the right. Leave your partner’s colour to them; waiting slots and the bonus box are shared.
         </HelpTip>
         <HelpTip icon="lifeline" title="Call in a lifeline">
           Tap lightning to open an extra box until it fills. You have {LIFELINE_COUNT} lifelines per round.

@@ -35,7 +35,7 @@ export function useRoom() {
   const [playback, dispatchPlayback] = useReducer(collectionPlayback, emptyPlayback);
   const [completedLifeline, setCompletedLifeline] = useState<{ round: number; box: MatchBox } | null>(null);
   const [ping, setPing] = useState<{ round: number; screw: string; sequence: number; own: boolean } | null>(null);
-  const [blocked, setBlocked] = useState<{ screw: string; sequence: number } | null>(null);
+  const [blocked, setBlocked] = useState<{ screw: string; sequence: number; reason: string; round: number } | null>(null);
   const [clockOffset, setClockOffset] = useState(0);
   const [latency, setLatency] = useState<{ ms: number; at: number } | null>(null);
   const socket = useRef<WebSocket | null>(null);
@@ -154,7 +154,8 @@ export function useRoom() {
         } else if (notice.type === "ping") {
           showPing(notice.round, notice.screw, false);
         } else if (notice.screw) {
-          setBlocked((previous) => ({ screw: notice.screw!, sequence: (previous?.sequence ?? 0) + 1 }));
+          setBlocked((previous) => ({ screw: notice.screw!, sequence: (previous?.sequence ?? 0) + 1,
+            reason: notice.reason, round: physicsRound ?? -1 }));
         } else {
           setError(notice.reason);
           if (ws === socket.current && !activeRoom.current) {

@@ -23,6 +23,7 @@ import type { LevelId, PartId } from "../game/types";
 import type { CameraView } from "../scene/camera";
 import { useRoom } from "./useRoom";
 import { ROOM_PHYSICS_DELAY_MS } from "./protocol";
+import { boxOwner } from "./boxOwnership";
 
 const wallClock = { now: Date.now };
 
@@ -47,6 +48,7 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
   const [levelsOpen, setLevelsOpen] = useState(false);
   const [pingScene, setPingScene] = useState<string | null>(null);
   const [expiredPing, setExpiredPing] = useState(0);
+  const [expiredBlock, setExpiredBlock] = useState(0);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "manual">("idle");
   const [finished, setFinished] = useState<{ scene: string; parts: PartId[] }>();
   const [abilityMessage, setAbilityMessage] = useState("");
@@ -109,6 +111,12 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
   }, [frame, play]);
   useEffect(() => { if (room.blocked) play("blocked"); }, [room.blocked, play]);
   useEffect(() => {
+    if (!room.blocked) return;
+    const sequence = room.blocked.sequence;
+    const timer = window.setTimeout(() => setExpiredBlock(sequence), 3600);
+    return () => window.clearTimeout(timer);
+  }, [room.blocked]);
+  useEffect(() => {
     if (!room.ping) return;
     const sequence = room.ping.sequence;
     const timer = window.setTimeout(() => setExpiredPing(sequence), 4800);
@@ -158,6 +166,14 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
   const sampledAt = (snapshot?.serverTime ?? 0) - clockOffset;
   const completedLifeline = room.completedLifeline?.round === round ? room.completedLifeline.box : undefined;
   const revealed = Boolean(game && localReady && cameraReady);
+  const owners = snapshot ? [0, 1, 2].map(slot => {
+    const owner = boxOwner(snapshot.players, slot);
+    return owner ? owner.id === player ? `P${owner.number} · You` : `P${owner.number}` : "Shared";
+  }) : undefined;
+  const hintColor = game?.screws.find(screw => screw.id === snapshot?.abilities.hint)?.color;
+  const hintSlot = hintColor ? game?.boxes.findIndex(box => box?.color === hintColor) : undefined;
+  const hintOwner = snapshot && hintSlot !== undefined && hintSlot >= 0 ? boxOwner(snapshot.players, hintSlot) : undefined;
+  const blockNotice = room.blocked?.round === round && room.blocked.sequence !== expiredBlock ? room.blocked.reason : null;
   return <div className={`game-layout online-layout${revealed ? " level-revealed" : ""}`} onContextMenu={(event) => event.preventDefault()}>
     {snapshot && <ConnectionStatus connected={connected} sample={room.latency} />}
     {!game && <HomeScene />}
@@ -168,13 +184,15 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
       onlineParts={onlineParts} looseNow={looseNow} onLooseDismiss={(part) => send({ type: "dismiss", round, part })}
       view={view} playable={playable} orbitable={orbitable} onCameraArrive={cameraArrived} onReady={sceneReady}
       onFallFinished={finishFall} onScrewSelect={select} onBlockedScrew={() => play("blocked")} projectorRef={project}
-      pingMode={pingMode} pingScrew={pingScrew} pingSequence={room.ping?.sequence} rejectedScrew={room.blocked}
+      pingMode={pingMode} pingScrew={pingScrew} pingSequence={room.ping?.sequence} rejectedScrew={room.blocked?.round === round ? room.blocked : null}
       hint={snapshot?.abilities.hint} hintControlsRef={hintControlsRef}
+      hintCollector={hintOwner ? hintOwner.id === player ? "Your match" : `Player ${hintOwner.number}'s match` : "Shared match"}
       onScrewPing={(screw) => { if (room.pingScrew(round, screw)) setPingScene(null); }} />}
     {!started && <section className="room-lobby" aria-label="Two-player room">
       <h2>Two-player room</h2>
       {snapshot ? <>
         <p className="room-level">{levelTitle}</p>
+        <p className="room-rules">P1 takes the left box. P2 takes the right. Other colours wait in the shared slots; the extra box is shared too.</p>
         <p role="status">{snapshot.players.filter((seat) => seat.connected).length} / 2 connected
           {connected ? leader ? " · You’re the leader" : " · Guest" : " · Reconnecting…"}</p>
         {leader && <button className="room-button" onClick={() => void copyInvite()}>{copyState === "copied" ? "Link copied" : "Copy invite link"}</button>}
@@ -196,7 +214,7 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
       </span>
       {cameraReady && <>
         <GameUI game={frame?.game ?? game} frame={frame} waitingCount={game.tray.length}
-          completedLifeline={completedLifeline} />
+          completedLifeline={completedLifeline} owners={owners} />
         <GameBar key={scene} level={level} lifelines={snapshot.lifelines} shared
           progress={<GameTimer clock={wallClock} startedAt={sampledAt - snapshot.elapsedMs}
             stoppedAt={snapshot.clockRunning ? room.disconnectedAt : sampledAt} removed={removed} total={game.screws.length} />}
@@ -227,8 +245,8 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
         onStart={start} onRestart={leader && connected ? () => setConfirmation("reset") : undefined}
         onLevels={leader && connected ? () => { reset(true); setLevelsOpen(true); } : undefined} />
     </>}
-    {pingScrew && <span className="room-ping" role="status">{room.ping?.own ? "You" : "Your partner"} pinged a {pingScrew.color} screw</span>}
-    {started && room.error && <span className="room-ping" role="status">{room.error}</span>}
+    {pingScrew && !room.error && !blockNotice && <span className="room-ping" role="status">{room.ping?.own ? "You" : "Your partner"} pinged a {pingScrew.color} screw</span>}
+    {started && (room.error || blockNotice) && <span className="room-ping" role="status">{room.error || blockNotice}</span>}
     {confirmation && (confirmation === "leave" || leader) && <ResetDialog action={confirmation} shared
       onCancel={() => setConfirmation(null)} onConfirm={() => confirmation === "leave" ? leave() : reset()}
       onLevels={confirmation === "leave" ? () => leave(true) : undefined} />}

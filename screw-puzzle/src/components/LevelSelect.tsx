@@ -5,7 +5,6 @@ import type { LevelId } from "../game/campaign";
 import { LEVEL_PRESENTATION, savedScrewCount } from "../game/levelPresentation";
 import { readSoloSave } from "../game/soloSave";
 
-const horizontalQuery = "(min-width: 700px) and (min-height: 500px)";
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const arrow = <path d="m19 6-9 10 9 10" />;
 const people = <><circle cx="12" cy="11" r="4" /><path d="M4 27v-3a8 8 0 0 1 16 0v3m2-20a4 4 0 0 1 0 8m2 4a7 7 0 0 1 4 6" /></>;
@@ -29,14 +28,13 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
     element?.showModal();
     function nearestCard() {
       if (!list) return 0;
-      const horizontal = window.matchMedia(horizontalQuery).matches;
       const box = list.getBoundingClientRect();
-      const center = horizontal ? box.left + box.width / 2 : box.top + box.height / 2;
+      const center = box.left + box.width / 2;
       let closest = 0, distance = Infinity;
       cards.current.forEach((card, index) => {
         if (!card) return;
         const bounds = card.getBoundingClientRect();
-        const next = Math.abs((horizontal ? bounds.left + bounds.width / 2 : bounds.top + bounds.height / 2) - center);
+        const next = Math.abs(bounds.left + bounds.width / 2 - center);
         if (next < distance) { closest = index; distance = next; }
       });
       return closest;
@@ -62,9 +60,8 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
       const index = nearestCard(), card = cards.current[index];
       if (!card) return;
       const bounds = card.getBoundingClientRect(), viewport = list.getBoundingClientRect();
-      const horizontal = window.matchMedia(horizontalQuery).matches;
-      const left = horizontal ? list.scrollLeft + bounds.left + bounds.width / 2 - viewport.left - viewport.width / 2 : 0;
-      const top = horizontal ? 0 : list.scrollTop + bounds.top - viewport.top - 15;
+      const left = list.scrollLeft + bounds.left + bounds.width / 2 - viewport.left - viewport.width / 2;
+      const top = 0;
       settling = true; navigation.current = index; setActive(index);
       // Keep native snap disabled until this animation finishes. Restoring it
       // on mouse-up makes Chromium immediately jump to a mandatory snap point.
@@ -84,7 +81,7 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
       }
     }
     function wheel(event: WheelEvent) {
-      if (!list || !window.matchMedia(horizontalQuery).matches || event.ctrlKey) return;
+      if (!list || event.ctrlKey) return;
       if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) {
         if (settling) stopSettling.current();
         return;
@@ -112,12 +109,10 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
     function move(event: PointerEvent) {
       if (!list || !drag || event.pointerId !== drag.pointer) return;
       if (event.buttons === 0) { up(event); return; }
-      const horizontal = window.matchMedia(horizontalQuery).matches;
-      const delta = horizontal ? event.clientX - drag.x : event.clientY - drag.y;
+      const delta = event.clientX - drag.x;
       if (!drag.moved && Math.abs(delta) < 7) return;
       drag.moved = true; list.setPointerCapture(event.pointerId); list.style.scrollSnapType = "none"; list.dataset.dragging = "true";
-      if (horizontal) list.scrollLeft = drag.left - delta;
-      else list.scrollTop = drag.top - delta;
+      list.scrollLeft = drag.left - delta;
       event.preventDefault();
     }
     function up(event: PointerEvent) {
@@ -158,16 +153,14 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
       // the gallery, rather than scrolling the dialog or page ancestors.
       list.scrollTo({ left: list.scrollLeft, top: list.scrollTop, behavior: "instant" });
       const bounds = card.getBoundingClientRect(), viewport = list.getBoundingClientRect();
-      const horizontal = window.matchMedia(horizontalQuery).matches;
       navigation.current = next;
-      list.scrollTo({ left: horizontal ? list.scrollLeft + bounds.left + bounds.width / 2 - viewport.left - viewport.width / 2 : 0,
-        top: horizontal ? 0 : list.scrollTop + bounds.top - viewport.top - 15, behavior: reducedMotion() ? "instant" : "smooth" });
+      list.scrollTo({ left: list.scrollLeft + bounds.left + bounds.width / 2 - viewport.left - viewport.width / 2,
+        top: 0, behavior: reducedMotion() ? "instant" : "smooth" });
     }
     if (keyboard) card?.querySelector<HTMLButtonElement>("[data-level-preview]")?.focus({ preventScroll: true });
   }
   function keyNavigate(event: KeyboardEvent) {
-    const horizontal = window.matchMedia(horizontalQuery).matches;
-    const backwards = horizontal ? "ArrowLeft" : "ArrowUp", forwards = horizontal ? "ArrowRight" : "ArrowDown";
+    const backwards = "ArrowLeft", forwards = "ArrowRight";
     if (event.key !== backwards && event.key !== forwards && event.key !== "Home" && event.key !== "End") return;
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     event.preventDefault();

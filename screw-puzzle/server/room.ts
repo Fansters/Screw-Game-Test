@@ -14,6 +14,7 @@ import type { PartPhysics } from "../src/scene/partPhysics.ts";
 import { SCREW_SCALE } from "../src/game/screwScale.ts";
 import { freshAbilities, matchCandidates, settleAbilities } from "../src/game/abilities.ts";
 import type { AbilityState } from "../src/game/abilities.ts";
+import { reservedFor } from "../src/multiplayer/boxOwnership.ts";
 
 export const RECONNECT_MS = 30_000;
 const newSeed = () => randomInt(0, 2 ** 32);
@@ -111,7 +112,8 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     seat.reconnectBy = null;
     memberships.set(peer, { room, seat });
     previous?.close();
-    resumeClock(room);
+    if (paused(room)) stopClock(room, now());
+    else resumeClock(room);
     peer.send({ type: "joined", player: seat.id, token: seat.token, snapshot: snapshot(room, now()) });
     publish(room);
   }
@@ -205,6 +207,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     if (command.type === "ready") {
       if (!seat.ready) {
         seat.ready = true;
+        resumeClock(room);
         publish(room);
       }
       return;
@@ -272,6 +275,8 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
 
     const screw = room.game.screws.find((entry) => entry.id === command.screw);
     if (!screw || screw.removed) return;
+    const owner = reservedFor(room.game, room.seats, seat.id, screw.color);
+    if (owner) return reject(peer, `That colour belongs to Player ${owner.number}. Ping it for your partner!`, screw.id);
     room.physics?.advance(time);
     if (!isScrewAccessible(room.game, screw) ||
         findLooseBlocker(room.physics?.read() ?? {}, screw, SCREW_SCALE, time - ROOM_PHYSICS_DELAY_MS)) {
