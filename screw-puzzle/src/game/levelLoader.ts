@@ -34,6 +34,10 @@ async function build(level: LevelId, stage: (value: LoadStage) => void) {
       const [m,a] = await Promise.all([import("../scene/castleModel.ts"),import("../scene/castleAudit.ts")]);
       stage("Building geometry"); installLevel(level,m.createCastleModel(),{blockers:a.CASTLE_BLOCKERS,exposed:a.CASTLE_EXPOSED_IDS}); return;
     }
+    case "oasis": {
+      const [m,a] = await Promise.all([import("../scene/oasisModel.ts"),import("../scene/oasisAudit.ts")]);
+      stage("Building geometry"); installLevel(level,m.createOasisModel(),{blockers:a.OASIS_BLOCKERS,exposed:a.OASIS_EXPOSED_IDS}); return;
+    }
     case "arctic": {
       const [m,a] = await Promise.all([import("../scene/arcticModel.ts"),import("../scene/arcticAudit.ts")]);
       stage("Building geometry"); installLevel(level,m.createArcticModel(),{blockers:a.ARCTIC_BLOCKERS,exposed:a.ARCTIC_EXPOSED_IDS}); return;

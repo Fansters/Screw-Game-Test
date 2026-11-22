@@ -12,6 +12,8 @@ test("casual results validate current layouts, integer time and ability metadata
   assert.ok(isCasualFinish({...f,level:"castle",boardId:casualBoardId("castle"),screwCount:225}));
   const arctic = {...f,level:"arctic",boardId:casualBoardId("arctic"),screwCount:150};
   assert.ok(isCasualFinish(arctic));
+  assert.ok(isCasualFinish({...f,level:"oasis",boardId:casualBoardId("oasis"),screwCount:198}));
+  assert.equal(isCasualFinish({...f,level:"oasis",boardId:casualBoardId("oasis"),screwCount:195}),false);
   assert.equal(isCasualFinish({...arctic,screwCount:153}),false);
   assert.equal(isCasualFinish({...arctic,screwCount:225}),false);
   assert.throws(() => casualBoardId("titanic"));

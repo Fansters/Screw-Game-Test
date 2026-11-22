@@ -25,18 +25,18 @@ Select Arctic Expedition in solo and co-op and confirm Level 8 / 150 screws. On 
 ## Test 1: ordinary guest
 
 1. Open a private window without signing in. Start/resume a solo level.
-2. Open Leaderboard on Home: it is readable without sign-in, with all eight levels. Inside a level, only that level’s board is available; there is no selector.
+2. Open Leaderboard on Home: it is readable without sign-in, with all nine levels. Inside a level, only that level’s board is available; there is no selector.
 3. Finish a level. Its elapsed time should be shown above the current level’s public board, with a guest explanation and no score upload or device leaderboard.
 4. Sign in afterward. That earlier guest win must not be published.
 5. Refresh a playing level: it should reopen the same level and offer/resume its saved progress.
 
 ## Castle release checks (0.1.32)
 
-1. Confirm all eight cards appear in solo and room creation, including Royal Castle Courtyard with 225 screws and its actual scene preview.
+1. Confirm all nine cards appear in solo and room creation, including Royal Castle Courtyard with 225 screws and its actual scene preview.
 2. Select the castle on a real phone/tablet. Check loading, orbit/zoom and side/inside screw picking; measure responsiveness with the requested high-detail geometry.
 3. Remove a few screws, exit Home, then resume. Check the same seed/progress, elapsed time and ability charges return. Revisit other levels after leaving the castle to look for accumulating memory or slowdowns.
 4. Create a castle room and invite a friend on another device. Both must load before Start together. Check simultaneous moves, matching boxes, object release, reset and reconnect.
-5. Finish a real solo castle run while signed into Google. The current-level board should show your best after upload; Home should offer all eight boards. Do not add fabricated test scores to production.
+5. Finish a real solo castle run while signed into Google. The current-level board should show your best after upload; Home should offer all nine boards. Do not add fabricated test scores to production.
 6. Optionally finish separate runs on two devices with the same account. The faster time should remain the public best regardless of upload order. Unfinished checkpoints remain device-local; avoid simultaneous same-level tabs in one browser.
 
 ## Test 2: Google and a real online result

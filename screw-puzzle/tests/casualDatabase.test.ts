@@ -69,6 +69,11 @@ test("casual PostgreSQL endpoint enforces Google ownership, immutable retries, p
   await submit(2,{...payload(600,150000),board_id:castle,screw_count:225});
   await assert.rejects(submit(2,{...payload(600,1000),board_id:castle,screw_count:225}),/finish_conflict/);
   await assert.rejects(submit(2,{...payload(603),board_id:castle,screw_count:222}));
+  const oasis="oasis:layout-1:casual-1";
+  await submit(2,{...payload(620,100000),board_id:oasis,screw_count:198});
+  const oasisBoard=(await role<{b:Board}>("authenticated",uuid(2),"select public.get_casual_leaderboard($1) b",[oasis])).rows[0].b;
+  assert.equal(oasisBoard.entries[0].elapsed_ms,100000);
+  await assert.rejects(submit(2,{...payload(621),board_id:oasis,screw_count:195}),/invalid_finish/);
   const arctic="arctic:layout-1:casual-1";
   await submit(2,{...payload(610,90000),board_id:arctic,screw_count:150});
   const arcticBoard=(await role<{b:Board}>("authenticated",uuid(2),"select public.get_casual_leaderboard($1) b",[arctic])).rows[0].b;

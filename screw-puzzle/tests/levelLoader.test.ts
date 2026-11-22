@@ -64,3 +64,13 @@ test("arctic geometry loads on demand and is released before rebuilding",async()
   const next=await acquireLevel("arctic");assert.notEqual(LEVEL_MODELS.arctic,model);assert.deepEqual(levelData("arctic").template,template);
   next.release();await delay(750);assert.deepEqual(loadedLevelIds(),[]);
 });
+
+test("oasis geometry loads on demand and is released before rebuilding",async()=>{
+  const lease=await acquireLevel("oasis"),model=LEVEL_MODELS.oasis;
+  const geometry=new Set(model.pieces.flatMap(piece=>piece.geometry?[piece.geometry]:[]));let disposed=0;
+  geometry.forEach(g=>g.addEventListener("dispose",()=>disposed++));
+  const template=levelData("oasis").template;assert.equal(template.length,198);
+  lease.release();await delay(750);assert.equal(LEVEL_MODELS.oasis,undefined);assert.equal(disposed,geometry.size);
+  const next=await acquireLevel("oasis");assert.notEqual(LEVEL_MODELS.oasis,model);assert.deepEqual(levelData("oasis").template,template);
+  next.release();await delay(750);assert.deepEqual(loadedLevelIds(),[]);
+});

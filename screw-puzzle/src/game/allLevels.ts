@@ -54,3 +54,8 @@ const castle=createCastleModel(); installLevel("castle",castle,{blockers:CASTLE_
 export const CASTLE_MODEL=castle.model, CASTLE_MOUNTS=castle.mounts;
 const arctic=createArcticModel(); installLevel("arctic",arctic,{blockers:ARCTIC_BLOCKERS,exposed:ARCTIC_EXPOSED_IDS});
 export const ARCTIC_MODEL=arctic.model, ARCTIC_MOUNTS=arctic.mounts;
+
+import { createOasisModel } from "../scene/oasisModel.ts";
+import { OASIS_BLOCKERS, OASIS_EXPOSED_IDS } from "../scene/oasisAudit.ts";
+const oasis=createOasisModel(); installLevel("oasis",oasis,{blockers:OASIS_BLOCKERS,exposed:OASIS_EXPOSED_IDS});
+export const OASIS_MODEL=oasis.model, OASIS_MOUNTS=oasis.mounts;

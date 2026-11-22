@@ -9,6 +9,6 @@ test("level-card saved progress excludes ability actions and covers every playab
   assert.deepEqual(Object.keys(LEVEL_PRESENTATION), CAMPAIGN_LEVELS.map(level => level.id));
   assert.ok(CAMPAIGN_LEVELS.every(level => {
     const count = LEVEL_PRESENTATION[level.id].screws;
-    return count % 3 === 0 && (level.id === "arctic" ? count >= 140 && count <= 160 : count >= 200 && count <= 240);
+    return count % 3 === 0 && (level.id === "arctic" ? count >= 140 && count <= 160 : level.id === "oasis" ? count >= 180 && count <= 200 : count >= 200 && count <= 240);
   }));
 });

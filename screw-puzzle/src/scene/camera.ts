@@ -9,6 +9,7 @@ export const CAMERA_POSES = {
 } satisfies Record<CameraView, { position: [number, number, number]; target: [number, number, number] }>;
 
 export const PLAY_CAMERA_POSES = {
+  oasis: { position: [10.8, 11.8, 20.8], target: [0, 1.8, 0] },
   arctic: { position: [11.5, 12.0, 21.0], target: [0, 2.0, 0] },
   castle: { position: [11.5, 11.8, 21.0], target: [0, 2.0, 0] },
   space: { position: [11.2, 11.0, 20.2], target: [0, 2.0, 0] },
@@ -21,6 +22,7 @@ export const PLAY_CAMERA_POSES = {
   campsite: { position: [11.8, 10.4, 16.7], target: [0, 1.1, 0] },
 } satisfies Record<LevelId, typeof CAMERA_POSES.house>;
 const centers = {
+  oasis: new Vector3(...PLAY_CAMERA_POSES.oasis.target),
   arctic: new Vector3(...PLAY_CAMERA_POSES.arctic.target),
   castle: new Vector3(...PLAY_CAMERA_POSES.castle.target),
   space: new Vector3(...PLAY_CAMERA_POSES.space.target),
@@ -33,6 +35,7 @@ const centers = {
   campsite: new Vector3(...PLAY_CAMERA_POSES.campsite.target),
 };
 const overviewDistances = {
+  oasis: centers.oasis.distanceTo(new Vector3(...PLAY_CAMERA_POSES.oasis.position)),
   arctic: centers.arctic.distanceTo(new Vector3(...PLAY_CAMERA_POSES.arctic.position)),
   castle: centers.castle.distanceTo(new Vector3(...PLAY_CAMERA_POSES.castle.position)),
   space: centers.space.distanceTo(new Vector3(...PLAY_CAMERA_POSES.space.position)),
