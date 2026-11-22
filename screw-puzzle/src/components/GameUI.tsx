@@ -5,6 +5,7 @@ import type { CollectionState, MatchBox } from "../game/types";
 import type { PlaybackFrame } from "../animation/sequence";
 import { COLOR_CODES } from "../game/colorLabels";
 import { useReadability } from "./readability";
+import ScrewCross from "./ScrewCross";
 export default function GameUI({ game, frame, completedLifeline, waitingCount = game.tray.length }: {
   game: CollectionState; frame: PlaybackFrame<CollectionState> | null;
   waitingCount?: number; completedLifeline?: MatchBox;
@@ -28,7 +29,7 @@ export default function GameUI({ game, frame, completedLifeline, waitingCount = 
             <div className="match-sockets" aria-hidden="true">{Array.from({ length: MATCH_SIZE }, (_, index) => {
               const entry = box.screws[index];
               return <span key={index} className="match-socket" data-socket={`box-${slot}-${index}`}>
-                {entry && <b className="socket-screw" key={entry.screwId}>+</b>}
+                {entry && <b className="socket-screw" key={entry.screwId}><ScrewCross /></b>}
               </span>;
             })}</div>
           </section>;
@@ -41,7 +42,7 @@ export default function GameUI({ game, frame, completedLifeline, waitingCount = 
         return <li key={index} aria-label={`Slot ${index + 1}: ${appearance?.label ?? "Free"}`}>
           <span className="free-socket" data-socket={`tray-${index}`}
             style={appearance ? { "--screw-color": appearance.color, "--recess-color": appearance.recess } as CSSProperties : undefined} aria-hidden="true">
-            {entry && <b className={`socket-screw${flying ? " in-flight" : ""}`} key={entry.screwId}>+</b>}
+            {entry && <b className={`socket-screw${flying ? " in-flight" : ""}`} key={entry.screwId}><ScrewCross /></b>}
           </span>
         </li>;
       })}</ol>

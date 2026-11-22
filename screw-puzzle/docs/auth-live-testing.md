@@ -1,4 +1,4 @@
-# Google and leaderboard: live checklist (0.1.32)
+# Google and leaderboard: live checklist (0.1.35)
 
 ## What the setup did
 
@@ -15,24 +15,28 @@ Existing online guest accounts can still link Google. New online guests are no l
 - The casual leaderboard migration is already applied; do not run it again manually.
 - Vercel Config variables must include VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY. Keep VITE_ROOM_SERVER. No new variable or Turnstile setup is needed.
 - Check Supabase Site URL/redirect allow-list and the Google callback URI: https://eviapvuviucbdgvsjcue.supabase.co/auth/v1/callback. Google secrets stay in Supabase, never in VITE_ values.
-- Push the reviewed source to the connected GitHub production branch. Wait for Vercel Ready and confirm version 0.1.32. Local .env.local is ignored by Git; changed Vercel variables require a new build.
-- Room protocol is now 27. Deploy this revision to both Vercel and the Render room server; no new Render configuration is needed.
+- Push the reviewed source to the connected GitHub production branch. Wait for Vercel Ready and confirm version 0.1.35. Local .env.local is ignored by Git; changed Vercel variables require a new build.
+- Room protocol is now 28. Deploy this revision to both Vercel and the Render room server; no new Render configuration is needed.
+
+## Arctic acceptance (0.1.35)
+
+Select Arctic Expedition in solo and co-op and confirm Level 8 / 150 screws. On a real phone/tablet, check first-screw picking, side/underside fixings, camera movement, loading and physics. Exit and resume the same checkpoint. In co-op, remove and ping a screw and use Find a Match without losing the connection; check the latency indicator. A real Google-signed-in solo finish should publish to the new Arctic board. Older levels' saves and scores should remain available. The board migration is already applied; no new environment variables are needed.
 
 ## Test 1: ordinary guest
 
 1. Open a private window without signing in. Start/resume a solo level.
-2. Open Leaderboard on Home: it is readable without sign-in, with all seven levels. Inside a level, only that level’s board is available; there is no selector.
+2. Open Leaderboard on Home: it is readable without sign-in, with all eight levels. Inside a level, only that level’s board is available; there is no selector.
 3. Finish a level. Its elapsed time should be shown above the current level’s public board, with a guest explanation and no score upload or device leaderboard.
 4. Sign in afterward. That earlier guest win must not be published.
 5. Refresh a playing level: it should reopen the same level and offer/resume its saved progress.
 
 ## Castle release checks (0.1.32)
 
-1. Confirm all seven cards appear in solo and room creation, including Royal Castle Courtyard with 225 screws and its actual scene preview.
+1. Confirm all eight cards appear in solo and room creation, including Royal Castle Courtyard with 225 screws and its actual scene preview.
 2. Select the castle on a real phone/tablet. Check loading, orbit/zoom and side/inside screw picking; measure responsiveness with the requested high-detail geometry.
 3. Remove a few screws, exit Home, then resume. Check the same seed/progress, elapsed time and ability charges return. Revisit other levels after leaving the castle to look for accumulating memory or slowdowns.
 4. Create a castle room and invite a friend on another device. Both must load before Start together. Check simultaneous moves, matching boxes, object release, reset and reconnect.
-5. Finish a real solo castle run while signed into Google. The current-level board should show your best after upload; Home should offer all seven boards. Do not add fabricated test scores to production.
+5. Finish a real solo castle run while signed into Google. The current-level board should show your best after upload; Home should offer all eight boards. Do not add fabricated test scores to production.
 6. Optionally finish separate runs on two devices with the same account. The faster time should remain the public best regardless of upload order. Unfinished checkpoints remain device-local; avoid simultaneous same-level tabs in one browser.
 
 ## Test 2: Google and a real online result

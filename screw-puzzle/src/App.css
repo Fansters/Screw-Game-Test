@@ -135,9 +135,10 @@
 .boosted .match-boxes { grid-template-columns: repeat(3, var(--box-width)); }
 .match-box { padding: 7px 4px 10px; border: 2px solid #ffffff90; border-radius: 17px; background: var(--screw-color); box-shadow: inset 0 -5px #0002, 0 6px 0 #59436c25; transform-origin: center bottom; }
 .match-sockets { display: grid; grid-template-columns: repeat(2, 1fr); justify-items: center; gap: 4px; padding: 6px 3px; border: 2px solid #fff9; background: #fff9ee; border-radius: 11px; box-shadow: inset 0 3px 5px #0001; }
-.match-socket { width: 21px; height: 21px; display: grid; place-items: center; border-radius: 50%; background: #b5b4c8; box-shadow: inset 0 3px #0002; }
+.match-socket { position: relative; width: 21px; height: 21px; display: grid; place-items: center; border-radius: 50%; background: #b5b4c8; box-shadow: inset 0 3px #0002; }
 .match-socket:first-child { grid-column: 1 / -1; }
-.socket-screw { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; background: var(--screw-color); color: var(--recess-color); box-shadow: inset 0 -3px #0002, 0 1px 2px #0002; font-size: 25px; line-height: 1; animation: screw-pop 90ms cubic-bezier(.2,.8,.3,1.5) both; }
+.socket-screw { position: absolute; inset: 0; display: grid; place-items: center; min-width: 0; min-height: 0; border-radius: 50%; background: var(--screw-color); color: var(--recess-color); box-shadow: inset 0 -3px #0002, 0 1px 2px #0002; transform-origin: center; animation: screw-pop 90ms cubic-bezier(.2,.8,.3,1.5) both; }
+.screw-cross { display: block; width: 72%; height: 72%; fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; }
 .socket-screw.in-flight { opacity: 0; animation: none; }
 .match-box.completing { animation: box-complete 200ms ease-in both; }
 .match-box.arriving { animation: box-arrive 120ms cubic-bezier(.2,.7,.3,1.3) both; }
@@ -163,7 +164,7 @@
 @keyframes hint-pulse { 50% { transform: scale(1.18); box-shadow: 0 0 0 3px #ffc52e, 0 0 25px 9px #ffdd59a0; } }
 .tray { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; padding: 0; margin: 12px 0 0; list-style: none; }
 .tray > li { display: grid; place-items: center; }
-.free-socket { display: grid; place-items: center; width: 28px; height: 28px; border: 3px solid #fff8e8; border-radius: 50%; background: #a3a9b9; box-shadow: inset 0 3px #0002, 0 3px 0 #59436c25; }
+.free-socket { position: relative; display: grid; place-items: center; width: 28px; height: 28px; border: 3px solid #fff8e8; border-radius: 50%; background: #a3a9b9; box-shadow: inset 0 3px #0002, 0 3px 0 #59436c25; }
 .flying-screw { position: fixed; left: 0; top: 0; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: var(--screw-color); color: var(--recess-color); font-size: 38px; font-weight: 900; line-height: 1; box-shadow: inset 0 -4px #0002, 0 5px 12px #4e2d6e40; z-index: 5; pointer-events: none; opacity: 0; }
 .game-overlay { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; background: #45345a0c; }
 .game-overlay.won { background: #322b4940; }
@@ -256,6 +257,14 @@
 .room-lobby p { font-weight: 700; }
 .room-lobby input { width: 100%; min-height: 40px; padding: 7px; border: 1px solid #7651a8; border-radius: 9px; user-select: text; -webkit-user-select: text; -webkit-touch-callout: default; }
 .room-status { position: absolute; z-index: 8; top: calc(env(safe-area-inset-top) + 6px); left: 50%; translate: -50% 0; color: #59417c; opacity: .8; font-size: 13px; line-height: 1.15; font-weight: 700; text-align: center; white-space: nowrap; pointer-events: none; }
+.connection-status { position: absolute; z-index: 8; top: calc(max(12px, env(safe-area-inset-top)) + 54px); right: max(12px, env(safe-area-inset-right)); display: flex; align-items: center; gap: 5px; padding: 4px 6px; border-radius: 8px; background: #fff8eaad; color: #69547d; font-size: 10px; line-height: 1.2; font-weight: 700; font-variant-numeric: tabular-nums; pointer-events: none; }
+.connection-dot { width: 6px; height: 6px; border-radius: 50%; background: #9a8da5; }
+.connection-status.good .connection-dot { background: #3d926a; }
+.connection-status.fair .connection-dot { background: #b08027; }
+.connection-status.slow .connection-dot, .connection-status.offline .connection-dot { background: #cc4b63; }
+@media (min-width: 651px) and (min-height: 501px) {
+  .connection-status { top: calc(max(24px, env(safe-area-inset-top)) + 54px); right: max(24px, env(safe-area-inset-right)); }
+}
 .room-ping { position: absolute; z-index: 9; left: 50%; bottom: calc(max(13px, env(safe-area-inset-bottom)) + 77px); translate: -50% 0; padding: 4px 8px; border-radius: 8px; color: #fff8df; background: #ac213b; font-size: 13px; font-weight: 800; white-space: nowrap; pointer-events: none; }
 @media (max-width: 650px), (pointer: coarse), (max-width: 1024px) and (orientation: portrait) {
   .game-controls { flex-direction: column; }
@@ -393,22 +402,23 @@
 .home-layout .start-word:focus-visible { outline-offset: 6px; border-radius: 24px; }
 .home-layout .start-word:hover { transform: translateY(-2px); }
 .home-layout .start-word:active { transform: translateY(3px); }
-.level-loading-screen { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 35%, #e0d9f5f5, #b9dce8fa 70%); animation: loader-in 180ms ease-out both; }
+.level-loading-screen { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 35%, #e0d9f5f5, #b9dce8fa 70%); animation: loader-in 180ms ease-out both; }
 .level-loading-screen .level-loading-card { position: relative; inset: auto; translate: none; width: min(360px, calc(100% - 36px)); padding: 30px 25px; gap: 13px; background: #fffaf0e8; box-shadow: 0 20px 65px #49396b1c; border: 1px solid #fff; border-radius: 28px; }
 .level-loading-card > small { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #8a7999; }
 .screw-loader { display: flex; align-items: center; justify-content: center; gap: 14px; height: 83px; margin-bottom: 8px; }
-.loader-screw { display: grid; place-items: center; width: 49px; height: 49px; border: 3px solid #fff9; border-radius: 50%; color: #864287; background: #d8a8ee; box-shadow: 0 5px #9c74b7, inset 0 2px #fff9; font-size: 40px; font-weight: 800; line-height: 1; animation: screw-load 1.6s ease-in-out infinite; }
-.loader-screw:nth-child(2) { color: #977733; background: #f9da71; box-shadow: 0 5px #d1ad4f, inset 0 2px #fff9; animation-delay: 160ms; }
-.loader-screw:nth-child(3) { color: #3f807c; background: #8bdcd2; box-shadow: 0 5px #64aaa7, inset 0 2px #fff9; animation-delay: 320ms; }
+.loader-screw { box-sizing: border-box; display: grid; place-items: center; flex: 0 0 49px; width: 49px; height: 49px; border: 3px solid #fff9; border-radius: 50%; color: #864287; background: #d8a8ee; box-shadow: 0 5px #9c74b7, inset 0 2px #fff9; }
+.loader-screw-turn { display: grid; place-items: center; width: 100%; height: 100%; transform-origin: 50% 50%; animation: screw-load 1.6s ease-in-out infinite; }
+.loader-screw:nth-child(2) { color: #977733; background: #f9da71; box-shadow: 0 5px #d1ad4f, inset 0 2px #fff9; }
+.loader-screw:nth-child(3) { color: #3f807c; background: #8bdcd2; box-shadow: 0 5px #64aaa7, inset 0 2px #fff9; }
+.loader-screw:nth-child(2) .loader-screw-turn { animation-delay: 160ms; }
+.loader-screw:nth-child(3) .loader-screw-turn { animation-delay: 320ms; }
 .screw-loading-track { position: relative; height: 15px; width: 100%; margin: 6px 0 9px; overflow: hidden; border-radius: 12px; background: #ece4ef; box-shadow: inset 0 2px 3px #5a3e7b12; }
-.screw-loading-track > span { display: block; height: 100%; border-radius: inherit; background: repeating-linear-gradient(110deg, #9970be 0 10px, #b38ad4 10px 20px); transition: width 450ms ease; }
-.screw-loading-track > i { position: absolute; top: -7px; color: #fff8df; font-size: 20px; font-weight: 800; font-style: normal; animation: loader-travel 2.4s ease-in-out infinite; }
+.screw-loading-track > span { display: block; width: 100%; height: 100%; border-radius: inherit; background: repeating-linear-gradient(110deg, #9970be 0 10px, #b38ad4 10px 20px); transform: scaleX(0); transform-origin: left center; will-change: transform; }
 .solo-layout:not(.level-revealed) > .scene, .online-layout:not(.level-revealed) > .scene:not(.home-scene) { opacity: 0; }
 .level-revealed > .scene { animation: level-arrive 650ms cubic-bezier(.2,.75,.25,1) both; }
 @keyframes home-panorama { 0% { opacity: 0; transform: scale(1.02); } 3%,28% { opacity: 1; } 33%,100% { opacity: 0; transform: scale(1.07); } }
 @keyframes home-title-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
-@keyframes screw-load { 0%,100% { transform: translateY(3px) rotate(0); } 45% { transform: translateY(-12px) rotate(180deg); } 75% { transform: translateY(0) rotate(360deg); } }
-@keyframes loader-travel { from { left: -8%; transform: rotate(0); } to { left: 108%; transform: rotate(540deg); } }
+@keyframes screw-load { from { transform: rotate(0); } to { transform: rotate(360deg); } }
 @keyframes loader-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes level-arrive { from { opacity: 0; transform: translateY(14px) scale(.975); } to { opacity: 1; transform: none; } }
 @media (max-width: 650px) { .home-gallery img { object-position: 48% center; } .start-label { padding: 12px 43px 15px; border-radius: 21px; } }
@@ -416,8 +426,7 @@
   .home-gallery picture { animation: none; will-change: auto; }
   .home-gallery picture:first-child { opacity: 1; }
   .home-scene > div:last-child { animation: none; }
-  .loader-screw, .screw-loading-track > i, .level-loading-screen, .level-revealed > .scene { animation: none; }
-  .screw-loading-track > span { transition: none; }
+  .loader-screw-turn, .level-loading-screen, .level-revealed > .scene { animation: none; }
 }
 
 /* One place for device preferences; game actions remain directly accessible. */
@@ -589,14 +598,12 @@
 @media (max-height: 500px) { .game-menu .help-header { padding: 12px; } .game-menu-content { gap: 8px; } .game-menu-actions { gap: 8px; } }
 .home-gallery img { display: block; width: 100%; height: 100%; object-fit: cover; }
 @media (prefers-reduced-motion: reduce) { .hint-ring { animation: none; } }
-/* Consistent icon rail and label edge across the main menu buttons. */
-.menu-action, .menu-resume, .home-actions .home-menu-button { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-inline: 18px; text-align: right; }
-.menu-action > svg, .menu-resume > svg, .home-actions .home-menu-button > svg { flex: 0 0 23px; width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.menu-action > span:not(.account-indicator), .home-menu-button > span:not(.account-indicator) { min-width: 0; }
+/* Text-only menu actions share one centered label; icon-only controls remain. */
+.menu-action, .menu-resume, .home-actions .home-menu-button { display: flex; justify-content: center; align-items: center; gap: 0; padding-inline: 16px; text-align: center; }
+.menu-action > span:not(.account-indicator), .menu-resume > span, .home-menu-button > span:not(.account-indicator) { min-width: 0; text-align: center; }
+.help-dialog button:not(.icon-button) > svg, .home-actions button > svg, .account-button.google > span[aria-hidden="true"] { display: none; }
+.level-play-button { justify-content: center; text-align: center; }
 .home-actions .account-indicator { right: 6px; bottom: 5px; }
-/* Center one shared icon-and-label group; keep every label left aligned. */
-.menu-action, .menu-resume, .home-actions .home-menu-button { display: grid; grid-template-columns: 23px 142px; justify-content: center; align-items: center; column-gap: 10px; padding-inline: 16px; text-align: left; }
-.menu-action > span:not(.account-indicator), .menu-resume > span, .home-menu-button > span:not(.account-indicator) { text-align: left; justify-self: start; }
 .leaderboard-note { margin: 0; font-size: 12px; line-height: 1.5; color: #806c92; text-align: center; }
 .leaderboard-name { display: block; max-width: 190px; overflow-wrap: anywhere; font-weight: 750; }
 .leaderboard-details { display: block; margin-top: 5px; font-size: 10px; line-height: 1.5; color: #806c92; }

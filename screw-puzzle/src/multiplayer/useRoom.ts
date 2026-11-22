@@ -37,6 +37,7 @@ export function useRoom() {
   const [ping, setPing] = useState<{ round: number; screw: string; sequence: number; own: boolean } | null>(null);
   const [blocked, setBlocked] = useState<{ screw: string; sequence: number } | null>(null);
   const [clockOffset, setClockOffset] = useState(0);
+  const [latency, setLatency] = useState<{ ms: number; at: number } | null>(null);
   const socket = useRef<WebSocket | null>(null);
   const onlineParts = useRef<LooseParts>({});
   const activeRoom = useRef<string | null>(null);
@@ -77,10 +78,18 @@ export function useRoom() {
       }
       const ws = connection;
       socket.current = ws;
+      const pendingClocks = new Map<number, number>();
+      const roundTrips: number[] = [];
       function syncClock() {
-        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "clock", sentAt: Date.now() }));
+        if (ws.readyState !== WebSocket.OPEN) return;
+        const sentAt = Date.now();
+        pendingClocks.set(sentAt, performance.now());
+        // Bound outstanding probes if replies stop arriving.
+        if (pendingClocks.size > 4) pendingClocks.delete(pendingClocks.keys().next().value!);
+        ws.send(JSON.stringify({ type: "clock", sentAt }));
       }
       ws.onopen = () => {
+        setLatency(null);
         syncClock();
         ws.send(JSON.stringify(join));
         clock = window.setInterval(syncClock, 4500);
@@ -90,6 +99,13 @@ export function useRoom() {
         const notice = JSON.parse(event.data) as RoomNotice;
         if (notice.type === "clock") {
           const received = Date.now();
+          const sent = pendingClocks.get(notice.sentAt);
+          if (sent === undefined) return;
+          pendingClocks.delete(notice.sentAt);
+          roundTrips.push(Math.max(0, performance.now() - sent));
+          if (roundTrips.length > 3) roundTrips.shift();
+          const sorted = [...roundTrips].sort((a, b) => a - b);
+          setLatency({ ms: Math.round(sorted[Math.floor(sorted.length / 2)]), at: received });
           const rtt = received - notice.sentAt;
           if (rtt <= bestRtt + 8) {
             bestRtt = Math.min(rtt, bestRtt);
@@ -208,6 +224,7 @@ export function useRoom() {
     setInvite(null);
     setRequest(null);
     setConnected(false);
+    setLatency(null);
     setSnapshot(null);
     onlineParts.current = {};
     setPlayer(null);
@@ -217,7 +234,7 @@ export function useRoom() {
     dispatchPlayback({ type: "reset", scene: "" });
     setBlocked(null);
   }
-  return { invite, snapshot, player, connected, disconnectedAt, error, matched, completedLifeline, ping, pingScrew,
+  return { invite, snapshot, player, connected, latency, disconnectedAt, error, matched, completedLifeline, ping, pingScrew,
     frame: entry?.frame ?? null, bonusAnimating, blocked, clockOffset, onlineParts, send, open, leave,
     connecting: Boolean(request && !connected && !snapshot) };
 }

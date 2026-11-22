@@ -12,7 +12,7 @@ export function releaseModel(level: LevelId) {
   for (const geometry of new Set(model.pieces.flatMap(p => p.geometry ? [p.geometry] : []))) geometry.dispose();
   delete LEVEL_MODELS[level];
 }
-export const partLevel = (part: PartId): LevelId => part.startsWith("castle-") ? "castle" : part.startsWith("space-") ? "space" : part.startsWith("zoo-") ? "zoo" : part.startsWith("fair-") ? "carnival" : part.startsWith("site-") ? "construction" : part.startsWith("desert-") ? "desert" : part.startsWith("camp-") ? "campsite" : part.startsWith("ship-") ? "titanic" : "cottage";
+export const partLevel = (part: PartId): LevelId => part.startsWith("arctic-") ? "arctic" : part.startsWith("castle-") ? "castle" : part.startsWith("space-") ? "space" : part.startsWith("zoo-") ? "zoo" : part.startsWith("fair-") ? "carnival" : part.startsWith("site-") ? "construction" : part.startsWith("desert-") ? "desert" : part.startsWith("camp-") ? "campsite" : part.startsWith("ship-") ? "titanic" : "cottage";
 export function partPivot(part: PartId): Vector {
   const pivot = LEVEL_MODELS[partLevel(part)]?.pivots[part];
   if (!pivot) throw new Error(`Load the level before using ${part}`);

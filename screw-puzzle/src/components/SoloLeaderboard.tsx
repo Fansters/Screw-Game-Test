@@ -14,7 +14,7 @@ export default function SoloLeaderboard({ activeLevel, allowLevelSelection = fal
   function show() { setSelected(activeLevel); setVisible(true); dialog.current?.showModal(); if (dialog.current) dialog.current.scrollTop = 0; }
   return <>
     <button className={launcherClass} type="button" onClick={show} aria-label="Solo leaderboard" aria-haspopup="dialog" aria-controls="solo-leaderboard" title="Solo leaderboard">
-      <svg viewBox="0 0 32 32" aria-hidden="true">{trophy}</svg>{launcherClass !== "icon-button" && <span>Leaderboard</span>}
+      {launcherClass === "icon-button" ? <svg viewBox="0 0 32 32" aria-hidden="true">{trophy}</svg> : <span>Leaderboard</span>}
     </button>
     <dialog ref={dialog} id="solo-leaderboard" className="help-dialog leaderboard-dialog" aria-labelledby="leaderboard-title" onClose={() => setVisible(false)}>
       <header className="help-header leaderboard-header">

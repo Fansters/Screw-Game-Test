@@ -10,6 +10,10 @@ test("casual results validate current layouts, integer time and ability metadata
   assert.equal(casualBoardId("desert"),"desert:layout-3:casual-1");
   assert.equal(casualBoardId("castle"),"castle:layout-1:casual-1");
   assert.ok(isCasualFinish({...f,level:"castle",boardId:casualBoardId("castle"),screwCount:225}));
+  const arctic = {...f,level:"arctic",boardId:casualBoardId("arctic"),screwCount:150};
+  assert.ok(isCasualFinish(arctic));
+  assert.equal(isCasualFinish({...arctic,screwCount:153}),false);
+  assert.equal(isCasualFinish({...arctic,screwCount:225}),false);
   assert.throws(() => casualBoardId("titanic"));
   for (const patch of [{elapsedMs:0},{elapsedMs:1.5},{elapsedMs:2592000001},{extraBoxUses:4},{screwCount:231},{resumed:1},{level:"moonbase"},{runId:"bad"}]) assert.equal(isCasualFinish({...f,...patch}),false);
   assert.deepEqual(finishPayload(f),{run_id:f.runId,board_id:casualBoardId(f.level),elapsed_ms:123456,extra_box_uses:2,find_match_uses:1,resumed:true,screw_count:240});

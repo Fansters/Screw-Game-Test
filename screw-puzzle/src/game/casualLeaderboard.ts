@@ -19,7 +19,7 @@ export function isCasualFinish(value: unknown): value is CasualFinish {
   return isRunId(f.runId) && LEVEL_IDS.some(id => id === f.level) && typeof f.boardId === "string" &&
     new RegExp(`^${f.level}:layout-[1-9][0-9]{0,5}:casual-[1-9][0-9]{0,5}$`).test(f.boardId) && integer(f.elapsedMs,1,2592000000) &&
     integer(f.extraBoxUses,0,3) && integer(f.findMatchUses,0,3) && typeof f.resumed === "boolean" &&
-    integer(f.screwCount,200,240) && f.screwCount % 3 === 0 &&
+    integer(f.screwCount,140,240) && f.screwCount % 3 === 0 &&
     (f.boardId !== casualBoardId(f.level) || f.screwCount === LEVEL_PRESENTATION[f.level as keyof typeof LEVEL_PRESENTATION]?.screws);
 }
 export function finishPayload(f: CasualFinish) {

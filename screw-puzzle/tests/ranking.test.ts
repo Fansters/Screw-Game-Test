@@ -46,7 +46,7 @@ test("refresh, exit, reset, loss, expired grace and invalid clock input cannot p
 
 test("ranked boards separate layouts, generation and rules without resetting existing local keys", () => {
   assert.deepEqual(RANKED_BOARDS.map(board => board.level), [...LEVEL_IDS]);
-  assert.equal(new Set(RANKED_BOARDS.map(board => board.id)).size, 7);
+  assert.equal(new Set(RANKED_BOARDS.map(board => board.id)).size, LEVEL_IDS.length);
   assert.throws(() => rankedBoardId("space"));
   assert.throws(() => rankedBoardId("titanic"));
   for (const level of [...LEVEL_IDS, "titanic"] as const) assert.equal(layoutRevision(level), `v${LEVEL_LAYOUT_VERSIONS[level]}`);

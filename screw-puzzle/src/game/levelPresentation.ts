@@ -9,6 +9,7 @@ export const LEVEL_PRESENTATION = {
   carnival: { screws: 240, preview: "/images/home/carnival.webp", tag: "Big wheel, big fun", description: "Colourful stalls, a carousel and a towering panorama wheel.", accent: "#e6b5cf" },
   zoo: { screws: 231, preview: "/images/levels/zoo.webp", tag: "Wild discoveries", description: "Animal habitats, a waterfall and a lookout packed with surprises.", accent: "#a7cebb" },
   castle: { screws: 225, preview: "/images/levels/castle.webp", tag: "A royal adventure", description: "A grand castle, hidden chambers and a lively medieval courtyard.", accent: "#dfb067" },
+  arctic: { screws: 150, preview: "/images/levels/arctic.webp", tag: "A frosty expedition", description: "Penguins, seals and a red research hut above sparkling icy caves.", accent: "#8dd7ed" },
 } satisfies Partial<Record<LevelId, { screws: number; preview: string; tag: string; description: string; accent: string }>>;
 
 export function savedScrewCount(moves: readonly string[]) {

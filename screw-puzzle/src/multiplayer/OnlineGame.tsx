@@ -5,6 +5,7 @@ import GameOverlay from "../components/GameOverlay";
 import GameScene from "../components/GameScene";
 import HomeScene from "../components/HomeScene";
 import LevelLoading from "../components/LevelLoading";
+import ConnectionStatus from "../components/ConnectionStatus";
 import { useLevelAssets } from "../components/useLevelAssets";
 import type { HintControls } from "../components/GameScene";
 import AbilityButtons from "../components/AbilityButtons";
@@ -38,6 +39,9 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
   const leader = snapshot?.leader === player;
   const view = started ? "house" : "title";
   const scene = `${id}:${round}`;
+  const loadingKey = `${scene}:${view}`;
+  const [loadedView, setLoadedView] = useState("");
+  const finishLoading = useCallback(() => setLoadedView(loadingKey), [loadingKey]);
   const [arrival, setArrival] = useState<{ view: CameraView; round: number }>();
   const [confirmation, setConfirmation] = useState<"reset" | "leave" | null>(null);
   const [levelsOpen, setLevelsOpen] = useState(false);
@@ -155,8 +159,11 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
   const completedLifeline = room.completedLifeline?.round === round ? room.completedLifeline.box : undefined;
   const revealed = Boolean(game && localReady && cameraReady);
   return <div className={`game-layout online-layout${revealed ? " level-revealed" : ""}`} onContextMenu={(event) => event.preventDefault()}>
+    {snapshot && <ConnectionStatus connected={connected} sample={room.latency} />}
     {!game && <HomeScene />}
-    {snapshot && !revealed && <LevelLoading title={levelTitle} stage={assets?.ready ? "Warming scene" : assets?.stage} error={assets?.error} />}
+    {snapshot && (loadedView !== loadingKey || !revealed) && <LevelLoading key={loadingKey} title={levelTitle}
+      stage={assets?.ready ? localReady ? "Positioning camera" : "Warming scene" : assets?.stage} error={assets?.error}
+      ready={revealed} onFinished={finishLoading} />}
     {game && <GameScene key={scene} level={level} logical={game} fallingParts={fallingParts} round={round}
       onlineParts={onlineParts} looseNow={looseNow} onLooseDismiss={(part) => send({ type: "dismiss", round, part })}
       view={view} playable={playable} orbitable={orbitable} onCameraArrive={cameraArrived} onReady={sceneReady}

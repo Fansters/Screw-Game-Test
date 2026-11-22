@@ -206,7 +206,7 @@ export default function LevelSelect({ onBack, onSelect, mode = "solo" }: {
               <span style={{ width: `${Math.min(100, removed / presentation.screws * 100)}%` }} /></div>}
             <button className="level-play-button" type="button" disabled={!playable}
               aria-label={`${mode === "multiplayer" ? "Select" : save ? "Resume" : "Play"} ${title}`} onClick={() => onSelect(id)}>
-              {playable ? action : "Coming soon"}<svg viewBox="0 0 32 32" aria-hidden="true"><path d="m12 7 10 9-10 9" /></svg></button>
+              {playable ? action : "Coming soon"}</button>
           </article>
         </li>;
       })}

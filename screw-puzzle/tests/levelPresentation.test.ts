@@ -7,5 +7,8 @@ test("level-card saved progress excludes ability actions and covers every playab
   assert.equal(savedScrewCount(["screw-1", "boost", "find:screw-2", "peek", "screw-2"]), 2);
   assert.equal(savedScrewCount([]), 0);
   assert.deepEqual(Object.keys(LEVEL_PRESENTATION), CAMPAIGN_LEVELS.map(level => level.id));
-  assert.ok(CAMPAIGN_LEVELS.every(level => LEVEL_PRESENTATION[level.id].screws >= 200 && LEVEL_PRESENTATION[level.id].screws <= 240));
+  assert.ok(CAMPAIGN_LEVELS.every(level => {
+    const count = LEVEL_PRESENTATION[level.id].screws;
+    return count % 3 === 0 && (level.id === "arctic" ? count >= 140 && count <= 160 : count >= 200 && count <= 240);
+  }));
 });

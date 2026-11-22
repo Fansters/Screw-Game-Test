@@ -26,7 +26,7 @@ import { CAMERA_POSES, recenterZoomOut } from "../src/scene/camera.ts";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const material = new MeshBasicMaterial();
-test("wider heads stay separate on neighbouring exposed surfaces in all six levels", () => {
+test("wider heads stay separate on neighbouring exposed surfaces in every playable level", () => {
   for (const level of LEVEL_IDS) {
     const screws = soloLevelTemplate(level);
     for (let i = 0; i < screws.length; i += 1) for (let j = i + 1; j < screws.length; j += 1) {

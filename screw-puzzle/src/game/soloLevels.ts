@@ -29,6 +29,7 @@ for (let bay = 1; bay <= 8; bay += 1) {
 export function generateSoloPuzzle(level: LevelId, seed: number, legacyTitanicLayout = false) {
   const template = soloLevelTemplate(level);
   if (level === "cottage") return generatePuzzle(seed, template);
+  if (level === "arctic") return generateLayeredPuzzle(seed, template, levelData(level).opening, true);
   if (level === "castle") return generateLayeredPuzzle(seed, template, levelData(level).opening, true);
   if (level === "space") return generateLayeredPuzzle(seed, template, levelData(level).opening, true);
   if (level === "zoo") return generateLayeredPuzzle(seed, template, levelData(level).opening, true);

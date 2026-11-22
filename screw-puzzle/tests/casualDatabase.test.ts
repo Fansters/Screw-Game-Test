@@ -69,6 +69,11 @@ test("casual PostgreSQL endpoint enforces Google ownership, immutable retries, p
   await submit(2,{...payload(600,150000),board_id:castle,screw_count:225});
   await assert.rejects(submit(2,{...payload(600,1000),board_id:castle,screw_count:225}),/finish_conflict/);
   await assert.rejects(submit(2,{...payload(603),board_id:castle,screw_count:222}));
+  const arctic="arctic:layout-1:casual-1";
+  await submit(2,{...payload(610,90000),board_id:arctic,screw_count:150});
+  const arcticBoard=(await role<{b:Board}>("authenticated",uuid(2),"select public.get_casual_leaderboard($1) b",[arctic])).rows[0].b;
+  assert.equal(arcticBoard.entries[0].elapsed_ms,90000);
+  await assert.rejects(submit(2,{...payload(611),board_id:arctic,screw_count:225}),/invalid_finish/);
   for(let i=1000;i<1118;i++) await submit(1,payload(i,20000+i));
   await assert.rejects(submit(1,payload(2000)),/too_many_finishes/);
   await submit(1,payload(101)); // Retries still succeed after the rate limit is reached.

@@ -55,3 +55,12 @@ test("high-detail castle geometry loads on demand and is released before rebuild
   const next=await acquireLevel("castle");assert.notEqual(LEVEL_MODELS.castle,model);assert.deepEqual(levelData("castle").template,template);
   next.release();await delay(750);assert.deepEqual(loadedLevelIds(),[]);
 });
+test("arctic geometry loads on demand and is released before rebuilding",async()=>{
+  const lease=await acquireLevel("arctic"),model=LEVEL_MODELS.arctic;
+  const geometry=new Set(model.pieces.flatMap(piece=>piece.geometry?[piece.geometry]:[]));let disposed=0;
+  geometry.forEach(g=>g.addEventListener("dispose",()=>disposed++));
+  const template=levelData("arctic").template;assert.equal(template.length,150);
+  lease.release();await delay(750);assert.equal(LEVEL_MODELS.arctic,undefined);assert.equal(disposed,geometry.size);
+  const next=await acquireLevel("arctic");assert.notEqual(LEVEL_MODELS.arctic,model);assert.deepEqual(levelData("arctic").template,template);
+  next.release();await delay(750);assert.deepEqual(loadedLevelIds(),[]);
+});

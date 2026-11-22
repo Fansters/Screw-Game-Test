@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { SCREW_COLORS } from "../game/colors";
 import type { PlaybackFrame } from "../animation/sequence";
 import type { CollectionState } from "../game/types";
+import ScrewCross from "./ScrewCross";
 
 export default function TransferOverlay({ frame, getOrigin }: {
   frame: PlaybackFrame<CollectionState> | null; getOrigin: (id: string) => [number, number];
@@ -28,5 +29,5 @@ export default function TransferOverlay({ frame, getOrigin }: {
   if (frame?.kind !== "fly" || !frame.screw) return null;
   const color = SCREW_COLORS[frame.screw.color];
   return <span className="flying-screw" ref={token} aria-hidden="true"
-    style={{ "--screw-color": color.color, "--recess-color": color.recess } as CSSProperties}>+</span>;
+    style={{ "--screw-color": color.color, "--recess-color": color.recess } as CSSProperties}><ScrewCross /></span>;
 }

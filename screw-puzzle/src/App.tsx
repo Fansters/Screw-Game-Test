@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import SoloGame from "./components/SoloGame";
 import type { SoloInitial } from "./components/SoloGame";
 import HomeScene from "./components/HomeScene";
@@ -29,6 +29,10 @@ export default function App() {
   const requestRef = useRef(0);
   const audio = useGameAudio(Boolean(session));
   const { muted, toggle, enable } = audio;
+  const sceneLoading = useCallback((level: LevelId, stage: string | null) => {
+    setPending(previous => stage ? { level, stage } : previous?.level === level ? { ...previous, stage: "Ready" } : previous);
+  }, []);
+  const finishLoading = useCallback(() => setPending(previous => previous?.stage === "Ready" ? null : previous), []);
   useEffect(() => () => session?.lease.release(), [session]);
   useEffect(() => () => { requestRef.current++; }, []);
   function route(level: LevelId | null) { history.replaceState(history.state, "", soloRouteUrl(location.href, level)); }
@@ -52,7 +56,7 @@ export default function App() {
         const generated = generateSoloPuzzle(level, crypto.getRandomValues(new Uint32Array(1))[0]);
         return { game: generated.state, seed: generated.seed };
       })();
-      setSession({ level, initial: puzzle, lease }); setPending(null);
+      setSession({ level, initial: puzzle, lease }); setPending({ level, stage: "Warming scene" });
     } catch {
       lease?.release();
       if (request === requestRef.current) setPending({ level, error: "This level couldn’t load. Check your connection and reload, or choose another level." });
@@ -65,15 +69,19 @@ export default function App() {
     return () => { active = false; };
   }, []);
   if (online) return <OnlineGame onBack={levels => { setLevelsOpen(levels); setOnline(false); }} />;
-  if (session) return <SoloGame level={session.level} initial={session.initial} audio={audio} onExit={levels => { route(null); setSession(null); setLevelsOpen(levels); }} />;
-  return <div className="game-layout home-layout" onContextMenu={event => event.preventDefault()}>
+  return <>{session ? <SoloGame level={session.level} initial={session.initial} audio={audio} onLoadingStage={sceneLoading}
+    onExit={levels => { route(null); setPending(null); setSession(null); setLevelsOpen(levels); }} /> :
+    <div className="game-layout home-layout" onContextMenu={event => event.preventDefault()}>
     <HomeScene />
     <GameOverlay mode={pending || levelsOpen ? null : "start"} onStart={() => setLevelsOpen(true)} />
     {levelsOpen && <LevelSelect onBack={() => setLevelsOpen(false)} onSelect={level => void selectLevel(level)} />}
-    {pending && <LevelLoading title={CAMPAIGN_LEVELS.find(item => item.id === pending.level)!.title} stage={pending.stage} error={pending.error} onCancel={cancelLoading} />}
     {!pending && !levelsOpen && <small className="home-version">v{GAME_VERSION}</small>}
     <GameControls home muted={muted} toggle={toggle} leaderboardLevel="cottage" showHomeActions={!pending && !levelsOpen}
-      onMultiplayer={() => { route(null); setOnline(true); }} />
+      onMultiplayer={() => { route(null); setPending(null); setOnline(true); }} />
     <DesktopCursor />
-  </div>;
+  </div>}
+    {pending && <LevelLoading key={pending.level} title={CAMPAIGN_LEVELS.find(item => item.id === pending.level)!.title}
+      stage={pending.stage} error={pending.error} ready={pending.stage === "Ready"} onFinished={finishLoading}
+      onCancel={session ? undefined : cancelLoading} />}
+  </>;
 }
