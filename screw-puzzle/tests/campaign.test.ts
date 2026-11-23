@@ -1,8 +1,17 @@
 import "../src/game/allLevels.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CAMPAIGN_LEVELS, levelStatus, readLevelProgress, recordLevelClear } from "../src/game/campaign.ts";
+import { CAMPAIGN_LEVELS, levelIdentity, levelsForDifficulty, levelStatus, readLevelProgress, recordLevelClear } from "../src/game/campaign.ts";
 const SOLO_TIMES_KEY = "screw-it:solo-times:cottage:v2"; // Read-only completion compatibility.
+
+test("difficulty groups number locally while save and board identities stay stable", () => {
+  assert.deepEqual(levelsForDifficulty("easy").map(level=>level.id),["arctic"]);
+  assert.deepEqual(levelsForDifficulty("medium").map(level=>level.id),["cottage","desert","construction","carnival","zoo","castle"]);
+  assert.deepEqual(levelsForDifficulty("hard").map(level=>level.id),["campsite","oasis"]);
+  for(const [id,difficulty,number] of [["arctic","easy",1],["campsite","hard",1],["oasis","hard",2],["castle","medium",6],["desert","medium",2]] as const) {
+    assert.equal(levelIdentity(id)?.difficulty,difficulty);assert.equal(levelIdentity(id)?.number,number);
+  }
+});
 
 test("all nine levels are playable immediately while completed runs retain their progress", (t) => {
   const saved = new Map<string, string>();
@@ -28,11 +37,11 @@ test("all nine levels are playable immediately while completed runs retain their
   saved.set(SOLO_TIMES_KEY, JSON.stringify([{ elapsedMs: 45678, completedAt: 12345 }]));
   assert.equal(levelStatus(1), "playable");
   assert.equal(levelStatus(2), "playable");
-  assert.ok(readLevelProgress().has("cottage"));
+  assert.equal(readLevelProgress().has("cottage"),false,"old device records are no longer imported");
   recordLevelClear("campsite");
   assert.equal(levelStatus(2), "playable");
   saved.delete(SOLO_TIMES_KEY);
   recordLevelClear("cottage");
-  assert.equal(saved.get("screw-it:cleared:cottage"), "1");
+  assert.equal(saved.get("screw-it:cleared:cottage"), undefined,"guest completion stays in this visit only");
   assert.equal(levelStatus(1), "playable");
 });

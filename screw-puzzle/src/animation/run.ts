@@ -6,7 +6,7 @@ import type { GameState, PartId } from "../game/types.ts";
 import { LOOSE_LIFETIME_MS, SMOKE_DURATION_MS } from "../scene/loosePhysics.ts";
 import { hasNoSafeMove } from "../game/deadEnd.ts";
 import type { PartReleases } from "../scene/loosePhysics.ts";
-import { freshAbilities, matchCandidates, settleAbilities } from "../game/abilities.ts";
+import { canFindMatch, FIND_COOLDOWN_MS, freshAbilities, matchCandidates, settleAbilities } from "../game/abilities.ts";
 import type { AbilityState } from "../game/abilities.ts";
 
 export type AnimationJob = { id: number; frames: PlaybackFrame[]; finalState: GameState; readyAt: number };
@@ -23,7 +23,7 @@ export type RunAction = { type: "ready"; round: number } | { type: "start" } | {
   { type: "fall-finished"; part: PartId; round: number } |
   { type: "dismiss"; part: PartId; now: number } |
   { type: "boost"; now: number } |
-  { type: "find"; screw: string } |
+  { type: "find"; screw: string; now: number } |
   { type: "begin"; job: number } | { type: "advance"; job: number; index: number } |
   { type: "resume-clock"; now: number; round: number } |
   { type: "reset"; game: GameState; seed: number; enter?: boolean; checkpoint?: RunCheckpoint };
@@ -69,8 +69,8 @@ export function runReducer(run: RunState, action: RunAction): RunState {
   if (action.type === "find") {
     if (!run.started || run.logical.status !== "playing") return run;
     const abilities = settleAbilities(run.abilities, run.logical);
-    if (abilities.finds === 0 || abilities.hint || !matchCandidates(run.logical).some((screw) => screw.id === action.screw)) return run;
-    return { ...run, abilities: { ...abilities, finds: abilities.finds - 1, hint: action.screw }, moves: [...run.moves, `find:${action.screw}`] };
+    if (!canFindMatch(abilities, action.now) || !matchCandidates(run.logical).some((screw) => screw.id === action.screw)) return run;
+    return { ...run, abilities: { ...abilities, findUses: abilities.findUses + 1, findReadyAt: action.now + FIND_COOLDOWN_MS, hint: action.screw }, moves: [...run.moves, `find:${action.screw}`] };
   }
   if (action.type === "boost") {
     if (!run.started || run.bonusJob !== null || run.lifelines === 0) return run;

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { CAMPAIGN_LEVELS } from "../game/campaign";
+import { CAMPAIGN_LEVELS, DIFFICULTIES, levelsForDifficulty } from "../game/campaign";
 import type { LevelId } from "../game/types";
 import OnlineLeaderboard from "./OnlineLeaderboard";
 import { useBackdropDismiss } from "./useBackdropDismiss";
@@ -25,7 +25,7 @@ export default function SoloLeaderboard({ activeLevel, allowLevelSelection = fal
       </header>
       <div className="help-content leaderboard-content">
         {allowLevelSelection ? <label className="leaderboard-level">Level<select value={level} onChange={event => setSelected(event.target.value as LevelId)}>
-          {CAMPAIGN_LEVELS.map(({id,title}) => <option key={id} value={id}>{title}</option>)}
+          {DIFFICULTIES.map(difficulty => <optgroup key={difficulty} label={difficulty[0].toUpperCase() + difficulty.slice(1)}>{levelsForDifficulty(difficulty).map(({id,title},index) => <option key={id} value={id}>Level {index + 1} · {title}</option>)}</optgroup>)}
         </select></label> : <h3 className="leaderboard-world">{title}</h3>}
         {visible && <OnlineLeaderboard level={level} />}
       </div>

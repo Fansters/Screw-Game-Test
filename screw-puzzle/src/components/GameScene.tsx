@@ -5,6 +5,7 @@ import { Billboard, PerspectiveCamera } from "@react-three/drei";
 import { Vector3 } from "three";
 import type { Group } from "three";
 import type { LevelId } from "../game/campaign";
+import { levelIdentity } from "../game/campaign";
 import type { GameState, PartId, Screw } from "../game/types";
 import { SCREW_SCALE } from "../game/screwScale";
 import { pickSceneTarget } from "../scene/picking";
@@ -29,6 +30,7 @@ export type HintControls = { find: () => string | null; show: () => boolean };
 
 type GameSceneProps = { logical: GameState; fallingParts: PartId[]; round: number; playable: boolean;
   level?: LevelId;
+  resetCameraSequence?: number;
   orbitable?: boolean;
   releases?: PartReleases; onlineParts?: { current: LooseParts }; looseNow?: () => number;
   onLooseDismiss: (part: PartId) => void;
@@ -68,7 +70,7 @@ const PREVIEW_HOLD_MS = 420;
 type PartPreview = { part: PartId; round: number; x: number; y: number };
 const localNow = () => performance.now();
 
-function SceneContents({ level = "cottage", logical, fallingParts, round, playable, orbitable, pingMode, pingScrew, pingSequence, onScrewPing, rejectedScrew, hint, hintControlsRef,
+function SceneContents({ level = "cottage", resetCameraSequence, logical, fallingParts, round, playable, orbitable, pingMode, pingScrew, pingSequence, onScrewPing, rejectedScrew, hint, hintControlsRef,
   releases, onlineParts, looseNow = localNow, onLooseDismiss,
   view, onCameraArrive, onReady, onFallFinished, onScrewSelect, onBlockedScrew, projectorRef, outlinedPart, onPreview, hintMarkerRef }: GameSceneProps & {
     outlinedPart?: PartId; onPreview: (preview: PartPreview | null) => void;
@@ -262,7 +264,7 @@ function SceneContents({ level = "cottage", logical, fallingParts, round, playab
     <PerspectiveCamera makeDefault position={TITLE_CAMERA} fov={42} near={0.1} far={65} zoom={Math.min(1, size.width / size.height / (level === "titanic" ? 1.12 : 0.85))} />
     <ambientLight intensity={0.55} /><hemisphereLight args={["#fff7e7", "#8cabb5", 0.9]} />
     <directionalLight position={[5, 10, 7]} intensity={2.3} /><directionalLight position={[-6, 5, -5]} intensity={0.85} color="#d7eeff" />
-    {(level !== "titanic" || view === "title") && <FloatingTitle menu={view === "title"} height={level === "oasis" ? 7.8 : level === "arctic" ? 8.1 : level === "castle" ? 8.6 : level === "space" ? 8.8 : level === "carnival" ? 9.4 : level === "zoo" ? 7.4 : undefined} />}
+    {(level !== "titanic" || view === "title") && <FloatingTitle text={levelIdentity(level)?.title ?? "Screw it!"} menu={view === "title"} height={level === "oasis" ? 7.8 : level === "arctic" ? 8.1 : level === "castle" ? 8.6 : level === "space" ? 8.8 : level === "carnival" ? 9.4 : level === "zoo" ? 7.4 : undefined} />}
     <House key={`house-${round}`} level={level} removedParts={logical.removedParts} fallingParts={fallingParts}
       outlinedPart={outlinedPart} fadedPart={fadedPart} readPhysics={() => physicsFrame.current} looseNow={looseNow}
       onFallFinished={(part) => onFallFinished(part, round)} />
@@ -270,7 +272,7 @@ function SceneContents({ level = "cottage", logical, fallingParts, round, playab
     {level === "campsite" && <CampsiteAmbience removedParts={logical.removedParts} />}
     {pingScrew && <PingMarker key={pingSequence} screw={pingScrew} />}
     <CameraRig level={level} view={view} round={round} playable={orbitable ?? playable} onArrive={onCameraArrive}
-      hintFlight={hintFlight?.screw === hint ? hintFlight : undefined} />
+      hintFlight={hintFlight?.screw === hint ? hintFlight : undefined} resetCameraSequence={resetCameraSequence} />
   </>;
 }
 export default function GameScene(props: GameSceneProps) {
@@ -281,7 +283,7 @@ export default function GameScene(props: GameSceneProps) {
   const hinted = props.playable ? props.logical.screws.find((screw) => screw.id === props.hint && !screw.removed) : undefined;
   const activePreview = props.playable && preview?.round === props.round && !props.logical.removedParts.includes(preview.part) ? preview : null;
   const remaining = activePreview ? props.logical.screws.filter((screw) => screw.attachedTo === activePreview.part && !screw.removed).length : 0;
-  return <section className={`scene${props.level === "space" ? " space-scene" : ""}`} aria-label="3D puzzle for Screw it!">
+  return <section className={`scene${props.level === "space" ? " space-scene" : ""}`} aria-label={`3D puzzle: ${levelIdentity(props.level ?? "cottage")?.title ?? "Screw it!"}`}>
     <Canvas dpr={[1, phone ? 1.25 : 1.5]} camera={{ position: TITLE_CAMERA, fov: 42, near: 0.1, far: 65 }}>
       <Suspense fallback={null}><SceneContents {...props} outlinedPart={activePreview?.part} onPreview={setPreview} hintMarkerRef={hintMarkerRef} /></Suspense>
     </Canvas>

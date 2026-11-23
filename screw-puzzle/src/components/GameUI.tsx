@@ -6,10 +6,13 @@ import type { PlaybackFrame } from "../animation/sequence";
 import { COLOR_CODES } from "../game/colorLabels";
 import { useReadability } from "./readability";
 import ScrewCross from "./ScrewCross";
-export default function GameUI({ game, frame, completedLifeline, waitingCount = game.tray.length, owners }: {
+import PlayerAvatar from "./PlayerAvatar";
+import type { RoomIdentity } from "../multiplayer/protocol";
+export default function GameUI({ game, frame, completedLifeline, waitingCount = game.tray.length, owners, ownerProfiles }: {
   game: CollectionState; frame: PlaybackFrame<CollectionState> | null;
   waitingCount?: number; completedLifeline?: MatchBox;
   owners?: readonly string[];
+  ownerProfiles?: readonly (RoomIdentity | null | undefined)[];
 }) {
   const readability = useReadability();
   const boxes = completedLifeline && !game.boxes[BONUS_SLOT] ? [...game.boxes, completedLifeline] : game.boxes;
@@ -26,7 +29,7 @@ export default function GameUI({ game, frame, completedLifeline, waitingCount = 
           return <section key={box.id} className={`match-box${bonus ? " lifeline-box" : ""}${effect}`}
             style={{ "--screw-color": appearance.color, "--recess-color": appearance.recess } as CSSProperties}
             aria-label={`${owners?.[slot] ? `${owners[slot]}, ` : ""}${appearance.label} ${bonus ? "lifeline" : "matching"} box: ${box.screws.length} of ${MATCH_SIZE}`}>
-            {owners && <span className="box-owner">{owners[slot]}</span>}
+            {owners && <span className={`box-owner${ownerProfiles?.[slot]?" named-owner":""}`} title={owners[slot]}>{ownerProfiles?.[slot]&&<PlayerAvatar avatar={ownerProfiles[slot]!.avatar}/>}<span>{ownerProfiles?.[slot]?.name??owners[slot]}</span></span>}
             {readability.labels && <span className="box-color-code">{COLOR_CODES[box.color]}</span>}
             <div className="match-sockets" aria-hidden="true">{Array.from({ length: MATCH_SIZE }, (_, index) => {
               const entry = box.screws[index];

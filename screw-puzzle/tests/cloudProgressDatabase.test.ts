@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';import {test} from 'node:test';import {PGlite} from '@electric-sql/pglite';import {readFile,readdir} from 'node:fs/promises';
+const id=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+test('cloud saves are account-owned, single-writer, resumable across devices, and protected from stale resurrection',async t=>{
+ const db=new PGlite();t.after(()=>db.close());
+ await db.exec(`create role anon nologin;create role authenticated nologin;create role service_role nologin bypassrls;alter default privileges grant all on tables to anon,authenticated,service_role;alter default privileges grant all on functions to anon,authenticated,service_role;create schema auth;create table auth.users(id uuid primary key,email text,is_anonymous boolean not null default false,email_confirmed_at timestamptz);create table auth.identities(user_id uuid references auth.users(id) on delete cascade,provider text);revoke all on auth.users,auth.identities from public,anon,authenticated;create function auth.jwt() returns jsonb language sql stable as $$ select jsonb_build_object('is_anonymous',coalesce(current_setting('request.jwt.claim.is_anonymous',true),'false')::boolean) $$; create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;grant usage on schema auth to anon,authenticated,service_role;`);
+ const root=new URL('../supabase/migrations/',import.meta.url);for(const name of (await readdir(root)).filter(n=>n.endsWith('.sql')).sort())await db.exec(await readFile(new URL(name,root),'utf8'));
+ for(let n=1;n<=3;n++){await db.query('insert into auth.users(id,is_anonymous) values($1,$2)',[id(n),n===3]);await db.query("insert into auth.identities values($1,'google')",[id(n)]);}
+ async function as<T>(player:number,sql:string,args:unknown[]=[]){await db.exec('set role authenticated');try{await db.query("select set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claim.is_anonymous',$2,false)",[id(player),String(player===3)]);return await db.query<T>(sql,args);}finally{await db.exec('reset role');}}
+ type Result={status:string;record?:{revision:number;checkpoint:unknown;cleared:boolean};revision?:number};
+ const call=async(player:number,action:string,session:number|null,revision:number,checkpoint:unknown=null,cleared=false,expected=player,level='arctic',layout=1)=>(await as<{r:Result}>(player,'select public.cloud_progress($1,$2,$3,$4,$5,$6,$7,$8) r',[action,level,layout,session?id(session):null,revision,checkpoint,cleared,id(expected)])).rows[0].r;
+ const save={runId:id(77),seed:245,moves:['arctic-1'],elapsedMs:12345,findReadyAt:1795450000000};
+ assert.equal((await call(1,'begin',100,0)).record?.checkpoint,null);
+ const first=await call(1,'save',100,1,save);assert.equal(first.record?.revision,2);assert.equal('checkpoint' in first.record!,false,'save responses avoid echoing puzzle payloads');
+ const next={...save,moves:[...save.moves,'arctic-2']};assert.equal((await call(1,'save',100,1,next)).status,'retry');await call(1,'save',100,2,next);
+ assert.equal((await as(2,'select * from public.player_progress')).rows.length,0);await db.query("insert into public.player_progress(player_id,level_id,layout_version) values($1,'arctic',1)",[id(3)]);assert.equal((await as(3,'select * from public.player_progress')).rows.length,0);await assert.rejects(call(3,'begin',300,0));await assert.rejects(call(1,'begin',100,0,null,false,2));
+ for(const sql of ["update public.player_progress set cleared=true","delete from public.player_progress","insert into public.player_progress(player_id,level_id,layout_version) values($1,'arctic',1)"]){await assert.rejects(as(1,sql,sql.includes('$1')?[id(1)]:[]));}
+ const second=await call(1,'begin',200,0);assert.deepEqual(second.record?.checkpoint,next);assert.equal(second.record?.revision,4);
+ assert.equal((await call(1,'save',100,3,save)).status,'moved','old device cannot overwrite current cloud state');
+ const won=await call(1,'save',200,4,null,true);assert.equal(won.record?.cleared,true);
+ const fresh=await call(1,'begin',300,0);assert.equal(fresh.record?.checkpoint,null);assert.equal(fresh.record?.cleared,true);
+ assert.equal((await call(1,'save',200,5,save)).status,'moved','completed puzzles cannot be resurrected by the previous device');
+ await call(1,'save',300,6,save);const coop=await call(1,'completed',null,0);assert.deepEqual(coop.record?.checkpoint,save);assert.equal(coop.record?.revision,7,'co-op completion never replaces an active solo checkpoint');
+ for(const bad of [{...save,seed:-1},{...save,moves:'bad'},{...save,runId:'bad'},{...save,findReadyAt:-1},{...save,elapsedMs:1.2},{...save,moves:['x'.repeat(81)]},{...save,moves:Array(513).fill('x')}])await assert.rejects(call(1,'save',300,7,bad));
+ await assert.rejects(call(1,'begin',300,0,null,false,1,'space'));await assert.rejects(call(1,'begin',300,0,null,false,1,'arctic',99));
+ assert.ok(!JSON.stringify(second).includes('writer_session'));assert.ok(!JSON.stringify(second).includes('player_id'));
+});

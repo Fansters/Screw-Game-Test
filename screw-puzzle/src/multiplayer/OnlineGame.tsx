@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import GameControls from "../components/GameControls";
 import DesktopCursor from "../components/DesktopCursor";
-import GameOverlay from "../components/GameOverlay";
+import CoopResults from "../components/CoopResults";
+import RoomIdentityCard from "../components/RoomIdentityCard";
+import { useRoomIdentity } from "../components/useRoomIdentity";
+import {useCloudProgress} from "../components/cloudContext";
 import GameScene from "../components/GameScene";
 import HomeScene from "../components/HomeScene";
 import LevelLoading from "../components/LevelLoading";
@@ -45,6 +48,11 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
   const finishLoading = useCallback(() => setLoadedView(loadingKey), [loadingKey]);
   const [arrival, setArrival] = useState<{ view: CameraView; round: number }>();
   const [confirmation, setConfirmation] = useState<"reset" | "leave" | null>(null);
+  const [resetCameraSequence, setResetCameraSequence] = useState(0);
+  const look = useRoomIdentity();
+  const cloudProgress=useCloudProgress();
+  const identityName = look.identity.name, identityAvatar = look.identity.avatar;
+  useEffect(() => { if (snapshot && connected) send({type:"identity",identity:{name:identityName,avatar:identityAvatar}}); },[Boolean(snapshot),connected,send,identityName,identityAvatar]);
   const [levelsOpen, setLevelsOpen] = useState(false);
   const [pingScene, setPingScene] = useState<string | null>(null);
   const [expiredPing, setExpiredPing] = useState(0);
@@ -96,8 +104,8 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
     if (id && connected && lastReady.current === scene) send({ type: "ready", round });
   }, [id, connected, scene, round, send]);
   useEffect(() => {
-    if (won) recordLevelClear(level);
-  }, [won, scene, level]);
+    if (won) {recordLevelClear(level);cloudProgress.markClear(level);}
+  }, [won, scene, level, cloudProgress.markClear]);
   useEffect(() => {
     const previous = lastSound.current;
     if (scene === previous.scene && removed > previous.count) play("remove");
@@ -131,7 +139,7 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
   function selectLevel(level: LevelId) {
     setLevelsOpen(false);
     enable();
-    if (snapshot) send({ type: "level", round, level });
+    if (snapshot) send({ type: snapshot.game.status === "playing" ? "level" : "propose", round, level });
     else room.open(level);
   }
   function start() {
@@ -181,7 +189,7 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
       ready={revealed} onFinished={finishLoading} />}
     {game && <GameScene key={scene} level={level} logical={game} fallingParts={fallingParts} round={round}
       onlineParts={onlineParts} looseNow={looseNow} onLooseDismiss={(part) => send({ type: "dismiss", round, part })}
-      view={view} playable={playable} orbitable={orbitable} onCameraArrive={cameraArrived} onReady={sceneReady}
+      resetCameraSequence={resetCameraSequence} view={view} playable={playable} orbitable={orbitable} onCameraArrive={cameraArrived} onReady={sceneReady}
       onFallFinished={finishFall} onScrewSelect={select} onBlockedScrew={() => play("blocked")} projectorRef={project}
       pingMode={pingMode} pingScrew={pingScrew} pingSequence={room.ping?.sequence} rejectedScrew={room.blocked?.round === round ? room.blocked : null}
       hint={snapshot?.abilities.hint} hintControlsRef={hintControlsRef}
@@ -189,6 +197,7 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
       onScrewPing={(screw) => { if (room.pingScrew(round, screw)) setPingScene(null); }} />}
     {!started && <section className="room-lobby" aria-label="Two-player room">
       <h2>Two-player room</h2>
+      <RoomIdentityCard identity={look.identity} onChange={look.update} signedIn={Boolean(look.account.playerId)} onAccount={look.account.open}/>
       {snapshot ? <>
         <p className="room-level">{levelTitle}</p>
         <p className="room-rules">P1 takes the left box. P2 takes the right. Other colours wait in the shared slots; the extra box is shared too.</p>
@@ -205,7 +214,7 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
       {room.error && <p role="status">{room.error}</p>}
       {!snapshot && <button className="room-button secondary" onClick={() => leave()}>Back to solo</button>}
     </section>}
-    {levelsOpen && !started && (!snapshot || leader) &&
+    {levelsOpen && (!started || snapshot?.game.status !== "playing") && (!snapshot || leader || snapshot.game.status !== "playing") &&
       <LevelSelect mode="multiplayer" onBack={() => setLevelsOpen(false)} onSelect={selectLevel} />}
     {started && snapshot && game && <>
       <span className="room-status" role="status">
@@ -213,8 +222,9 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
       </span>
       {cameraReady && <>
         <GameUI game={frame?.game ?? game} frame={frame} waitingCount={game.tray.length}
-          completedLifeline={completedLifeline} owners={owners} />
+          completedLifeline={completedLifeline} owners={owners} ownerProfiles={[0,1,2].map(slot=>boxOwner(snapshot.players,slot)?.id).map(id=>snapshot.players.find(seat=>seat.id===id)?.identity)} />
         <GameBar key={scene} level={level} lifelines={snapshot.lifelines} shared connection={<ConnectionStatus connected={connected} sample={room.latency} />}
+          canResetCamera={orbitable} onResetCamera={() => setResetCameraSequence(sequence => sequence + 1)}
           progress={<GameTimer clock={wallClock} startedAt={sampledAt - snapshot.elapsedMs}
             stoppedAt={snapshot.clockRunning ? room.disconnectedAt : sampledAt} removed={removed} total={game.screws.length} />}
           players={<ul className="player-counts" aria-label="Screws removed by each player">
@@ -224,11 +234,11 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
                 <span>P{seat.number}</span><strong>{seat.collected}</strong>
               </li>)}
           </ul>}
-          abilities={<AbilityButtons abilities={snapshot.abilities} enabled={playable && leader} message={abilityMessage}
+          abilities={<AbilityButtons abilities={snapshot.abilities} clockOffset={room.clockOffset} enabled={playable && leader} message={abilityMessage}
             onFind={() => {
               const screw = hintControlsRef.current.find();
               if (screw) send({ type: "find", round, screw });
-              else setAbilityMessage("No reachable match yet. Reveal another part. No use spent!");
+              else setAbilityMessage("No reachable match yet. Reveal another part. No cooldown started.");
             }} />}
           canBoost={playable && leader && !completedLifeline && !room.bonusAnimating && snapshot.lifelines > 0 && canOpenBonusBox(game)}
           onBoost={() => send({ type: "boost", round })}
@@ -240,9 +250,9 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
           </button>} />
         <TransferOverlay frame={frame} getOrigin={getOrigin} />
       </>}
-      <GameOverlay mode={result} lossReason={game.lossReason} elapsedMs={snapshot.elapsedMs} timeLabel="Team time" levelTitle={levelTitle}
-        onStart={start} onRestart={leader && connected ? () => setConfirmation("reset") : undefined}
-        onLevels={leader && connected ? () => { reset(true); setLevelsOpen(true); } : undefined} />
+      {result && <CoopResults snapshot={snapshot} player={player} connected={connected} send={send}
+        syncError={won?cloudProgress.error:undefined} onRetrySave={()=>cloudProgress.markClear(level)}
+        onLevels={()=>setLevelsOpen(true)} onHome={()=>setConfirmation("leave")}/>}
     </>}
     {pingScrew && !room.error && !blockNotice && <span className="room-ping" role="status">{room.ping?.own ? "You" : "Your partner"} pinged a {pingScrew.color} screw</span>}
     {started && (room.error || blockNotice) && <span className="room-ping" role="status">{room.error || blockNotice}</span>}

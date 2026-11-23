@@ -13,9 +13,13 @@ import { hasNoSafeMove } from "../src/game/deadEnd.ts";
 import { createPartPhysics } from "../src/scene/partPhysics.ts";
 import type { PartPhysics } from "../src/scene/partPhysics.ts";
 import { SCREW_SCALE } from "../src/game/screwScale.ts";
-import { freshAbilities, matchCandidates, settleAbilities } from "../src/game/abilities.ts";
+import { canFindMatch, FIND_COOLDOWN_MS, freshAbilities, matchCandidates, settleAbilities } from "../src/game/abilities.ts";
 import type { AbilityState } from "../src/game/abilities.ts";
 import { reservedFor } from "../src/multiplayer/boxOwnership.ts";
+import type { NextRound, PastPlayer, RoomIdentity, TeamStats } from "../src/multiplayer/protocol.ts";
+import { isAvatar } from "../src/game/playerIdentity.ts";
+import { normalizeNickname } from "../src/online/nickname.ts";
+const freshStats = ():TeamStats => ({boxes:0,parts:0,assists:0,extraBoxes:0,hints:0});
 
 export const RECONNECT_MS = 30_000;
 const newSeed = () => randomInt(0, 2 ** 32);
@@ -25,6 +29,7 @@ type Peer = { send: (notice: RoomNotice) => void; close: () => void };
 type Seat = {
   id: string; token: string; number: 1 | 2; collected: number;
   peer: Peer | null; ready: boolean; reconnectBy: number | null; lastPing: number;
+  identity: RoomIdentity; stats: TeamStats;
 };
 type Room = {
   id: string; level: LevelId; seats: Seat[]; soloAllowed: boolean; round: number; seed: number; game: GameState;
@@ -32,6 +37,9 @@ type Room = {
   elapsedMs: number; clockSince: number | null; physics?: PartPhysics; physicsRevision: number;
   abilities: AbilityState;
   checkDeadEndAfter?: number;
+  nextRound: NextRound | null; proposalRevision: number;
+  pastPlayers: PastPlayer[];
+  pings: Map<string,{player:string;at:number}>;
 };
 
 function wireGame({ screws, ...game }: GameState): RoomGame {
@@ -60,11 +68,13 @@ function snapshot(room: Room, now: number): RoomSnapshot {
     level: room.level,
     id: room.id, leader: room.seats[0].id, round: room.round, seed: room.seed,
     players: room.seats.map((seat) => ({
-      id: seat.id, number: seat.number, collected: seat.collected, ready: seat.ready, connected: Boolean(seat.peer),
+      id: seat.id, number: seat.number, collected: seat.collected, ready: seat.ready, connected: Boolean(seat.peer), identity: seat.identity, stats: {...seat.stats},
     })),
     started: room.startedAt !== null, canStart: canStart(room), paused: paused(room), lifelines: room.lifelines,
     game: wireGame(room.game),
     abilities: room.abilities,
+    nextRound: room.nextRound ? {...room.nextRound,ready:[...room.nextRound.ready]} : null,
+    pastPlayers: room.pastPlayers.map(member=>({...member,stats:{...member.stats}})),
     fallStarts: Object.fromEntries([...room.fallStarts].filter(([, at]) => now - ROOM_PHYSICS_DELAY_MS < at + FALL_DURATION_MS)),
     looseParts: room.physics?.packet() ?? {},
     elapsedMs: room.elapsedMs + (room.clockSince === null ? 0 : now - room.clockSince),
@@ -106,7 +116,8 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
   }
   function addSeat(room: Room) {
     const number = room.seats.some((member) => member.number === 1) ? 2 : 1;
-    const seat: Seat = { id: secret(), token: secret(), number, collected: 0, peer: null, ready: false, reconnectBy: null, lastPing: -Infinity };
+    const seat: Seat = { id: secret(), token: secret(), number, collected: 0, peer: null, ready: false, reconnectBy: null, lastPing: -Infinity,
+      identity:{name:`Player ${number}`,avatar:number===1?"fox":"panda"},stats:freshStats() };
     room.seats.push(seat);
     return seat;
   }
@@ -129,7 +140,9 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
   }
   function removeSeat(room: Room, seat: Seat) {
     if (seat.peer) memberships.delete(seat.peer);
+    if(seat.collected||Object.values(seat.stats).some(value=>value>0))room.pastPlayers.push({id:seat.id,number:seat.number,collected:seat.collected,identity:seat.identity,stats:{...seat.stats}});
     room.seats = room.seats.filter((entry) => entry !== seat);
+    if(room.nextRound)room.nextRound.ready=[];
     room.soloAllowed = true;
     if (!room.seats.length) {
       room.physics?.free();
@@ -147,6 +160,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     memberships.delete(peer);
     seat.peer = null;
     seat.reconnectBy = now() + RECONNECT_MS;
+    if(room.nextRound)room.nextRound.ready=room.nextRound.ready.filter(id=>id!==seat.id);
     stopClock(room, now());
     publish(room);
   }
@@ -172,9 +186,11 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     room.physicsRevision = 0;
     room.elapsedMs = 0;
     room.clockSince = null;
+    room.nextRound = null; room.pings.clear();room.pastPlayers=[];
     for (const member of room.seats) {
       member.ready = false;
       member.collected = 0;
+      member.stats = freshStats();
     }
     publish(room);
   }
@@ -195,7 +211,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
         const puzzle = generateSoloPuzzle(level, nextSeed());
         const room: Room = { id: secret(), level, seats: [], soloAllowed: false, round: 0, seed: puzzle.seed,
           game: puzzle.state, startedAt: null, lifelines: LIFELINE_COUNT, abilities: freshAbilities(), fallStarts: new Map(),
-          elapsedMs: 0, clockSince: null, physicsRevision: 0 };
+          elapsedMs: 0, clockSince: null, physicsRevision: 0, nextRound:null, proposalRevision:0, pastPlayers:[], pings:new Map() };
         rooms.set(room.id, room);
         attach(peer, room, addSeat(room));
         return;
@@ -214,7 +230,37 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
       removeSeat(room, seat);
       return;
     }
+    if (command.type === "identity") {
+      // Cosmetic room labels never grant leadership, ownership or score rights.
+      try {
+        const name=normalizeNickname(command.identity.name);
+        if (!isAvatar(command.identity.avatar)) return;
+        if (seat.identity.name===name && seat.identity.avatar===command.identity.avatar) return;
+        seat.identity={name,avatar:command.identity.avatar}; publish(room);
+      } catch { reject(peer,"Choose a player name with 3–20 letters or numbers."); }
+      return;
+    }
     if (command.round !== room.round) return;
+    if (command.type === "propose" || command.type === "approve" || command.type === "next-ready") {
+      if (room.startedAt === null || room.game.status === "playing") return reject(peer,"Choose the next round after this one ends.");
+      if (command.type === "propose") {
+        if (!isLevelId(command.level)) return reject(peer,"Choose an available level.");
+        room.nextRound={revision:++room.proposalRevision,level:command.level,proposedBy:seat.id,approved:seat===room.seats[0],ready:[]};
+      } else {
+        const next=room.nextRound;
+        if (!next || next.revision!==command.proposal) return;
+        if (command.type === "approve") {
+          if (seat!==room.seats[0]) return reject(peer,"Only the room leader can confirm the next level.");
+          next.approved=true;
+        } else {
+          if (!next.approved) return reject(peer,"Wait for the leader to confirm the level.");
+          next.ready=next.ready.filter(id=>id!==seat.id);
+          if(command.ready) next.ready.push(seat.id);
+          if(room.seats.every(member=>member.peer && next.ready.includes(member.id))) { resetRound(room,next.level,true); return; }
+        }
+      }
+      publish(room); return;
+    }
     if (command.type === "ready") {
       if (!seat.ready) {
         seat.ready = true;
@@ -246,7 +292,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     if (room.startedAt === null || !seat.ready ||
         paused(room) || room.game.status !== "playing") return;
     if (command.type === "find") {
-      if (room.abilities.finds === 0 || room.abilities.hint) return;
+      if (!canFindMatch(room.abilities, time)) return;
       // The leader's scene proposes a head with a verified viewing angle; the
       // server independently reserves the shared charge and checks live clearance.
       const screw = matchCandidates(room.game).find((screw) => screw.id === command.screw);
@@ -254,7 +300,8 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
       if (!screw || findLooseBlocker(room.physics?.read() ?? {}, screw, SCREW_SCALE, time - ROOM_PHYSICS_DELAY_MS)) {
         return reject(peer, "That match changed. No hint use was spent; try again.");
       }
-      room.abilities = { ...room.abilities, finds: room.abilities.finds - 1, hint: screw.id };
+      room.abilities = { ...room.abilities, findUses: room.abilities.findUses + 1, findReadyAt: time + FIND_COOLDOWN_MS, hint: screw.id };
+      seat.stats.hints++;
       publish(room);
       return;
     }
@@ -268,6 +315,7 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
       if (time - seat.lastPing < PING_COOLDOWN_MS ||
           !room.game.screws.some((screw) => screw.id === command.screw && !screw.removed)) return;
       seat.lastPing = time;
+      room.pings.set(command.screw,{player:seat.id,at:time});
       for (const member of room.seats) {
         if (member !== seat) member.peer?.send({ type: "ping", round: room.round, screw: command.screw, player: seat.id });
       }
@@ -278,6 +326,8 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
       const { finalState, events } = planBonusBox(room.game);
       if (!events.length) return;
       room.lifelines -= 1;
+      seat.stats.extraBoxes++;
+      seat.stats.boxes += events.filter(event=>event.kind==="complete").length;
       const completed = events.find((event) => event.kind === "complete" && event.slot === BONUS_SLOT);
       commit(room, finalState, events, completed?.before.boxes[BONUS_SLOT] ?? undefined);
       return;
@@ -296,6 +346,10 @@ export function createRoomServer(now = Date.now, nextSeed = newSeed) {
     const { finalState, events } = planScrewRemoval(room.game, screw.id);
     if (finalState === room.game) return;
     seat.collected += 1;
+    seat.stats.boxes += events.filter(event=>event.kind==="complete").length;
+    seat.stats.parts += events.filter(event=>event.kind==="detach").length;
+    const ping=room.pings.get(screw.id); room.pings.delete(screw.id);
+    if(ping && ping.player!==seat.id && time-ping.at<=15000) { const helper=room.seats.find(member=>member.id===ping.player); if(helper) helper.stats.assists++; }
     room.clockSince ??= time;
     for (const event of events) {
       if (event.kind === "detach") {

@@ -20,6 +20,8 @@ export default function AccountProvider({ children }: { children: ReactNode }) {
   const [returning] = useState(() => isAccountReturn(location.href));
   const [open, setOpen] = useState(returning);
   const [active, setActive] = useState(() => open || hasStoredAccount());
+  const [restoring,setRestoring]=useState(hasStoredAccount);
+  const initialized=useCallback(()=>setRestoring(false),[]);
   const [identity, setIdentity] = useState<{kind: PlayerKind; playerId: string | null}>({kind:null,playerId:null});
   const setKind = useCallback((kind: PlayerKind, playerId: string | null = null) => setIdentity({kind,playerId}),[]);
   const close = useCallback(() => setOpen(false), []);
@@ -27,13 +29,13 @@ export default function AccountProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (returning && !config) history.replaceState(history.state, "", cleanAccountUrl(location.href));
   }, [returning]);
-  return <AccountContext value={{ open: show, ...identity }}>
+  return <AccountContext value={{ open: show, ...identity, restoring }}>
     {children}
     <ScoreSync />
     {active && (config ? <Suspense fallback={open && <AccountModal open onClose={close}><p role="status">Getting your player card…</p></AccountModal>}>
-      <AccountDialog open={open} onClose={close} onKind={setKind} />
+      <AccountDialog open={open} onClose={close} onKind={setKind} onInitialized={initialized} />
     </Suspense> : <AccountModal open={open} onClose={close}>
-      <p>Online accounts are not available right now. You can still play and save puzzle progress on this device.</p>
+      <p>Online accounts are not available right now. You can still play as a guest, but unfinished puzzles won’t be saved.</p>
       <button className="account-button primary" onClick={close}>Keep playing</button>
     </AccountModal>)}
   </AccountContext>;

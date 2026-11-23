@@ -13,7 +13,7 @@ test("casual PostgreSQL endpoint enforces Google ownership, immutable retries, p
     create table auth.users(id uuid primary key,email text,is_anonymous boolean not null default false,email_confirmed_at timestamptz);
     create table auth.identities(user_id uuid references auth.users(id) on delete cascade,provider text);
     revoke all on auth.users,auth.identities from public,anon,authenticated;
-    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+    create function auth.jwt() returns jsonb language sql stable as $$ select jsonb_build_object('is_anonymous',coalesce(current_setting('request.jwt.claim.is_anonymous',true),'false')::boolean) $$; create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     grant usage on schema auth to anon,authenticated,service_role;`);
   const root=new URL("../supabase/migrations/",import.meta.url);
   for(const name of (await readdir(root)).filter(n=>n.endsWith(".sql")).sort()) await db.exec(await readFile(new URL(name,root),"utf8"));
@@ -40,7 +40,8 @@ test("casual PostgreSQL endpoint enforces Google ownership, immutable retries, p
     await assert.rejects(role(who,who==="anon"?"":uuid(1),"update public.casual_boards set active=false"));
   }
   for(const change of [{elapsed_ms:0},{elapsed_ms:1.5},{extra_box_uses:4},{screw_count:200},{resumed:"true"},{board_id:"titanic:layout-1:casual-1"}]) await assert.rejects(submit(1,{...payload(101),...change} as ReturnType<typeof payload>));
-  for(let i=1;i<=11;i++) await submit(i,payload(100+i,i<=2?10000:10000+i*100));
+  for(const find_match_uses of [-1,1.5,2147483648,1e20,"4"]) await assert.rejects(submit(1,{...payload(101),find_match_uses} as ReturnType<typeof payload>));
+  for(let i=1;i<=11;i++) await submit(i,{...payload(100+i,i<=2?10000:10000+i*100),find_match_uses:i===2?7:1});
   await submit(1,payload(101)); // Idempotent retry.
   assert.equal((await db.query<{n:number}>("select count(*)::integer n from leaderboard_private.casual_finishes")).rows[0].n,11);
   await assert.rejects(submit(1,payload(101,1)),/finish_conflict/);
@@ -49,6 +50,9 @@ test("casual PostgreSQL endpoint enforces Google ownership, immutable retries, p
   assert.deepEqual(publicBoard.entries.slice(0,3).map(e=>e.rank),[1,1,3]);
   assert.equal(new Set(publicBoard.entries.map(e=>e.nickname)).size,10);
   assert.equal(publicBoard.entries[0].elapsed_ms,10000); assert.equal(publicBoard.entries[0].extra_box_uses,2); assert.equal(publicBoard.entries[0].resumed,true);
+  assert.equal((publicBoard.entries[1] as unknown as {find_match_uses:number}).find_match_uses,7,"public metadata accepts more than three hints");
+  await submit(1,{...payload(550,50000),find_match_uses:65536});
+  await submit(1,{...payload(550,50000),find_match_uses:65536});
   const outside=await read(uuid(11)); assert.equal(outside.personal?.rank,11); assert.ok(outside.entries.every(e=>!e.is_you));
   const own=await read(uuid(1)); assert.equal(own.entries[0].is_you,true);
   assert.equal((own.entries[0] as unknown as {avatar:string;country:null}).avatar,"fox");
@@ -92,7 +96,7 @@ test("casual PostgreSQL endpoint enforces Google ownership, immutable retries, p
   const arcticBoard=(await role<{b:Board}>("authenticated",uuid(2),"select public.get_casual_leaderboard($1) b",[arctic])).rows[0].b;
   assert.equal(arcticBoard.entries[0].elapsed_ms,90000);
   await assert.rejects(submit(2,{...payload(611),board_id:arctic,screw_count:225}),/invalid_finish/);
-  for(let i=1000;i<1118;i++) await submit(1,payload(i,20000+i));
+  for(let i=1000;i<1117;i++) await submit(1,payload(i,20000+i));
   await assert.rejects(submit(1,payload(2000)),/too_many_finishes/);
   await submit(1,payload(101)); // Retries still succeed after the rate limit is reached.
 });

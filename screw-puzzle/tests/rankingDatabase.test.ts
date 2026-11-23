@@ -23,7 +23,7 @@ test("Supabase migration enforces ownership, server-only writes, private identit
     create schema auth;
     create table auth.users (id uuid primary key, email text, is_anonymous boolean not null default false, email_confirmed_at timestamptz);
     revoke all on auth.users from public,anon,authenticated,service_role;
-    create function auth.uid() returns uuid language sql stable as
+    create function auth.jwt() returns jsonb language sql stable as $$ select jsonb_build_object('is_anonymous',coalesce(current_setting('request.jwt.claim.is_anonymous',true),'false')::boolean) $$; create function auth.uid() returns uuid language sql stable as
       $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     grant usage on schema auth to anon, authenticated, service_role;
   `);

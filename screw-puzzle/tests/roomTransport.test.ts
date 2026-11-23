@@ -77,12 +77,18 @@ for (const level of ["castle", "arctic", "oasis"] as const) test(`real ${level} 
   await host.wait(n => n.type === "state" && n.snapshot.canStart);
   host.send({ type: "start", round: 0 });
   await guest.wait(n => n.type === "state" && n.snapshot.started && !n.snapshot.paused);
+  host.send({type:"identity",identity:{name:"Captain Fox",avatar:"fox"}});
+  await guest.wait(n=>n.type==="state"&&n.snapshot.players.some(p=>p.identity?.name==="Captain Fox"));
+  guest.send({type:"propose",round:0,level:"arctic"});
+  await guest.wait(n=>n.type==="rejected"&&n.reason.includes("after this one ends"));
+  guest.send({type:"next-ready",round:0,proposal:1,ready:true});
+  await guest.wait(n=>n.type==="rejected"&&n.reason.includes("after this one ends"));
   const puzzle = generateSoloPuzzle(level, joined.snapshot.seed);
   const screw = puzzle.solution[0];
   host.send({ type: "ping", round: 0, screw });
   await guest.wait(n => n.type === "ping" && n.screw === screw);
   host.send({ type: "find", round: 0, screw });
-  await host.wait(n => n.type === "state" && n.snapshot.abilities.finds === 2);
+  await host.wait(n => n.type === "state" && n.snapshot.abilities.findUses === 1);
   const color = puzzle.state.screws.find(s => s.id === screw)!.color;
   const slot = puzzle.state.boxes.findIndex(box => box?.color === color);
   const collector = slot === 0 ? host : guest, partner = slot === 0 ? guest : host;
@@ -104,4 +110,22 @@ for (const level of ["castle", "arctic", "oasis"] as const) test(`real ${level} 
   host.send({ type: "clock", sentAt: 12345 });
   await host.wait(n => n.type === "clock" && n.sentAt === 12345);
   assert.ok(peers.every(ws => ws.readyState === WebSocket.OPEN));
+});
+
+test("post-game and cosmetic identity commands validate their WebSocket payloads",()=>{
+  for(const command of [
+    {type:"identity",identity:{name:"Panda Pal",avatar:"panda"}},
+    {type:"propose",round:0,level:"arctic"},
+    {type:"approve",round:0,proposal:1},
+    {type:"next-ready",round:0,proposal:1,ready:true},
+  ])assert.deepEqual(parseCommand(JSON.stringify(command)),command);
+  for(const command of [
+    {type:"identity",identity:{name:"x",avatar:"fox"}},
+    {type:"identity",identity:{name:"Friendly Fox",avatar:"not-an-avatar"}},
+    {type:"identity",identity:null},
+    {type:"propose",round:0,level:"space"},
+    {type:"approve",round:0,proposal:0},
+    {type:"next-ready",round:0,proposal:1,ready:"true"},
+    {type:"next-ready",round:0,proposal:1.5,ready:true},
+  ])assert.equal(parseCommand(JSON.stringify(command)),null);
 });

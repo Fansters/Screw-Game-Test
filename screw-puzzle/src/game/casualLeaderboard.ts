@@ -5,6 +5,7 @@ import { LEVEL_PRESENTATION } from "./levelPresentation.ts";
 import { isRunId } from "./runId.ts";
 import { isAvatar, isCountry } from "./playerIdentity.ts";
 import type { AvatarId } from "./playerIdentity.ts";
+import { MAX_RECORDED_HINTS } from "./abilities.ts";
 
 export type CasualFinish = { runId: string; boardId: string; level: LevelId; elapsedMs: number; extraBoxUses: number; findMatchUses: number; resumed: boolean; screwCount: number };
 export type CasualEntry = { rank: number; nickname: string; avatar?: AvatarId; country?: string | null; elapsedMs: number; extraBoxUses: number; findMatchUses: number; resumed: boolean; completedAt: string; isYou: boolean };
@@ -20,7 +21,7 @@ export function isCasualFinish(value: unknown): value is CasualFinish {
   const f = value as CasualFinish;
   return isRunId(f.runId) && LEVEL_IDS.some(id => id === f.level) && typeof f.boardId === "string" &&
     new RegExp(`^${f.level}:layout-[1-9][0-9]{0,5}:casual-[1-9][0-9]{0,5}$`).test(f.boardId) && integer(f.elapsedMs,1,2592000000) &&
-    integer(f.extraBoxUses,0,3) && integer(f.findMatchUses,0,3) && typeof f.resumed === "boolean" &&
+    integer(f.extraBoxUses,0,3) && integer(f.findMatchUses,0,MAX_RECORDED_HINTS) && typeof f.resumed === "boolean" &&
     integer(f.screwCount,140,240) && f.screwCount % 3 === 0 &&
     (f.boardId !== casualBoardId(f.level) || f.screwCount === LEVEL_PRESENTATION[f.level as keyof typeof LEVEL_PRESENTATION]?.screws);
 }
@@ -32,7 +33,7 @@ export function finishPayload(f: CasualFinish) {
 function entry(value: unknown): CasualEntry {
   const e = value as Record<string, unknown> | null;
   if (!e || !integer(e.rank,1,Number.MAX_SAFE_INTEGER) || typeof e.nickname !== "string" || e.nickname.length > 20 ||
-    !integer(e.elapsed_ms,1,2592000000) || !integer(e.extra_box_uses,0,3) || !integer(e.find_match_uses,0,3) ||
+    !integer(e.elapsed_ms,1,2592000000) || !integer(e.extra_box_uses,0,3) || !integer(e.find_match_uses,0,MAX_RECORDED_HINTS) ||
     typeof e.resumed !== "boolean" || typeof e.created_at !== "string" || !Number.isFinite(Date.parse(e.created_at))) throw new Error("Invalid board response.");
   return { rank:e.rank,nickname:e.nickname,avatar:isAvatar(e.avatar) ? e.avatar : "fox",country:isCountry(e.country) ? e.country : null,elapsedMs:e.elapsed_ms,extraBoxUses:e.extra_box_uses,findMatchUses:e.find_match_uses,
     resumed:e.resumed,completedAt:e.created_at,isYou:e.is_you===true };

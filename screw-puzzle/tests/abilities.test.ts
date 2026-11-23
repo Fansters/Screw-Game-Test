@@ -2,7 +2,7 @@ import "../src/game/allLevels.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, BoxGeometry, InstancedMesh, Matrix4, Object3D, Vector3, Quaternion } from "three";
-import { freshAbilities, matchCandidates, settleAbilities } from "../src/game/abilities.ts";
+import { FIND_COOLDOWN_MS, freshAbilities, matchCandidates, settleAbilities } from "../src/game/abilities.ts";
 import { createInitialState, removeScrew } from "../src/game/rules.ts";
 import { createRun, runReducer } from "../src/animation/run.ts";
 import { restoreSoloSave } from "../src/game/soloSave.ts";
@@ -31,14 +31,16 @@ test("hints prioritize completing a box, ignore blocked/removed/non-matching hea
   assert.ok(matchCandidates(game).some((s) => s.color === "green"));
   assert.deepEqual(matchCandidates({ ...game, status: "lost" }), []);
 });
-test("Find a Match reserves one use, never starts the clock and clears its hint after collection", () => {
+test("Find a Match starts cooldown only for a valid hint, never starts the clock and clears its hint after collection", () => {
   let run = { ...createRun(fixture()), started: true, ready: true };
-  assert.equal(runReducer(run, { type: "find", screw: "yellow-0" }), run);
-  run = runReducer(run, { type: "find", screw: "red-0" });
-  assert.equal(run.abilities.finds, 2); assert.equal(run.timerStartedAt, null);
-  assert.equal(runReducer(run, { type: "find", screw: "blue-0" }), run);
+  assert.equal(runReducer(run, { type: "find", screw: "yellow-0", now: 1000 }), run);
+  run = runReducer(run, { type: "find", screw: "red-0", now: 1000 });
+  assert.equal(run.abilities.findUses, 1); assert.equal(run.abilities.findReadyAt, 61000); assert.equal(run.timerStartedAt, null);
+  assert.equal(runReducer(run, { type: "find", screw: "blue-0", now: 61000 }), run, "an active hint is not overwritten");
   for (let i = 0; i < 3; i++) run = runReducer(run, { type: "select", id: `red-${i}`, now: i * 200 });
-  assert.equal(run.abilities.hint, null); assert.equal(run.abilities.finds, 2);
+  assert.equal(run.abilities.hint, null); assert.equal(run.abilities.findUses, 1);
+  assert.equal(runReducer(run, {type:"find",screw:"blue-0",now:60999}),run);
+  assert.equal(runReducer(run, {type:"find",screw:"blue-0",now:61000}).abilities.findUses,2);
   const reset = runReducer(run, { type: "reset", game: fixture(), seed: 3, enter: true });
   assert.deepEqual(reset.abilities, freshAbilities());
   assert.equal(settleAbilities({ ...freshAbilities(), hint: "blue-0" }, { ...fixture(), status: "lost" }).hint, null);
@@ -48,7 +50,7 @@ test("old solo saves drop retired actions without losing screw progress, hint ch
   const puzzle = generateSoloPuzzle("cottage", 245), target = matchCandidates(puzzle.state)[0]; assert.ok(target);
   const moves = [`find:${target.id}`, "peek", target.id];
   const restored = restoreSoloSave("cottage", { seed: puzzle.seed, moves, elapsedMs: 12345 })!; assert.ok(restored);
-  assert.deepEqual(restored.checkpoint.abilities, { finds: 2, hint: null });
+  assert.deepEqual(restored.checkpoint.abilities, { findUses: 1, findReadyAt: 0, hint: null });
   assert.deepEqual(restored.checkpoint.moves, [`find:${target.id}`, target.id]);
   assert.equal(restored.checkpoint.elapsedBefore, 12345);
   assert.equal(restored.game.screws.find(s => s.id === target.id)!.removed, true);
@@ -57,16 +59,23 @@ test("old solo saves drop retired actions without losing screw progress, hint ch
   assert.deepEqual(restoreSoloSave("cottage", { seed: puzzle.seed, moves: [], elapsedMs: 0 })!.checkpoint.abilities, freshAbilities());
 });
 
-test("Find a Match stops at three uses without consuming extra-box lifelines", () => {
+test("Find a Match supports more than three uses with a minute between hints, preserving lifelines and cooldown on resume", () => {
   let run = { ...createRun(fixture()), started: true, ready: true }, now = 0;
-  for (let use = 0; use < 3; use++) {
+  for (let use = 0; use < 6; use++) {
     const target = matchCandidates(run.logical)[0]; assert.ok(target);
-    run = runReducer(run, { type: "find", screw: target.id });
+    run = runReducer(run, { type: "find", screw: target.id, now: use * FIND_COOLDOWN_MS });
     run = runReducer(run, { type: "select", id: target.id, now: now += 200 });
   }
-  assert.equal(run.abilities.finds, 0);
-  assert.equal(runReducer(run, { type: "find", screw: matchCandidates(run.logical)[0].id }), run);
+  assert.equal(run.abilities.findUses, 6);
+  assert.equal(runReducer(run, { type: "find", screw: matchCandidates(run.logical)[0].id, now: FIND_COOLDOWN_MS * 6 - 1 }), run);
   assert.equal(run.lifelines, 3);
+  const puzzle=generateSoloPuzzle("cottage",245);const moves:string[]=[];let game=puzzle.state;
+  for(let use=0;use<5;use++) { const target=matchCandidates(game)[0];moves.push(`find:${target.id}`,target.id);game=removeScrew(game,target.id); }
+  const deadline=Date.now()+FIND_COOLDOWN_MS;
+  const restored=restoreSoloSave("cottage",{seed:puzzle.seed,moves,elapsedMs:10000,findReadyAt:deadline})!;
+  assert.ok(restored);assert.equal(restored.checkpoint.abilities.findUses,5);assert.equal(restored.checkpoint.abilities.findReadyAt,deadline);
+  assert.equal(restored.checkpoint.lifelines,3);assert.deepEqual(restored.game,game);
+  assert.equal(restoreSoloSave("cottage",{seed:puzzle.seed,moves,elapsedMs:10000,findReadyAt:NaN}),null);
 });
 
 test("hint camera finds a front-facing actual head and refuses a head enclosed by solid geometry", () => {

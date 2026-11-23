@@ -14,7 +14,7 @@ import type { AvatarId } from "../game/playerIdentity";
 import PlayerAvatar from "./PlayerAvatar";
 
 type Providers = Awaited<ReturnType<typeof accountProviders>>;
-export default function AccountDialog({ open, onClose, onKind }: { open: boolean; onClose: () => void; onKind: (kind: PlayerKind, playerId?: string | null) => void }) {
+export default function AccountDialog({ open, onClose, onKind, onInitialized }: { open: boolean; onClose: () => void; onKind: (kind: PlayerKind, playerId?: string | null) => void; onInitialized:()=>void }) {
   const [client, setClient] = useState<SupabaseClient>();
   const [user, setUser] = useState<User | null>(null);
   const [providers, setProviders] = useState<Providers>();
@@ -62,9 +62,9 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
         adopt(verified.data.user);
       }
     }).catch(error => { if (alive) setMessage(accountError(error)); })
-      .finally(() => { if (alive) setInitializing(false); });
+      .finally(() => { if (alive) {setInitializing(false);onInitialized();} });
     return () => { alive = false; unsubscribe?.(); };
-  }, [onKind, retry]);
+  }, [onKind, retry, onInitialized]);
 
   useEffect(() => {
     if (!open) return;
@@ -137,7 +137,7 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
             <button className="account-button primary" disabled={busy}>{busy ? "Saving…" : "Save player card"}</button>
           </form></> : <p role="status">Getting your player name…</p>}
         {confirmOut ? <div className="account-signout-check">
-          <p>{anonymous ? "Forget this guest? Link Google first if you want to keep this profile. Signing out cannot be undone for a guest." : "Sign out on this device? Your online scores stay with your account, and your saved puzzle stays here."}</p>
+          <p>{anonymous ? "Forget this guest? Link Google first if you want to keep this profile. Signing out cannot be undone for a guest." : "Sign out on this device? Your scores and saved puzzles stay safely in your account."}</p>
           <button className="account-button danger" disabled={busy} onClick={() => void action(async () => {
             const result = await client.auth.signOut({ scope: "local" }); if (result.error) throw result.error;
             clearAccountIntent(sessionStore); setUser(null); onKind(null); setConfirmOut(false); setNotice("Signed out on this device.");
@@ -147,7 +147,7 @@ export default function AccountDialog({ open, onClose, onKind }: { open: boolean
       </>}
       {!permanent && <button className="account-link" disabled={busy} onClick={() => { setNotice(""); setRetry(value => value + 1); }}>Refresh sign-in options</button>}
     </>}
-    <p className="account-footnote">Online times follow your account. Unfinished puzzles stay on this device.</p>
+    <p className="account-footnote">Your times and solo puzzle progress follow your account.</p>
     <button className="account-button keep-playing" onClick={closeCard}>Keep playing</button>
   </AccountModal>;
 }

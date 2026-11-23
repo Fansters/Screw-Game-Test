@@ -49,8 +49,8 @@ export default function HelpDialog({ dialogRef }: { dialogRef: RefObject<HTMLDia
         <HelpTip icon="peek" title="Peek behind a part">
           Tap a part to see through it, then tap again to restore it. Covered screws still need a clear path.
         </HelpTip>
-        <HelpTip icon="match" title="Find a match · 3 uses">
-          The magnifier points to a reachable match. “Show me” moves your camera; you do the unscrewing! In co-op, the leader uses abilities.
+        <HelpTip icon="match" title="Find a match · unlimited">
+          The magnifier points to a reachable match. “Show me” moves your camera; you do the unscrewing! Wait one minute between uses. In co-op, the leader activates it for the team.
         </HelpTip>
       </div>
       <footer className="help-version">Version {GAME_VERSION}</footer>

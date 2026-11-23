@@ -7,6 +7,8 @@ const player = "00000000-0000-4000-8000-000000000001", other = "00000000-0000-40
 const finish = () => ({runId:newRunId(),boardId:casualBoardId("cottage"),level:"cottage" as const,elapsedMs:123456,extraBoxUses:2,findMatchUses:1,resumed:true,screwCount:240});
 test("casual results validate current layouts, integer time and ability metadata", () => {
   const f = finish(); assert.ok(isRunId(f.runId)); assert.notEqual(newRunId(),f.runId);
+  assert.equal(isCasualFinish({...f,findMatchUses:65536}),true);
+  for(const findMatchUses of [-1,1.5,2147483648,Infinity]) assert.equal(isCasualFinish({...f,findMatchUses}),false);
   assert.equal(casualBoardId("desert"),"desert:layout-3:casual-1");
   assert.equal(casualBoardId("castle"),"castle:layout-1:casual-1");
   assert.ok(isCasualFinish({...f,level:"castle",boardId:casualBoardId("castle"),screwCount:225}));
@@ -48,6 +50,7 @@ test("public board parsing accepts ties and rejects malformed or wrong-level res
   const e={rank:1,nickname:"Test Player",elapsed_ms:10000,extra_box_uses:0,find_match_uses:3,resumed:false,created_at:"2026-11-20T12:00:00Z",is_you:true};
   const b={board_id:casualBoardId("cottage"),open:true,players:2,entries:[e,{...e,nickname:"Friend",is_you:false}],personal:e};
   const parsed=parseCasualBoard(b,"cottage"); assert.equal(parsed.personal?.isYou,true); assert.deepEqual(parsed.entries.map(e=>e.rank),[1,1]);
+  assert.equal(parseCasualBoard({...b,entries:[{...e,find_match_uses:55}]},"cottage").entries[0].findMatchUses,55);
   const identity=parseCasualBoard({...b,entries:[{...e,avatar:"frog",country:"LV"},{...e,avatar:"https://bad.example",country:"INVALID"}]},"cottage");
   assert.equal(identity.entries[0].avatar,"frog"); assert.equal(identity.entries[0].country,"LV");
   assert.equal(identity.entries[1].avatar,"fox"); assert.equal(identity.entries[1].country,null);

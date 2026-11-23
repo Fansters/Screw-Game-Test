@@ -5,7 +5,6 @@ import { RANKED_BOARDS, RANKED_RULES, rankedBoardId } from "../src/ranking/rules
 import { topVerifiedResults } from "../src/ranking/results.ts";
 import { LEVEL_LAYOUT_VERSIONS, layoutRevision } from "../src/game/layoutVersions.ts";
 import { LEVEL_IDS } from "../src/game/types.ts";
-import { ABILITY_USES } from "../src/game/abilities.ts";
 import { LIFELINE_COUNT } from "../src/animation/run.ts";
 
 test("ranked timing starts on the first accepted screw and includes thinking, menus and network grace", () => {
@@ -52,7 +51,7 @@ test("ranked boards separate layouts, generation and rules without resetting exi
   for (const level of [...LEVEL_IDS, "titanic"] as const) assert.equal(layoutRevision(level), `v${LEVEL_LAYOUT_VERSIONS[level]}`);
   assert.equal(layoutRevision("cottage"), "v2");
   assert.equal(layoutRevision("desert"), "v3");
-  assert.equal(RANKED_RULES.findMatches, ABILITY_USES);
+  assert.equal(RANKED_RULES.findMatches, 3, "closed historical ranked rules remain unchanged");
   assert.equal(RANKED_RULES.version, 2);
   assert.equal("queuePeeks" in RANKED_RULES, false);
   assert.equal(RANKED_RULES.extraBoxes, LIFELINE_COUNT);

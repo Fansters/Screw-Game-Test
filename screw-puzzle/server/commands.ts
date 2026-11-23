@@ -1,6 +1,8 @@
 import type { RoomCommand } from "../src/multiplayer/protocol.ts";
 import { isLevelId, LEVEL_IDS } from "../src/game/types.ts";
 import { isLevelPart } from "../src/scene/loosePhysics.ts";
+import { isAvatar } from "../src/game/playerIdentity.ts";
+import { normalizeNickname } from "../src/online/nickname.ts";
 
 // A newly playable level must also work through the real WebSocket boundary.
 // Cottage fixings retain their original screw- prefix.
@@ -16,6 +18,11 @@ export function parseCommand(data: string): RoomCommand | null {
       if (isLevelId(value.level)) return { type: "create", levelVersion, level: value.level };
       break;
     case "leave": return { type: value.type };
+    case "identity": {
+      const identity = "identity" in value ? value.identity as Record<string,unknown> | null : null;
+      if (!identity || !isAvatar(identity.avatar) || typeof identity.name !== "string") break;
+      try { return {type:"identity",identity:{name:normalizeNickname(identity.name),avatar:identity.avatar}}; } catch { break; }
+    }
     case "join":
       if ("room" in value && typeof value.room === "string" && /^[\w-]{24}$/.test(value.room) &&
         (!("token" in value) || (typeof value.token === "string" && /^[\w-]{24}$/.test(value.token)))) {
@@ -25,11 +32,17 @@ export function parseCommand(data: string): RoomCommand | null {
     case "clock":
       if ("sentAt" in value && typeof value.sentAt === "number" && Number.isFinite(value.sentAt)) return { type: "clock", sentAt: value.sentAt };
       break;
-    case "ready": case "level": case "start": case "reset": case "boost": case "find": case "dismiss": case "ping": case "select":
+    case "ready": case "level": case "start": case "reset": case "boost": case "find": case "dismiss": case "ping": case "select": case "propose": case "approve": case "next-ready":
       if (!("round" in value) || typeof value.round !== "number" || !Number.isSafeInteger(value.round)) break;
       if (value.type === "reset") return { type: "reset", round: value.round, lobby: "lobby" in value && value.lobby === true };
-      if (value.type === "level") {
-        if ("level" in value && isLevelId(value.level)) return { type: "level", round: value.round, level: value.level };
+      if (value.type === "level" || value.type === "propose") {
+        if ("level" in value && isLevelId(value.level)) return { type: value.type, round: value.round, level: value.level };
+        break;
+      }
+      if(value.type === "approve" || value.type === "next-ready") {
+        if (!("proposal" in value) || typeof value.proposal !== "number" || !Number.isSafeInteger(value.proposal) || value.proposal < 1) break;
+        if (value.type === "approve") return {type:value.type,round:value.round,proposal:value.proposal};
+        if ("ready" in value && typeof value.ready === "boolean") return {type:value.type,round:value.round,proposal:value.proposal,ready:value.ready};
         break;
       }
       if (value.type === "dismiss") {

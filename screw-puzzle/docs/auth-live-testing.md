@@ -37,7 +37,7 @@ Select Arctic Expedition in solo and co-op and confirm Level 8 / 150 screws. On 
 3. Remove a few screws, exit Home, then resume. Check the same seed/progress, elapsed time and ability charges return. Revisit other levels after leaving the castle to look for accumulating memory or slowdowns.
 4. Create a castle room and invite a friend on another device. Both must load before Start together. Check simultaneous moves, matching boxes, object release, reset and reconnect.
 5. Finish a real solo castle run while signed into Google. The current-level board should show your best after upload; Home should offer all nine boards. Do not add fabricated test scores to production.
-6. Optionally finish separate runs on two devices with the same account. The faster time should remain the public best regardless of upload order. Unfinished checkpoints remain device-local; avoid simultaneous same-level tabs in one browser.
+6. Optionally finish separate runs on two devices with the same account. The faster time should remain the public best regardless of upload order. Unfinished checkpoints are now cloud-only: opening the same world on a second device hands its active writer over (see the 0.1.41 checks below).
 
 ## Test 2: Google and a real online result
 
@@ -84,10 +84,41 @@ Choose an available name in My account after Google sign-in. Rename it more than
 
 1. Open Login without signing in: ordinary local play still works. Click outside the player card to dismiss it, or use its visible X.
 2. Sign in with your real Google account. Open My account: check the member-since month and the compact profile banner. Choose Customize your card, pick an animal, edit your available nickname, and optionally select your country. Save.
-3. Reopen the card on this device and another device signed into the same account. The saved nickname, avatar and country should match. Unfinished puzzle progress still stays on its original device.
+3. Reopen the card on this device and another device signed into the same account. The saved nickname, avatar and country should match. Unfinished puzzle progress now follows the Google account (see the 0.1.41 checks below).
 4. Open Leaderboard. Your existing result should display the chosen avatar/country. Choose Not shared and save: the country should disappear from public results after refresh. Your result/time must remain unchanged.
 5. On desktop/phone, check the X and backdrop dismissal. Clicking/dragging inside the card must keep it open. Keyboard Escape and tab focus should still work.
 6. Open level select: Medium is selected and has all nine worlds. Easy/Hard show distinct gentle colour themes and no playable cards. Return to Medium, swipe horizontally and play normally.
 7. In co-op, check the RTT badge inside the bottom navbar, beside the ping action. A disconnected partner must still pause the room rather than end it. A true dead end with four waiting screws, no safe move and no usable extra box ends both clients only after loose objects clear. Reset starts a fresh playable round.
 
 The automated account UI checks use an intercepted Google session and fake browser-only rows, never invented live records. Local PostgreSQL tests cover profile ownership and public projection; a live read confirms the applied migration. Real OAuth and physical-device interaction remain the owner's live checks after deploying the matching frontend/room server (protocol 31). No new environment variables.
+
+## Difficulty and Find a Match — 0.1.39
+
+- Default Medium has six cards numbered 1–6. Easy has Arctic Expedition numbered 1; Hard has Lakeside Camp numbered 1 and Egyptian Oasis numbered 2. Check horizontal navigation and selecting these worlds in both solo and co-op. HUD numbers include their difficulty. Existing progress and leaderboard entries remain attached to the same named worlds.
+- Use Find a Match: it starts a 1:00 countdown. Collect the highlighted screw; the button stays unavailable until the countdown ends. After one minute it can be used again, including a fourth/fifth use. Failed searches start no cooldown. Extra-box lifelines still have three charges.
+- Save/refresh during the wait. The remaining cooldown must persist; leaving the game does not restart the minute. Reset starts a fresh level with Find ready. An active uncollected hint remains active after cooldown, as before.
+- In co-op, guests cannot activate Find; both see the same cooldown. Refresh/rejoin or leave so leadership passes to the partner: the deadline must stay the same. At 60 seconds the current leader can activate it again.
+- Finish a Google-signed-in run with more than three hints: its time should publish normally and show the full hint count. This can be done with separate real runs; never insert fake records into the live database for testing.
+
+## Local view and picker polish — 0.1.40
+
+- In solo or co-op, zoom toward an edge and orbit to a different side. Click Reset camera to the left of the abilities: it should smoothly restore the original zoomed-out overview. Drag/zoom during the flight should interrupt it. Your partner's camera, inventory, elapsed time and hint cooldown must not change.
+- Each world's floating 3D title is its full name. The homepage still says Screw it!. Check long names on a phone; the navbar should show only Level N with Easy/Medium/Hard below.
+- Switch difficulty tabs quickly: the coloured selected tab responds immediately and only the final requested group should appear after the gentle fade. Outgoing cards cannot be played during their fade. Close the picker during a transition and reopen it; no delayed switch should leak into the new picker.
+- Keyboard arrows and horizontal phone swipes still select cards. With reduced motion enabled, camera resets and difficulty switches complete without their animated delay.
+
+This release is frontend-only: protocol remains 32, with no new environment variables or database changes.
+
+## Account progress and team rounds — 0.1.41
+
+The Supabase migrations are already applied. Publish the same source revision to Vercel and Render: protocol 33 must match. No new environment variables; retain VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY and VITE_ROOM_SERVER. Never add a service-role key to the frontend. These live checks use your real accounts; automated session fixtures do not replace a real Google OAuth test.
+
+1. **Guest play:** open a private window, choose a level and accept Play without saving. Remove screws, refresh or leave and re-enter: it starts fresh and prompts sign-in. No device puzzle-progress or completion-history keys should be created. Old device puzzles are retired, not imported.
+2. **Cloud resume:** sign into Google, choose a level, remove several screws and wait for Cloud saved. Exit to Home/Select Level or refresh the level URL, then resume: seed/colours, removed parts, timer, lifelines and hint cooldown should match. Sign into the same account on another physical device; its card should offer Resume puzzle. Time while the level was closed is excluded.
+3. **Same-level handoff:** keep device A open and resume that same world on device B. B gets the cloud checkpoint. Within the next save/periodic check (normally five seconds), A shows Playing on another device and stops collecting. It must not overwrite B. Different worlds have independent checkpoints.
+4. **Connection loss:** disconnect during a save. Collection pauses with retry controls; the timer continues while the level is open. Reconnect without refreshing: the latest in-memory move should save, and play resumes. If you leave/refresh before confirmation, only the last cloud checkpoint is guaranteed. There is no persistent offline queue for puzzles.
+5. **Reset/finish/account boundary:** reset replaces the account checkpoint with a fresh puzzle. Finish clears the active checkpoint and records its completion badge; the casual global leaderboard still publishes Google-at-finish solo runs only. The finish actions are Restart, Select Level and Home. Sign out: the account puzzle closes; it must not become guest progress or another account’s checkpoint. Co-op completion must not erase an unfinished solo puzzle of the same world.
+6. **Player labels/settings:** check both owned matching boxes show the correct name/avatar; a lifeline box remains Shared. Guests can choose a room-only name/avatar without signing up. Settings sliders update UI size, rotation and zoom live and survive reload on that device. Check narrow-phone fitting at 85% and 115%, plus tablet touch rotation and independent partner cameras. Restore view defaults resets all three sliders.
+7. **Shared results/next round:** finish or lose a co-op round. Check team time and both contributions. Let the guest suggest a world; only the leader can confirm. One ready player must not start the round. Disconnect/reconnect one ready seat: it must ready again. Both ready starts the chosen world in the same room/invite, waiting for both scene loads; stats reset and player labels remain. A departed contributor remains visible on that round’s results; the remaining player can continue as leader.
+
+Focused automated coverage checks cloud RLS/Google guards, stale-write fencing, retry/coalescing, completion/reset races, restored puzzles, co-op proposals/stats/transport and responsive UI/camera controls. Production build, lint and unchanged level geometry audits are intentionally skipped.

@@ -153,19 +153,21 @@ test("co-op abilities are leader-controlled, shared, preserved on reconnect and 
   assert.deepEqual(leader.state().abilities, freshAbilities());
   assert.equal(guest.notices.at(-1)?.type, "rejected");
   leader.send({ type: "find", round: 0, screw: "missing" });
-  assert.equal(leader.state().abilities.finds, 3);
+  assert.equal(leader.state().abilities.findUses, 0);
   leader.send({ type: "find", round: 0, screw: target });
-  assert.deepEqual(guest.state().abilities, { finds: 2, hint: target });
+  assert.deepEqual(guest.state().abilities, { findUses: 1, findReadyAt: 80000, hint: target });
   assert.equal(guest.state().clockRunning, false);
   leader.send({ type: "find", round: 0, screw: target });
-  assert.equal(guest.state().abilities.finds, 2);
+  assert.equal(guest.state().abilities.findUses, 1);
   const token = guest.seat().token;
   guest.disconnect();
   const refreshed = makePeer(); refreshed.send({ type: "join", room, token, levelVersion: ROOM_LEVEL_VERSION });
   assert.deepEqual(refreshed.state().abilities, leader.state().abilities);
   refreshed.collect({ type: "select", round: 0, screw: target });
   assert.equal(leader.state().abilities.hint, null);
-  assert.equal(leader.state().abilities.finds, 2);
+  assert.equal(leader.state().abilities.findUses, 1);
+  leader.send({ type: "find", round: 0, screw: matchCandidates(generateSoloPuzzle("cottage",245).state).find(s=>s.id!==target)!.id });
+  assert.equal(leader.state().abilities.findUses,1,"collecting a hint does not clear its cooldown");
   leader.send({ type: "reset", round: 0 });
   assert.deepEqual(refreshed.state().abilities, freshAbilities());
   leader.send({ type: "find", round: 0, screw: target });
@@ -178,6 +180,32 @@ test("co-op abilities are leader-controlled, shared, preserved on reconnect and 
   assert.ok(leader.state().game.clearedCount > 0);
   leader.send({ type: "leave" });
   assert.equal(refreshed.state().leader, refreshed.seat().player);
+});
+
+test("co-op Find a Match accepts five uses, enforces exact server cooldowns and retains the deadline on leader handoff", t => {
+  const { leader,guest,advance,close }=fixture(245);t.after(close);
+  const template=soloLevelTemplate("cottage");
+  const currentGame=():GameState=>{
+    const {colors,removed,...state}=guest.state().game;
+    return {...state,screws:template.map((s,i)=>({...s,color:colors[i],removed:removed.includes(s.id)}))};
+  };
+  for(let use=1;use<=4;use++) {
+    const target=matchCandidates(currentGame())[0];assert.ok(target);
+    leader.send({type:"find",round:0,screw:target.id});
+    assert.equal(guest.state().abilities.findUses,use);
+    leader.collect({type:"select",round:0,screw:target.id});
+    advance(59999);
+    leader.send({type:"find",round:0,screw:matchCandidates(currentGame())[0].id});
+    assert.equal(guest.state().abilities.findUses,use,"one millisecond early must be rejected");
+    if(use<4) advance(1);
+  }
+  const deadline=guest.state().abilities.findReadyAt;
+  leader.send({type:"leave"});
+  assert.equal(guest.state().leader,guest.seat().player);assert.equal(guest.state().abilities.findReadyAt,deadline);
+  const target=matchCandidates(currentGame())[0];
+  guest.send({type:"find",round:0,screw:target.id});assert.equal(guest.state().abilities.findUses,4);
+  advance(1);guest.send({type:"find",round:0,screw:target.id});assert.equal(guest.state().abilities.findUses,5);
+  assert.equal(guest.state().lifelines,3);
 });
 
 function fixture(seed = 245, level: LevelId = "cottage", start = true) {
@@ -777,4 +805,60 @@ test("both seats select, refresh, solve and restart Egyptian Oasis with one shar
   assert.equal(refreshed.state().level, "oasis");
   assert.equal(refreshed.state().game.removed.length, 0);
   assert.equal(refreshed.state().paused, true);
+});
+
+test("ready-up keeps the same invite, requires leader confirmation and both connected seats, and rejects stale proposals", t=>{
+  const {leader,guest,room,makePeer,advance,close}=fixture(245,"arctic");t.after(close);
+  leader.send({type:"identity",identity:{name:"Captain Fox",avatar:"fox"}});
+  guest.send({type:"identity",identity:{name:"Panda Pal",avatar:"panda"}});
+  guest.send({type:"propose",round:0,level:"castle"});
+  assert.equal(leader.state().nextRound,null,"no mid-game proposals");
+  const {solution}=generateSoloPuzzle("arctic",245);
+  for(const screw of solution){leader.collect({type:"select",round:0,screw});advance(1800);}
+  const finished=leader.state();assert.equal(finished.game.status,"won");
+  assert.equal(finished.players.reduce((n,p)=>n+p.stats!.boxes,0),50);
+  assert.equal(finished.players.reduce((n,p)=>n+p.stats!.parts,0),finished.game.removedParts.length);
+  guest.send({type:"propose",round:0,level:"castle"});
+  const first=leader.state().nextRound!;assert.equal(first.approved,false);
+  guest.send({type:"approve",round:0,proposal:first.revision});assert.equal(leader.state().nextRound!.approved,false);
+  guest.send({type:"next-ready",round:0,proposal:first.revision,ready:true});assert.deepEqual(leader.state().nextRound!.ready,[]);
+  leader.send({type:"approve",round:0,proposal:first.revision});
+  guest.send({type:"next-ready",round:0,proposal:first.revision,ready:true});
+  leader.send({type:"propose",round:0,level:"arctic"});
+  const second=leader.state().nextRound!;assert.ok(second.revision>first.revision);assert.deepEqual(second.ready,[]);
+  leader.send({type:"next-ready",round:0,proposal:first.revision,ready:true});assert.deepEqual(guest.state().nextRound!.ready,[]);
+  guest.send({type:"next-ready",round:0,proposal:second.revision,ready:true});
+  const token=guest.seat().token;guest.disconnect();
+  leader.send({type:"next-ready",round:0,proposal:second.revision,ready:true});
+  assert.equal(leader.state().round,0);
+  assert.ok(!leader.state().nextRound!.ready.includes(guest.seat().player),"disconnect revokes that seat’s readiness");
+  const returned=makePeer();returned.send({type:"join",room,token,levelVersion:ROOM_LEVEL_VERSION});
+  assert.equal(returned.state().players[1].identity!.name,"Panda Pal");
+  returned.send({type:"next-ready",round:0,proposal:second.revision,ready:true});
+  const next=leader.state();assert.equal(next.id,room);assert.equal(next.round,1);assert.equal(next.started,true);assert.equal(next.paused,true);
+  assert.equal(next.nextRound,null);assert.equal(next.game.removed.length,0);assert.equal(next.elapsedMs,0);
+  assert.deepEqual(next.players.map(p=>p.stats),[{boxes:0,parts:0,assists:0,extraBoxes:0,hints:0},{boxes:0,parts:0,assists:0,extraBoxes:0,hints:0}]);
+  leader.send({type:"ready",round:1});assert.equal(returned.state().paused,true);
+  returned.send({type:"ready",round:1});assert.equal(leader.state().paused,false);assert.equal(leader.state().clockRunning,false);
+  assert.equal(finished.players.reduce((n,p)=>n+p.collected,0),150,"earlier snapshots are immutable");
+  assert.equal(first.approved,false);assert.deepEqual(first.ready,[]);
+});
+
+test("team contributions count successful actions and helpful partner pings, retain departed players, and reset cleanly", t=>{
+  const {leader,guest,close,advance}=fixture(245);t.after(close);
+  const puzzle=generateSoloPuzzle("cottage",245).state;
+  const target=matchCandidates(puzzle).find(s=>s.color===puzzle.boxes[1]!.color)!;
+  leader.send({type:"identity",identity:{name:"Helping Fox",avatar:"fox"}});
+  leader.send({type:"ping",round:0,screw:target.id});
+  leader.send({type:"find",round:0,screw:target.id});
+  guest.send({type:"select",round:0,screw:target.id});
+  guest.send({type:"select",round:0,screw:target.id});
+  assert.equal(leader.state().players[0].stats!.assists,1);assert.equal(leader.state().players[0].stats!.hints,1);
+  assert.equal(leader.state().players[1].collected,1);
+  assert.equal(leader.state().players[1].stats!.parts,1);
+  advance(700);leader.send({type:"ping",round:0,screw:target.id});assert.equal(leader.state().players[0].stats!.assists,1);
+  leader.send({type:"leave"});
+  assert.equal(guest.state().leader,guest.seat().player);
+  assert.equal(guest.state().pastPlayers![0].identity.name,"Helping Fox");assert.equal(guest.state().pastPlayers![0].stats.assists,1);
+  guest.send({type:"reset",round:0});assert.deepEqual(guest.state().pastPlayers,[]);
 });
