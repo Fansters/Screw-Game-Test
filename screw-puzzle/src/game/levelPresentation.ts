@@ -10,6 +10,7 @@ export const LEVEL_PRESENTATION = {
   zoo: { screws: 231, preview: "/images/levels/zoo.webp", tag: "Wild discoveries", description: "Animal habitats, a waterfall and a lookout packed with surprises.", accent: "#a7cebb" },
   castle: { screws: 225, preview: "/images/levels/castle.webp", tag: "A royal adventure", description: "A grand castle, hidden chambers and a lively medieval courtyard.", accent: "#dfb067" },
   arctic: { screws: 150, preview: "/images/levels/arctic.webp", tag: "A frosty expedition", description: "Penguins, seals and a red research hut above sparkling icy caves.", accent: "#8dd7ed" },
+  jungle: { screws: 144, preview: "/images/levels/jungle.jpg", tag: "A lush first discovery", description: "A sun temple, treetop bridge and sparkling waterfalls in a jungle full of life.", accent: "#b5d868" },
   oasis: { screws: 198, preview: "/images/levels/oasis.webp", tag: "Secrets in the sand", description: "A temple arch, camel caravan and hidden oasis full of layered discoveries.", accent: "#efbf72" },
 } satisfies Partial<Record<LevelId, { screws: number; preview: string; tag: string; description: string; accent: string }>>;
 

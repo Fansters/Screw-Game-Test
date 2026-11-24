@@ -8,6 +8,7 @@ import type { LevelId } from "../game/campaign";
 import { levelIdentity } from "../game/campaign";
 import type { GameState, PartId, Screw } from "../game/types";
 import { SCREW_SCALE } from "../game/screwScale";
+import { SCREW_HEAD_FACE_Z } from "../scene/screwDimensions";
 import { pickSceneTarget } from "../scene/picking";
 import { createScrewGestures } from "../scene/screwGestures";
 import { isScrewAccessible } from "../game/rules";
@@ -51,7 +52,7 @@ function PingMarker({ screw }: { screw: Screw }) {
     elapsed.current += delta;
     ring.current.scale.setScalar(1 + 0.17 * Math.sin(elapsed.current * 2 * Math.PI / 0.9));
   });
-  const center = new Vector3(...screw.position).addScaledVector(new Vector3(...screw.normal), SCREW_SCALE * 0.144);
+  const center = new Vector3(...screw.position).addScaledVector(new Vector3(...screw.normal), SCREW_SCALE * SCREW_HEAD_FACE_Z);
   return <Billboard position={center}>
     <group ref={ring}>
       <mesh renderOrder={20} raycast={() => {}}>
@@ -164,7 +165,7 @@ function SceneContents({ level = "cottage", resetCameraSequence, logical, fallin
     projectorRef.current = (id) => {
       const screw = logical.screws.find((candidate) => candidate.id === id);
       if (!screw) return [0, 0];
-      const projected = new Vector3(...screw.position).addScaledVector(new Vector3(...screw.normal), SCREW_SCALE * 0.144).project(camera);
+      const projected = new Vector3(...screw.position).addScaledVector(new Vector3(...screw.normal), SCREW_SCALE * SCREW_HEAD_FACE_Z).project(camera);
       const rect = gl.domElement.getBoundingClientRect();
       return [rect.left + (projected.x + 1) * rect.width / 2, rect.top + (1 - projected.y) * rect.height / 2];
     };
@@ -264,7 +265,7 @@ function SceneContents({ level = "cottage", resetCameraSequence, logical, fallin
     <PerspectiveCamera makeDefault position={TITLE_CAMERA} fov={42} near={0.1} far={65} zoom={Math.min(1, size.width / size.height / (level === "titanic" ? 1.12 : 0.85))} />
     <ambientLight intensity={0.55} /><hemisphereLight args={["#fff7e7", "#8cabb5", 0.9]} />
     <directionalLight position={[5, 10, 7]} intensity={2.3} /><directionalLight position={[-6, 5, -5]} intensity={0.85} color="#d7eeff" />
-    {(level !== "titanic" || view === "title") && <FloatingTitle text={levelIdentity(level)?.title ?? "Screw it!"} menu={view === "title"} height={level === "oasis" ? 7.8 : level === "arctic" ? 8.1 : level === "castle" ? 8.6 : level === "space" ? 8.8 : level === "carnival" ? 9.4 : level === "zoo" ? 7.4 : undefined} />}
+    {(level !== "titanic" || view === "title") && <FloatingTitle text={levelIdentity(level)?.title ?? "Screw it!"} menu={view === "title"} height={level === "jungle" ? 8.3 : level === "oasis" ? 7.8 : level === "arctic" ? 8.1 : level === "castle" ? 8.6 : level === "space" ? 8.8 : level === "carnival" ? 9.4 : level === "zoo" ? 7.4 : undefined} />}
     <House key={`house-${round}`} level={level} removedParts={logical.removedParts} fallingParts={fallingParts}
       outlinedPart={outlinedPart} fadedPart={fadedPart} readPhysics={() => physicsFrame.current} looseNow={looseNow}
       onFallFinished={(part) => onFallFinished(part, round)} />

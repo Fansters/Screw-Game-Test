@@ -131,3 +131,34 @@ Focused automated coverage checks cloud RLS/Google guards, stale-write fencing, 
 - The account card says Player card, centred, without a close icon or Refresh sign-in options. Escape, outside-click and Keep playing still dismiss it; Google login and profile editing are unchanged.
 
 This is a frontend UI/metadata release. Protocol stays 33; no database migration or new environment variables. Production build, lint and unchanged geometry audits are skipped.
+
+## Jungle Temple — 0.1.43
+
+- Easy now has Arctic Expedition (1) and Jungle Temple (2); Medium/Hard numbers are unchanged. Check Jungle's actual preview, 144-screw label and green card in both solo and room creation.
+- Enter Jungle on phone/desktop: title fits, collection counter is 0/144, six existing colours, side and layered heads work, and the scene stays locked until loading finishes. Trees have two removable sections each. Check the temple doors/idol, treehouse bridge, waterfall, statue and tent reveals.
+- Google: make real progress, reopen on another device and continue the same account checkpoint. A real solo finish can publish to Jungle's own online board. Ordinary guests can play but do not persist progress or public scores. No fabricated production finishes were used during development.
+- Co-op: create/join Jungle, load both scenes, start, remove the correct seat's colour, reject its partner's reserved colour, ping and use the shared lifeline. A full solve should allow choosing and readying for the next world in the same room.
+- Exit/re-enter releases/rebuilds the new scene. Home does not eagerly download its artwork. Check physical-device smoothness; automated phone checks use emulation.
+
+Publish matching frontend/Render source revisions for protocol 34. The Jungle catalog migration is already applied; existing VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY and VITE_ROOM_SERVER are sufficient. No new environment variables.
+
+## Temple seam and larger screws — 0.1.44
+
+- Orbit behind Jungle Temple: the rear/side gap between wall tops and the dark roof slab is filled with matching stone courses. Remove that roof and its new courses detach together. Count stays 144.
+- Check screws from front and oblique angles: every world uses heads 25% wider than 0.1.43, with a shallow rounded crown. The cross should follow the crown without disappearing. Readability labels/outlines, Find a Match, direct mouse/touch picking and collection flights should stay aligned.
+- Camp’s close van/window, small rock, stacked-log and basket fixings are spaced apart; count stays 240. Check these after revealing their surfaces.
+- Jungle uses layout 2 and Camp layout 3. Those updated puzzles/boards start fresh; historical checkpoints/times remain separately stored and old completed-upload retries still work. Other worlds keep their existing layouts and progress. New-layout account saves resume across devices normally.
+- Publish matching Vercel/Render source revisions for protocol 35. Migration 20261124172646_rounder_heads_temple_repairs.sql is already applied. No new environment variables. Production build and lint are skipped.
+
+## Supported Jungle stairs — 0.1.45
+
+- Orbit to the temple stairs: the flights now have solid stone beneath them, a landing reaching into the entrance floor and shallow approach steps meeting the island. No floating treads or gap at the doorway.
+- Remove the three stair fixings: supports/landing/approach detach with their existing stair owners. The riverbank frog remains collectible after its normal lily cover is removed. Count stays 144.
+- Existing layout-2 account checkpoints and public results remain valid: all mounts and blocker/opening data are unchanged from 0.1.44. No database migration. Publish matching frontend/Render revisions for protocol 36; no new environment variables.
+
+## Exposed screws and distant decorations — 0.1.46
+
+- Start Jungle. Remove the top stair fixing while the crown is still screwed in place. It should collect normally instead of wiggling as blocked. Clear the three stair sections, then remove the small gold statue/frog fixing with the distant lilies still present. Test mouse and touch.
+- Repeat in co-op using the correct owner for an active reserved colour. Both peers must receive the accepted removal; shared free slots and ordinary owner rules remain unchanged.
+- Truly covered heads must still reject collection. Check a close roof/panel cover and removal as its falling piece moves away.
+- Resume an existing layout-2 Jungle or layout-3 Camp checkpoint: seeded colours, initial boxes and queues remain the same; corrected visible screws are now available earlier. Other worlds are unchanged. No migration or new environment variables; deploy matching frontend/Render for protocol 37.

@@ -8,7 +8,7 @@ export type PastPlayer = { id: string; number: 1 | 2; collected: number; identit
 export type NextRound = { revision: number; level: LevelId; proposedBy: string; approved: boolean; ready: string[] };
 
 // Both peers use the same ordered screw IDs and part geometry.
-export const ROOM_LEVEL_VERSION = 33;
+export const ROOM_LEVEL_VERSION = 37;
 export const ROOM_PHYSICS_DELAY_MS = 62.5;
 export const ROOM_VERSION_MESSAGE = "The room and game versions differ. Refresh the game, or wait for the server update to finish.";
 export const COMPLETED_LIFELINE_MS = 320;

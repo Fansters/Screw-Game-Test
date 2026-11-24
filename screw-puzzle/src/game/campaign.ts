@@ -12,6 +12,7 @@ export const CAMPAIGN_LEVELS = [
   { id: "zoo", title: "Zoo Adventure Park", difficulty: "medium", available: true },
   { id: "castle", title: "Royal Castle Courtyard", difficulty: "medium", available: true },
   { id: "arctic", title: "Arctic Expedition", difficulty: "easy", available: true },
+  { id: "jungle", title: "Jungle Temple", difficulty: "easy", available: true },
   { id: "oasis", title: "Egyptian Oasis", difficulty: "hard", available: true },
 ] as const;
 

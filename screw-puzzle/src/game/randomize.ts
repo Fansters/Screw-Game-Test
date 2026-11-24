@@ -59,11 +59,84 @@ function peelOrder(random: () => number, level: readonly Screw[], reserve: Reado
 export type GeneratedPuzzle = { seed: number; state: GameState; solution: string[] };
 export class PuzzleColorsUnavailable extends Error {}
 
+/** Easy offers whole triples at a time on the reachable frontier. Unlike the
+ * layered generator, it avoids requiring a reveal midway through most boxes. */
+function generateEasyPuzzle(seed: number, template: readonly Screw[], opening: ReadonlySet<string>, range: readonly [
+    number,
+    number
+]): GeneratedPuzzle {
+    const quotas = SCREW_COLOR_ORDER.flatMap(color => Array<ScrewColor>(template.filter(s => s.color === color).length / 3).fill(color));
+    for (let attempt = 0; attempt < 64; attempt++) {
+        const random = randomSource((seed + Math.imul(attempt, 2654435761)) >>> 0), targets = shuffle(quotas, random);
+        if (targets[0] === targets[1]) {
+            const different = targets.findIndex(c => c !== targets[0]);
+            [targets[1], targets[different]] = [targets[different], targets[1]];
+        }
+        const queue = [...targets], boxes: (ScrewColor | null)[] = [queue.shift()!, queue.shift()!], remaining = [...template], done = new Set<PartId>(), left = ownerCounts(template), colors = new Map<string, ScrewColor>(), order: string[] = [], openingCounts = new Map<ScrewColor, number>();
+        const unlocks = new Map<PartId, number>();
+        for (const screw of template)
+            for (const part of [...(screw.obstructedBy ?? []), ...(screw.solutionAfter ?? [])])
+                unlocks.set(part, (unlocks.get(part) ?? 0) + 1);
+        let group = 0, valid = true;
+        while (remaining.length) {
+            const slot = boxes[group % 2] !== null ? group % 2 : boxes.findIndex(Boolean), color = boxes[slot];
+            if (!color) {
+                valid = false;
+                break;
+            }
+            let frontier = remaining.filter(s => [...(s.obstructedBy ?? []), ...(s.solutionAfter ?? [])].every(p => done.has(p)));
+            if (group < 2)
+                frontier = frontier.filter(s => opening.has(s.id));
+            const chosen = new Set<string>();
+            for (let count = 0; count < 3; count++) {
+                let candidates = frontier.filter(s => !chosen.has(s.id) && (!opening.has(s.id) || !targets.slice(0, 2).includes(color) || (openingCounts.get(color) ?? 0) < range[1]));
+                if (!candidates.length && group >= 2)
+                    candidates = remaining.filter(s => [...(s.obstructedBy ?? []), ...(s.solutionAfter ?? [])].every(p => done.has(p)) && (!opening.has(s.id) || !targets.slice(0, 2).includes(color) || (openingCounts.get(color) ?? 0) < range[1]));
+                if (!candidates.length) {
+                    valid = false;
+                    break;
+                }
+                // Expose useful branches early; independent decorative props remain
+                // available as forgiving alternatives instead of a forced single path.
+                const scored = candidates.map(s => ({ s, score: (unlocks.get(s.attachedTo!) ?? 0) + random() * 2 })).sort((a, b) => b.score - a.score), screw = scored[0].s;
+                chosen.add(screw.id);
+                colors.set(screw.id, color);
+                order.push(screw.id);
+                remaining.splice(remaining.indexOf(screw), 1);
+                if (opening.has(screw.id))
+                    openingCounts.set(color, (openingCounts.get(color) ?? 0) + 1);
+                const countLeft = left.get(screw.attachedTo)! - 1;
+                left.set(screw.attachedTo, countLeft);
+                if (!countLeft && screw.attachedTo)
+                    done.add(screw.attachedTo);
+            }
+            if (!valid)
+                break;
+            boxes[slot] = null;
+            const next = queue.findIndex(c => !boxes.includes(c));
+            if (next !== -1)
+                boxes[slot] = queue.splice(next, 1)[0];
+            group++;
+        }
+        if (!valid || targets.slice(0, 2).some(c => (openingCounts.get(c) ?? 0) < range[0]))
+            continue;
+        const state = createInitialState(template.map(s => ({ ...s, color: colors.get(s.id)! })), targets);
+        let proof = state;
+        for (const id of order)
+            proof = removeScrew(proof, id);
+        if (proof.status === "won")
+            return { seed: seed >>> 0, state, solution: order };
+    }
+    throw new PuzzleColorsUnavailable("Could not generate a forgiving Easy frontier");
+}
+
+
 // Construct a solution first; color it using only the two currently active boxes.
 // This gives true spatial mixing and a proof of solvability instead of blind shuffling.
 export function generatePuzzle(seed: number, template: readonly Screw[] = levelData("cottage").template, preferLayeredPeel = false,
-  exposedHeads?: ReadonlySet<string>, adaptPeelToColors = false): GeneratedPuzzle {
+  exposedHeads?: ReadonlySet<string>, adaptPeelToColors = false, openingMatchRange: readonly [number, number] = [1, 2]): GeneratedPuzzle {
   const opening = exposedHeads ?? new Set(template.filter((screw) => !screw.obstructedBy?.length && !screw.solutionAfter?.length).map((screw) => screw.id));
+  if(openingMatchRange[0]>=3)return generateEasyPuzzle(seed,template,opening,openingMatchRange);
   const counts = ownerCounts(template);
   const blockers = new Set(template.flatMap((screw) => [...(screw.solutionAfter ?? []), ...(screw.obstructedBy ?? [])]));
   const exposedSingles = new Map(template.filter((screw) => opening.has(screw.id) && counts.get(screw.attachedTo) === 1)
@@ -108,7 +181,7 @@ export function generatePuzzle(seed: number, template: readonly Screw[] = levelD
       const mustDiffer = total > 1 && seen.length === 1;
       return boxes.map((box, index) => ({ box, index })).filter(({ box }) => box &&
         (!mustDiffer || box.color !== seen[0]) &&
-        (!opening.has(screw.id) || !targets.slice(0, 2).includes(box.color) || (openingCounts.get(box.color) ?? 0) < 2));
+        (!opening.has(screw.id) || !targets.slice(0, 2).includes(box.color) || (openingCounts.get(box.color) ?? 0) < openingMatchRange[1]));
     };
     for (let step = 0; step < order.length; step += 1) {
       let screw = order[step], options = colorOptions(screw);
@@ -144,11 +217,11 @@ export function generatePuzzle(seed: number, template: readonly Screw[] = levelD
     }
     if (!valid) continue;
     const level = template.map((screw) => ({ ...screw, color: colors.get(screw.id)! }));
-    // Neither opening box can be finished by simply sweeping the exposed heads.
-    // Small natural props and interior fixings reveal the next choices.
+    // Older worlds retain their layered opening. Easy can offer complete
+    // opening triples, spread across independent exposed assemblies.
     if (targets.slice(0, 2).some((color) => {
       const count = openingCounts.get(color) ?? 0;
-      return count < 1 || count > 2;
+      return count < openingMatchRange[0] || count > openingMatchRange[1];
     })) continue;
     const state = createInitialState(level, targets);
     let proof = state;

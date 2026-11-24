@@ -1,6 +1,7 @@
 import { Vector3 } from "three";
 import type { Camera, Object3D } from "three";
 import { SCREW_SCALE } from "../game/screwScale.ts";
+import { SCREW_HEAD_FACE_Z } from "./screwDimensions.ts";
 import { matchCandidates } from "../game/abilities.ts";
 import { isScrewAccessible } from "../game/rules.ts";
 import type { GameState, Screw } from "../game/types.ts";
@@ -11,7 +12,7 @@ import { pickSceneTarget } from "./picking.ts";
 export type HintView = { position: [number, number, number]; target: [number, number, number] };
 const rect = { left: 0, top: 0, width: 1000, height: 1000 };
 export function hintFace(screw: Screw) {
-  return new Vector3(...screw.position).addScaledVector(new Vector3(...screw.normal), SCREW_SCALE * .144);
+  return new Vector3(...screw.position).addScaledVector(new Vector3(...screw.normal), SCREW_SCALE * SCREW_HEAD_FACE_Z);
 }
 export function hintVisible(scene: Object3D, camera: Camera, game: GameState, screw: Screw) {
   const face = hintFace(screw), point = face.clone().project(camera);

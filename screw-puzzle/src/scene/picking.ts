@@ -2,6 +2,7 @@ import { Raycaster, Vector2, Vector3 } from "three";
 import type { Camera, Intersection, Object3D } from "three";
 import type { GameState, PartId } from "../game/types.ts";
 import { SCREW_SCALE } from "../game/screwScale.ts";
+import { SCREW_HEAD_FACE_Z } from "./screwDimensions.ts";
 import { isScrewAccessible } from "../game/rules.ts";
 
 type CanvasRect = { left: number; top: number; width: number; height: number };
@@ -57,7 +58,7 @@ export function pickNearbyHead(scene: Object3D, camera: Camera, rect: CanvasRect
   const origin = camera.getWorldPosition(new Vector3());
   const candidates = game.screws.filter((screw) => !screw.removed).map((screw) => {
     const normal = new Vector3(...screw.normal);
-    const face = new Vector3(...screw.position).addScaledVector(normal, SCREW_SCALE * 0.144);
+    const face = new Vector3(...screw.position).addScaledVector(normal, SCREW_SCALE * SCREW_HEAD_FACE_Z);
     const projected = face.clone().project(camera);
     const distance = Math.hypot(rect.left + (projected.x + 1) * rect.width / 2 - point[0], rect.top + (1 - projected.y) * rect.height / 2 - point[1]);
     return { screw, face, distance, facing: normal.dot(origin.clone().sub(face)) > 0 && Math.abs(projected.z) <= 1 };

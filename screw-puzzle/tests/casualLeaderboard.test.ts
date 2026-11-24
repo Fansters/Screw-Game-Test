@@ -11,7 +11,11 @@ test("casual results validate current layouts, integer time and ability metadata
   for(const findMatchUses of [-1,1.5,2147483648,Infinity]) assert.equal(isCasualFinish({...f,findMatchUses}),false);
   assert.equal(casualBoardId("desert"),"desert:layout-3:casual-1");
   assert.equal(casualBoardId("castle"),"castle:layout-1:casual-1");
+  assert.equal(casualBoardId("jungle"),"jungle:layout-2:casual-1");
+  assert.equal(casualBoardId("campsite"),"campsite:layout-3:casual-1");
   assert.ok(isCasualFinish({...f,level:"castle",boardId:casualBoardId("castle"),screwCount:225}));
+  assert.ok(isCasualFinish({...f,level:"jungle",boardId:casualBoardId("jungle"),screwCount:144}));
+  assert.equal(isCasualFinish({...f,level:"jungle",boardId:casualBoardId("jungle"),screwCount:150}),false);
   const arctic = {...f,level:"arctic",boardId:casualBoardId("arctic"),screwCount:150};
   assert.ok(isCasualFinish(arctic));
   assert.ok(isCasualFinish({...f,level:"oasis",boardId:casualBoardId("oasis"),screwCount:198}));

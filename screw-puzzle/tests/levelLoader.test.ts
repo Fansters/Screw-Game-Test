@@ -74,3 +74,11 @@ test("oasis geometry loads on demand and is released before rebuilding",async()=
   const next=await acquireLevel("oasis");assert.notEqual(LEVEL_MODELS.oasis,model);assert.deepEqual(levelData("oasis").template,template);
   next.release();await delay(750);assert.deepEqual(loadedLevelIds(),[]);
 });
+
+
+test("jungle scenery loads only on selection and releases source and render graphics",async()=>{
+ const lease=await acquireLevel("jungle"),model=LEVEL_MODELS.jungle,template=levelData("jungle").template;assert.equal(template.length,144);
+ const buffers=new Set([...model.pieces.flatMap(p=>p.geometry?[p.geometry]:[]),...modelBatches("jungle").map(b=>b.geometry)]),disposed=new Set();for(const buffer of buffers)buffer.addEventListener("dispose",()=>disposed.add(buffer));
+ lease.release();await delay(750);assert.equal(LEVEL_MODELS.jungle,undefined);assert.equal(disposed.size,buffers.size);
+ const next=await acquireLevel("jungle");assert.notEqual(LEVEL_MODELS.jungle,model);assert.deepEqual(levelData("jungle").template,template);next.release();await delay(750);
+});

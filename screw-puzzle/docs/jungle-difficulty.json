@@ -1,0 +1,31 @@
+{
+  "level": "jungle",
+  "difficulty": "easy",
+  "screws": 144,
+  "owners": 144,
+  "pieces": 2758,
+  "sceneryTriangles": 327468,
+  "palette": [
+    "red",
+    "blue",
+    "yellow",
+    "purple",
+    "pink",
+    "cyan"
+  ],
+  "initiallyClearExtraction": 67,
+  "orbitSampledVisible": 58,
+  "orbitSampledVisiblePercent": 40.28,
+  "coverDepthCounts": {
+    "0": 67,
+    "1": 36,
+    "2": 14,
+    "3": 11,
+    "4": 7,
+    "5": 6,
+    "6": 3
+  },
+  "maxCoverDepth": 6,
+  "openingTargetMet": true,
+  "notes": "Depth counts describe physical extraction chains, including buried foundations. Visibility is sampled across orbit views, not one screenshot. Run tests/jungle.test.ts separately for full winning routes, actual viewing paths, spacing, attachment and physics."
+}

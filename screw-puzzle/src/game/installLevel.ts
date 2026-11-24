@@ -8,6 +8,7 @@ import { findScrewObstructions } from "../scene/obstructions.ts";
 import { budgetFasteners } from "./fastenerBudget.ts";
 import { findExposedScrews } from "../scene/exposure.ts";
 import { createInitialState } from "./rules.ts";
+import { EASY_PROFILE } from "./difficultyProfiles.ts";
 export type BuiltModel = { model: LevelModel; mounts?: readonly (Pick<Screw, "position" | "normal" | "solutionAfter"> & { attachedTo: PartId })[] };
 export function installLevel(level: LevelId, built: BuiltModel, audit?: { blockers: readonly (readonly PartId[])[]; exposed: readonly string[] }, cottageTemplate?: () => readonly Screw[]) {
   registerModel(level, built.model);
@@ -16,7 +17,8 @@ export function installLevel(level: LevelId, built: BuiltModel, audit?: { blocke
     obstructedBy: audit ? [...audit.blockers[index]] : findScrewObstructions(mount, SCREW_SCALE) }));
   if (level === "campsite") mounts = budgetFasteners(mounts, 240, mount => (mount.obstructedBy.length ? 100 : 0) +
     (mount.normal[1] < 0 ? 35 : mount.normal[1] < .9 ? 20 : 0) + (/^camp-(tent-|van-|meadow|foundation|dock-deck|boat)/.test(mount.attachedTo!) ? 15 : 0));
+  const palette = level === "jungle" ? EASY_PROFILE.colors : SCREW_COLOR_ORDER;
   const template: Screw[] = mounts.map((mount, index) => ({ ...mount, id: `${level}-${index + 1}`, removed: false,
-    color: SCREW_COLOR_ORDER[Math.floor(index / 3) % SCREW_COLOR_ORDER.length] }));
+    color: palette[Math.floor(index / 3) % palette.length] }));
   registerLevelData(level, { template, opening: audit ? new Set(audit.exposed) : level === "campsite" ? new Set(findExposedScrews(createInitialState(template), level)) : undefined });
 }

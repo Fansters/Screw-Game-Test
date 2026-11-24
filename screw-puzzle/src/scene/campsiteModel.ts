@@ -191,7 +191,7 @@ for (const s of [-1, 1]) {
     const window = owner(`van-window-${s}-${half}`, [vx + s * 0.98, 1.79, vz + half * 0.86]);
     box(window, [vx + s * 0.98, 1.79, vz + half * 0.86], [0.075, 0.57, 1.31], "#a9d4ce");
     for (const dz of [-0.66, 0.66]) box(window, [vx + s * 1.03, 1.79, vz + half * 0.86 + dz], [0.10, 0.62, 0.055], cream);
-    screw(window, [vx + s * .938, 1.55, vz + (half < 0 ? -1.35 : .77)], [-s, 0, 0]);
+    screw(window, [vx + s * .938, 1.55, vz + (half < 0 ? -1.35 : .64)], [-s, 0, 0]);
   }
   for (const dz of [-1.15, 1.15]) {
     const wheel = owner(`van-wheel-${s}-${dz}`, [vx + s * 1.03, 0.45, vz + dz]);
@@ -286,7 +286,8 @@ for (const [i, x, z, radius] of [[0, -3.8, -2.65, .71], [1, -2.94, -3.81, .82], 
   const part = owner(`boulder-${i}`, [x, radius * .48, z]);
   const position: Vector = [x, radius * .48, z], size: Vector = [radius, radius * .70, radius * .85];
   ball(part, position, size, i % 2 ? "#b3adb1" : stone);
-  for (const s of [-1, 1]) screw(part, [x + s * radius * .20, -radius * .20, z], [s * .20, -1, 0]);
+  const fixingSpread = radius < .63 ? .30 : .20;
+  for (const s of [-1, 1]) screw(part, [x + s * radius * fixingSpread, radius * (.48 - .70 * Math.sqrt(1 - fixingSpread ** 2)), z], [s * fixingSpread, -1, 0]);
   if (i < 4) {
     const moss = owner(`moss-${i}`, [x, radius * 1.15, z]);
     foliage(moss, [x, radius * 1.09, z], radius * .45, i);
@@ -461,7 +462,7 @@ for (const [i, x, z] of [[0, -3.92, -.87], [1, -3.98, -1.66], [2, -1.39, -3.31],
 for (let i = 0; i < 4; i += 1) {
   const log = owner(`woodpile-${i}`, [3.60, .13 + Math.floor(i / 2) * .23, .55 + i % 2 * .25]);
   tube(log, pivots[log], .12, .78, wood, [0, 0, Math.PI / 2]);
-  screw(log, [3.60, pivots[log][1] - .124, pivots[log][2]], [0, -1, 0]);
+  screw(log, [3.60 + (i % 2 ? .12 : -.12), pivots[log][1] - .124, pivots[log][2]], [0, -1, 0]);
 }
 for (const [i, x, z] of [[0, -4.35, 2.7], [1, -4.27, 4.52], [2, .12, 4.59], [3, 2.52, 4.41]]) {
   const bank = owner(`bank-rock-${i}`, [x, .13, z]);
@@ -506,7 +507,7 @@ screw(stool, [-.03, .45, -.83], [0, 0, -1]);
 const basket = owner("picnic-basket", [px - .35, .23, pz + .05]);
 soft(basket, [px - .35, .23, pz + .05], [.47, .42, .46], "#c1965d");
 piece(basket, "ring", [px - .35, .49, pz + .05], [.22, .22, .22], darkWood, [Math.PI / 2, 0, 0]);
-for (const s of [-1, 1]) screw(basket, [px - .35 + s * .12, .014, pz + .05], [0, -1, 0]);
+for (const s of [-1, 1]) screw(basket, [px - .35 + s * .16, .014, pz + .05], [0, -1, 0]);
 const campLamp = owner("stump-lantern", [-2.73, .75, 2.45]);
 soft(campLamp, [-2.73, .72, 2.45], [.22, .31, .20], "#f4c765");
 for (const dx of [-.12, .12]) box(campLamp, [-2.73 + dx, .72, 2.45], [.03, .36, .23], "#8d4d42");

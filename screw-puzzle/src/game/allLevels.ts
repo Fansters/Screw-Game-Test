@@ -59,3 +59,8 @@ import { createOasisModel } from "../scene/oasisModel.ts";
 import { OASIS_BLOCKERS, OASIS_EXPOSED_IDS } from "../scene/oasisAudit.ts";
 const oasis=createOasisModel(); installLevel("oasis",oasis,{blockers:OASIS_BLOCKERS,exposed:OASIS_EXPOSED_IDS});
 export const OASIS_MODEL=oasis.model, OASIS_MOUNTS=oasis.mounts;
+
+import {createJungleModel} from "../scene/jungleModel.ts";
+import {JUNGLE_BLOCKERS,JUNGLE_EXPOSED_IDS} from "../scene/jungleAudit.ts";
+const jungle=createJungleModel();installLevel("jungle",jungle,{blockers:JUNGLE_BLOCKERS,exposed:JUNGLE_EXPOSED_IDS});
+export const JUNGLE_MODEL=jungle.model,JUNGLE_MOUNTS=jungle.mounts;

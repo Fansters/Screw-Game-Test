@@ -862,3 +862,27 @@ test("team contributions count successful actions and helpful partner pings, ret
   assert.equal(guest.state().pastPlayers![0].identity.name,"Helping Fox");assert.equal(guest.state().pastPlayers![0].stats.assists,1);
   guest.send({type:"reset",round:0});assert.deepEqual(guest.state().pastPlayers,[]);
 });
+
+
+test("Jungle Temple co-op seats solve the Easy world, reconnect and ready up without changing room",t=>{
+ const{leader,guest,room,makePeer,advance,close}=fixture(245,"jungle");t.after(close);
+ const puzzle=generateSoloPuzzle("jungle",245),token=guest.seat().token;guest.disconnect();
+ const returned=makePeer();returned.send({type:"join",room,token,levelVersion:ROOM_LEVEL_VERSION});
+ for(const screw of puzzle.solution){leader.collect({type:"select",round:0,screw});assert.ok(leader.state().game.removed.includes(screw));advance(1800);}
+ assert.equal(returned.state().game.status,"won");assert.equal(returned.state().game.removed.length,144);assert.equal(returned.state().lifelines,3);assert.equal(returned.state().game.tray.length,0);
+ leader.send({type:"propose",round:0,level:"jungle"});const proposal=returned.state().nextRound!;
+ leader.send({type:"next-ready",round:0,proposal:proposal.revision,ready:true});returned.send({type:"next-ready",round:0,proposal:proposal.revision,ready:true});assert.equal(leader.state().round,1);assert.equal(leader.state().id,room);assert.equal(leader.state().paused,true);
+});
+
+test("co-op accepts exposed Jungle stairs and the small statue before distant crown/lily decorations are removed", t => {
+ const { leader, guest, advance, close } = fixture(245, "jungle"); t.after(close);
+ for (const screw of ["jungle-44", "jungle-45", "jungle-46", "jungle-120"]) {
+  leader.collect({ type: "select", round: 0, screw });
+  assert.ok(leader.state().game.removed.includes(screw), screw);
+  advance(1800);
+ }
+ const template = soloLevelTemplate("jungle");
+ for (const part of ["jungle-sun-crown", "jungle-river-lilies-1"])
+  assert.ok(!leader.state().game.removed.includes(template.find(s => s.attachedTo === part)!.id));
+ assert.deepEqual(guest.state().game.removed, leader.state().game.removed);
+});

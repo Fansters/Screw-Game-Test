@@ -1,4 +1,4 @@
-import { DoubleSide, Matrix3, Mesh, MeshBasicMaterial, Raycaster, Vector3 } from "three";
+import { Box3, DoubleSide, Matrix3, Mesh, MeshBasicMaterial, Raycaster, Vector3 } from "three";
 import type { Object3D } from "three";
 import type { LevelId, PartId } from "../game/types.ts";
 import { LEVEL_MODELS, partLevel, onLevelRelease } from "./levelModels.ts";
@@ -8,13 +8,19 @@ import { SCREW_HEAD_CLEARANCE_RADIUS, SCREW_PULL_DISTANCE } from "./screwDimensi
 // Geometry-derived clearance is independent of color, camera, and React. Cache it
 // in level data; camera picking separately prevents clicks through solid objects.
 const material = new MeshBasicMaterial({ side: DoubleSide });
+function worldBounds(mesh: Mesh) {
+  if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+  // Do not call setFromObject here: live loose meshes carry a composed world
+  // matrix which updateWorldMatrix would otherwise replace with identity.
+  return new Box3().copy(mesh.geometry.boundingBox!).applyMatrix4(mesh.matrixWorld).expandByScalar(1e-7);
+}
 function buildSolids(level: LevelId) {
   return LEVEL_MODELS[level].pieces.map((piece) => {
     const mesh = new Mesh(geometryFor(piece), material);
     mesh.position.set(...piece.position); mesh.scale.set(...piece.size);
     if (piece.rotation) mesh.rotation.set(...piece.rotation);
     mesh.updateMatrixWorld();
-    return { mesh, part: piece.part, normalMatrix: new Matrix3().getNormalMatrix(mesh.matrixWorld) };
+    return { mesh, part: piece.part, bounds: worldBounds(mesh), normalMatrix: new Matrix3().getNormalMatrix(mesh.matrixWorld) };
   });
 }
 const solidsByLevel: Partial<Record<LevelId, ReturnType<typeof buildSolids>>> = {};
@@ -34,7 +40,7 @@ export function findScrewObstructions(screw: { position: [number, number, number
       // Keep individual pieces even though rendering merges same-color geometry.
       const mesh = new Mesh(solid.mesh.geometry, material);
       mesh.matrixWorld.multiplyMatrices(live.root.matrixWorld, solid.mesh.matrixWorld);
-      colliders.push({ mesh, part: live.part, normalMatrix: new Matrix3().getNormalMatrix(mesh.matrixWorld) });
+      colliders.push({ mesh, part: live.part, bounds: worldBounds(mesh), normalMatrix: new Matrix3().getNormalMatrix(mesh.matrixWorld) });
     }
   }
   const normal = new Vector3(...screw.normal);
@@ -54,9 +60,11 @@ export function findScrewObstructions(screw: { position: [number, number, number
       ray.set(sample, normal);
       const hit = ray.intersectObject(solid.mesh, false)[0];
       if (!hit) continue;
-      // An outward-facing first hit means the sample starts INSIDE this solid,
-      // including deep covers whose exit lies beyond the short spin-out path.
-      const inside = hit.face && hit.face.normal.clone().applyNormalMatrix(solid.normalMatrix).dot(normal) > 0.00001;
+      // An exit-facing first hit can also be the back of an OPEN decoration
+      // far away. Only use the deep-inside exception when this sample is
+      // within that individual piece's bounds, never the whole assembly's.
+      const inside = solid.bounds.containsPoint(sample) && hit.face &&
+        hit.face.normal.clone().applyNormalMatrix(solid.normalMatrix).dot(normal) > 0.00001;
       if (inside || hit.distance < scale * SCREW_PULL_DISTANCE + 0.01) { blocked.add(solid.part); break; }
     }
   }

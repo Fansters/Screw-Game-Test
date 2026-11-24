@@ -5,15 +5,15 @@ import { CAMPAIGN_LEVELS, levelIdentity, levelsForDifficulty, levelStatus, readL
 const SOLO_TIMES_KEY = "screw-it:solo-times:cottage:v2"; // Read-only completion compatibility.
 
 test("difficulty groups number locally while save and board identities stay stable", () => {
-  assert.deepEqual(levelsForDifficulty("easy").map(level=>level.id),["arctic"]);
+  assert.deepEqual(levelsForDifficulty("easy").map(level=>level.id),["arctic","jungle"]);
   assert.deepEqual(levelsForDifficulty("medium").map(level=>level.id),["cottage","construction","carnival","zoo","castle"]);
   assert.deepEqual(levelsForDifficulty("hard").map(level=>level.id),["campsite","desert","oasis"]);
-  for(const [id,difficulty,number] of [["arctic","easy",1],["campsite","hard",1],["oasis","hard",3],["castle","medium",5],["desert","hard",2]] as const) {
+  for(const [id,difficulty,number] of [["arctic","easy",1],["jungle","easy",2],["campsite","hard",1],["oasis","hard",3],["castle","medium",5],["desert","hard",2]] as const) {
     assert.equal(levelIdentity(id)?.difficulty,difficulty);assert.equal(levelIdentity(id)?.number,number);
   }
 });
 
-test("all nine levels are playable immediately while completed runs retain their progress", (t) => {
+test("all ten levels are playable immediately while completed runs retain their progress", (t) => {
   const saved = new Map<string, string>();
   Object.defineProperty(globalThis, "window", { configurable: true, value: {
     localStorage: {
@@ -22,13 +22,14 @@ test("all nine levels are playable immediately while completed runs retain their
     },
   } });
   t.after(() => Reflect.deleteProperty(globalThis, "window"));
-  assert.deepEqual(CAMPAIGN_LEVELS.map(({ id }) => id), ["cottage", "campsite", "desert", "construction", "carnival", "zoo", "castle", "arctic", "oasis"]);
+  assert.deepEqual(CAMPAIGN_LEVELS.map(({ id }) => id), ["cottage", "campsite", "desert", "construction", "carnival", "zoo", "castle", "arctic", "jungle", "oasis"]);
   assert.equal(levelStatus(0), "playable");
   assert.equal(levelStatus(5), "playable");
   assert.equal(levelStatus(6), "playable");
   assert.equal(levelStatus(7), "playable");
   assert.equal(levelStatus(8), "playable");
-  assert.equal(levelStatus(9), "coming-soon");
+  assert.equal(levelStatus(10), "coming-soon");
+  assert.equal(levelStatus(9), "playable");
   assert.equal(levelStatus(4), "playable");
   assert.equal(levelStatus(3), "playable");
   assert.equal(levelStatus(1), "playable");

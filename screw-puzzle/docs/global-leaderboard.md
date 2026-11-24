@@ -85,3 +85,11 @@ The additive account-cloud migrations are applied: 20261123153418_account_cloud_
 Co-op clears update the account badge without touching its solo checkpoint. Live co-op progress, cosmetic identities and per-round contributions remain in the existing room server, with its 30-second reconnect window; they are not durable cloud room saves. Finished teams stay in the same room, choose a proposed world, get leader approval and both ready before the next scene starts. Google names/avatars identify box owners visually; temporary guest room labels confer no account or public-score rights.
 
 Deploy matching Vercel and Render source revisions (room protocol 33). No new environment variables: retain VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY and VITE_ROOM_SERVER. UI/camera preferences remain device-local on purpose.
+
+## Jungle Temple (0.1.43)
+
+The tenth active board is jungle:layout-1:casual-1, exact count 144, introduced by applied migration 20261124165549_add_jungle_casual_board.sql. It adds one catalog row and reloads the API schema, without altering permissions, auth, account saves or existing records. The public reader returns an open empty board; raw profile/finish access is unchanged. Google cloud checkpoint validation uses the same active catalog. Easy numbers are Arctic 1 and Jungle 2; stable IDs/layout versions never depend on displayed numbers. Co-op remains excluded from public solo times. Protocol 34 requires matching frontend and Render revisions; no new environment variables.
+
+## Repaired physical layouts (0.1.44)
+
+Applied migration 20261124172646_rounder_heads_temple_repairs.sql adds jungle:layout-2:casual-1 (144) and campsite:layout-3:casual-1 (240). Historical boards stay open for older clients and immutable upload retries; no historical score or checkpoint is copied into changed geometry. Current UI requests only its compiled layout, so the two repaired worlds start fresh puzzles/boards. All other layouts and permissions remain unchanged. PostgreSQL tests cover separated public results, old retries, and isolated account checkpoints for both revisions. Public anonymous reads of both new boards succeed; no fabricated live scores were submitted. Existing security advisories are unchanged (see level-jungle.md). Protocol 35; no new environment variables.

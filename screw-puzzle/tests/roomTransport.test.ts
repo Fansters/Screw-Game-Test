@@ -19,7 +19,7 @@ test("WebSocket input accepts screw actions for every playable level and rejects
   assert.equal(parseCommand(JSON.stringify({ type: "select", round: "0", screw: "castle-1" })), null);
 });
 
-for (const level of ["castle", "arctic", "oasis"] as const) test(`real ${level} WebSocket guests can remove and ping screws without being disconnected`, { timeout: 30_000 }, async t => {
+for (const level of ["castle", "arctic", "oasis", "jungle"] as const) test(`real ${level} WebSocket guests can remove and ping screws without being disconnected`, { timeout: 30_000 }, async t => {
   // Build the Node fixtures before opening sockets. A synchronous geometry
   // import here used to block this test client's automatic heartbeat replies.
   await import("../src/game/allLevels.ts");
