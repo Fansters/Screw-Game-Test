@@ -12,8 +12,7 @@ export default function AccountModal({ open, onClose, children }: { open: boolea
   return <dialog ref={ref} {...backdrop} className="help-dialog account-dialog player-card-dialog" aria-labelledby="account-title"
     onCancel={event => { event.preventDefault(); onClose(); }} onClose={onClose}>
     <header className="help-header account-header">
-      <h2 id="account-title">Your player card</h2>
-      <button className="icon-button card-close" aria-label="Close player card" onClick={onClose}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
+      <h2 id="account-title">Player card</h2>
     </header>
     <div className="help-content account-content">{children}</div>
   </dialog>;

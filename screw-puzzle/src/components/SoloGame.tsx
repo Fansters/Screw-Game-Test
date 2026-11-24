@@ -11,7 +11,7 @@ import AbilityButtons from "./AbilityButtons";
 import GameUI from "./GameUI";
 import TransferOverlay from "./TransferOverlay";
 import GameOverlay from "./GameOverlay";
-import GameTimer from "./GameTimer";
+import GameTimer, { ScrewCounter } from "./GameTimer";
 import GameBar from "./GameBar";
 import DesktopCursor from "./DesktopCursor";
 import ResetDialog from "./ResetDialog";
@@ -172,8 +172,8 @@ export default function SoloGame({ level, initial, cloud, audio, onExit, onLoadi
     {run.started && cameraReady && mode !== "won" && <><GameUI game={run.display} frame={frame} waitingCount={run.logical.tray.length} />
       <GameBar key={run.round} level={level} lifelines={run.lifelines}
       canResetCamera={playable} onResetCamera={() => setResetCameraSequence(sequence => sequence + 1)}
-      progress={<><GameTimer startedAt={timerStartedAt} stoppedAt={timerStoppedAt}
-        elapsedBefore={elapsedBefore} removed={removedCount} total={run.logical.screws.length} /><small className="cloud-save-status" role="status">{cloud?cloudStatus==="saved"?"Cloud saved":cloudStatus==="saving"?"Saving…":"Cloud paused":"Guest · not saved"}</small></>}
+      progress={<><ScrewCounter removed={removedCount} total={run.logical.screws.length} /><small className="cloud-save-status" role="status">{cloud?cloudStatus==="saved"?"Cloud saved":cloudStatus==="saving"?"Saving…":"Cloud paused":"Guest · not saved"}</small></>}
+      timer={<GameTimer startedAt={timerStartedAt} stoppedAt={timerStoppedAt} elapsedBefore={elapsedBefore} />}
       abilities={<AbilityButtons abilities={run.abilities} enabled={playable} message={abilityMessage}
         onFind={() => {
           const screw = hintControlsRef.current.find();

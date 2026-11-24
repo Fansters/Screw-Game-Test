@@ -6,9 +6,9 @@ const SOLO_TIMES_KEY = "screw-it:solo-times:cottage:v2"; // Read-only completion
 
 test("difficulty groups number locally while save and board identities stay stable", () => {
   assert.deepEqual(levelsForDifficulty("easy").map(level=>level.id),["arctic"]);
-  assert.deepEqual(levelsForDifficulty("medium").map(level=>level.id),["cottage","desert","construction","carnival","zoo","castle"]);
-  assert.deepEqual(levelsForDifficulty("hard").map(level=>level.id),["campsite","oasis"]);
-  for(const [id,difficulty,number] of [["arctic","easy",1],["campsite","hard",1],["oasis","hard",2],["castle","medium",6],["desert","medium",2]] as const) {
+  assert.deepEqual(levelsForDifficulty("medium").map(level=>level.id),["cottage","construction","carnival","zoo","castle"]);
+  assert.deepEqual(levelsForDifficulty("hard").map(level=>level.id),["campsite","desert","oasis"]);
+  for(const [id,difficulty,number] of [["arctic","easy",1],["campsite","hard",1],["oasis","hard",3],["castle","medium",5],["desert","hard",2]] as const) {
     assert.equal(levelIdentity(id)?.difficulty,difficulty);assert.equal(levelIdentity(id)?.number,number);
   }
 });

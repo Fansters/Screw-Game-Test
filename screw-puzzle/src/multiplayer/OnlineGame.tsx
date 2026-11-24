@@ -12,7 +12,7 @@ import ConnectionStatus from "../components/ConnectionStatus";
 import { useLevelAssets } from "../components/useLevelAssets";
 import type { HintControls } from "../components/GameScene";
 import AbilityButtons from "../components/AbilityButtons";
-import GameTimer from "../components/GameTimer";
+import GameTimer, { ScrewCounter } from "../components/GameTimer";
 import GameBar from "../components/GameBar";
 import GameUI from "../components/GameUI";
 import ResetDialog from "../components/ResetDialog";
@@ -225,8 +225,9 @@ export default function OnlineGame({ onBack }: { onBack: (levels: boolean) => vo
           completedLifeline={completedLifeline} owners={owners} ownerProfiles={[0,1,2].map(slot=>boxOwner(snapshot.players,slot)?.id).map(id=>snapshot.players.find(seat=>seat.id===id)?.identity)} />
         <GameBar key={scene} level={level} lifelines={snapshot.lifelines} shared connection={<ConnectionStatus connected={connected} sample={room.latency} />}
           canResetCamera={orbitable} onResetCamera={() => setResetCameraSequence(sequence => sequence + 1)}
-          progress={<GameTimer clock={wallClock} startedAt={sampledAt - snapshot.elapsedMs}
-            stoppedAt={snapshot.clockRunning ? room.disconnectedAt : sampledAt} removed={removed} total={game.screws.length} />}
+          progress={<ScrewCounter removed={removed} total={game.screws.length} />}
+          timer={<GameTimer clock={wallClock} startedAt={sampledAt - snapshot.elapsedMs}
+            stoppedAt={snapshot.clockRunning ? room.disconnectedAt : sampledAt} />}
           players={<ul className="player-counts" aria-label="Screws removed by each player">
             {[...snapshot.players].sort((a, b) => a.number - b.number).map((seat) =>
               <li key={seat.id} className={seat.id === player ? "own-score" : undefined}

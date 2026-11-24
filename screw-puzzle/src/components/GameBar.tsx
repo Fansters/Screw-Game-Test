@@ -8,9 +8,9 @@ const tips = [
   { name: "Find a match", icon: <><circle cx="14" cy="14" r="8" /><path d="m20 20 8 8M14 9v10M9 14h10" /></>, text: "Spot a reachable match. Use Show me for a better angle, then tap the screw.", tone: "mint" },
 ];
 
-export default function GameBar({ level, progress, lifelines, canBoost, onBoost, onResetCamera, canResetCamera, abilities, players, ping, connection, shared = false }: {
+export default function GameBar({ level, progress, timer, lifelines, canBoost, onBoost, onResetCamera, canResetCamera, abilities, players, ping, connection, shared = false }: {
   level: LevelId; progress: ReactNode; lifelines: number; canBoost: boolean; onBoost: () => void;
-  abilities: ReactNode; players?: ReactNode; ping?: ReactNode; connection?: ReactNode; shared?: boolean;
+  abilities: ReactNode; timer: ReactNode; players?: ReactNode; ping?: ReactNode; connection?: ReactNode; shared?: boolean;
   onResetCamera: () => void; canResetCamera: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -41,10 +41,9 @@ export default function GameBar({ level, progress, lifelines, canBoost, onBoost,
       <p className="ability-guide-note">Extra box: 3 uses. Find a match: unlimited · 1-minute cooldown.{shared && " Leader activates for the team."}</p>
     </section>
     <div className="navbar-progress">{progress}{players}</div>
-    <div className="navbar-actions">
-      <button className="camera-reset-button icon-button" type="button" disabled={!canResetCamera} aria-label="Reset camera" title="Reset camera" onClick={() => { setExpanded(false); onResetCamera(); }}>
-        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M10 5H5v5m17-5h5v5M5 22v5h5m17-5v5h-5M10 15a7 7 0 1 1 2 6m-2-6h5m-5 0v-5" /></svg>
-      </button>
+    <button className="camera-reset-button icon-button" type="button" disabled={!canResetCamera} aria-label="Reset camera" title="Reset camera" onClick={() => { setExpanded(false); onResetCamera(); }}>
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M10 5H5v5m17-5h5v5M5 22v5h5m17-5v5h-5M10 15a7 7 0 1 1 2 6m-2-6h5m-5 0v-5" /></svg>
+    </button>
     <section className="ability-hub" aria-label="Abilities">
       <button ref={toggleRef} className="ability-expand" aria-expanded={expanded} aria-controls={panelId}
         aria-label={expanded ? "Hide ability details" : "Show ability details"} onClick={() => setExpanded((open) => !open)}>
@@ -58,11 +57,15 @@ export default function GameBar({ level, progress, lifelines, canBoost, onBoost,
         {abilities}
       </div>
     </section>
-    </div>
     <div className="navbar-level">
       <span className={`level-indicator-hud level-${identity?.difficulty}`} aria-label={`Current ${identity?.difficulty} level ${number}: ${title}`}><strong>Level {number}</strong><span className="level-difficulty">{identity?.difficulty}</span></span>
-      {ping && <div className="navbar-ping" onClickCapture={() => setExpanded(false)}>{ping}</div>}
-      {connection}
+    </div>
+    <div className="navbar-time">
+      {timer}
+      {(ping || connection) && <div className="navbar-network">
+        {ping && <div className="navbar-ping" onClickCapture={() => setExpanded(false)}>{ping}</div>}
+        {connection}
+      </div>}
     </div>
   </nav>;
 }

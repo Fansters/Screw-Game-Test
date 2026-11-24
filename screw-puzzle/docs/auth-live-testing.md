@@ -122,3 +122,12 @@ The Supabase migrations are already applied. Publish the same source revision to
 7. **Shared results/next round:** finish or lose a co-op round. Check team time and both contributions. Let the guest suggest a world; only the leader can confirm. One ready player must not start the round. Disconnect/reconnect one ready seat: it must ready again. Both ready starts the chosen world in the same room/invite, waiting for both scene loads; stats reset and player labels remain. A departed contributor remains visible on that round’s results; the remaining player can continue as leader.
 
 Focused automated coverage checks cloud RLS/Google guards, stale-write fencing, retry/coalescing, completion/reset races, restored puzzles, co-op proposals/stats/transport and responsive UI/camera controls. Production build, lint and unchanged level geometry audits are intentionally skipped.
+
+## Squarer UI and balanced navbar — 0.1.42
+
+- Check menu, player-card, gallery and button corners: cosmetic radii are halved. The screw matching boxes, sockets and screw caps retain their previous rounding.
+- Medium now has five levels; Hard has Lakeside Camp (1), Route 66 Gas Stop (2), Egyptian Oasis (3). Easy remains Arctic (1). Solo/co-op galleries and HUD labels agree; existing cloud saves and public records remain on the same world IDs.
+- At UI sizes 85%, 100% and 115%, the abilities stay exactly centred. Reset camera is adjacent left, level/difficulty adjacent right, counter far left and timer far right. Co-op ping/latency remain at the timer end. Check narrow phones, tablet and desktop, including a reconnecting label and opening ability help. Timing and reset-camera behavior are unchanged.
+- The account card says Player card, centred, without a close icon or Refresh sign-in options. Escape, outside-click and Keep playing still dismiss it; Google login and profile editing are unchanged.
+
+This is a frontend UI/metadata release. Protocol stays 33; no database migration or new environment variables. Production build, lint and unchanged geometry audits are skipped.

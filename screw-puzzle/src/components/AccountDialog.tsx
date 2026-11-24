@@ -145,7 +145,6 @@ export default function AccountDialog({ open, onClose, onKind, onInitialized }: 
           <button className="account-link" disabled={busy} onClick={() => setConfirmOut(false)}>Keep my account here</button>
         </div> : <button className="account-link" disabled={busy} onClick={() => setConfirmOut(true)}>{anonymous ? "Forget this guest" : "Sign out on this device"}</button>}
       </>}
-      {!permanent && <button className="account-link" disabled={busy} onClick={() => { setNotice(""); setRetry(value => value + 1); }}>Refresh sign-in options</button>}
     </>}
     <p className="account-footnote">Your times and solo puzzle progress follow your account.</p>
     <button className="account-button keep-playing" onClick={closeCard}>Keep playing</button>

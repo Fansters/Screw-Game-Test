@@ -6,7 +6,7 @@ export type Difficulty = typeof DIFFICULTIES[number];
 export const CAMPAIGN_LEVELS = [
   { id: "cottage", title: "Christmas Cottage", difficulty: "medium", available: true },
   { id: "campsite", title: "Lakeside Camp", difficulty: "hard", available: true },
-  { id: "desert", title: "Route 66 Gas Stop", difficulty: "medium", available: true },
+  { id: "desert", title: "Route 66 Gas Stop", difficulty: "hard", available: true },
   { id: "construction", title: "Construction Crew", difficulty: "medium", available: true },
   { id: "carnival", title: "Carnival Fairground", difficulty: "medium", available: true },
   { id: "zoo", title: "Zoo Adventure Park", difficulty: "medium", available: true },
